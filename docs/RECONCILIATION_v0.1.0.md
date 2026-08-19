@@ -288,3 +288,79 @@ F05 reported damaging its file mid-edit and rebuilding the body. **Verified afte
 lines, 18 task headings, all four required sections present exactly once, code fences balanced, and
 every remaining `photoIds` occurrence is discussion of the R-2 conflict rather than stale
 specification. The file is sound.
+
+---
+
+## Addendum — rulings from F03a (landed during implementation)
+
+F03a shipped `lib/categories.ts`, `lib/id.ts`, `lib/format.ts` and `lib/schema/expense.ts` under
+R-9. Five decisions were forced that no earlier ruling covered. **F10 reads this section before
+importing anything.**
+
+### R-34 · `lib/id.ts` wraps `nanoid`. F03's D-E is overturned by F01 and F06.
+
+D-E hand-rolled a 64-symbol generator on the argument that `nanoid@5` "is not in the pinned stack
+table (§3)". That premise expired before F03a executed:
+
+- **F01 pinned `nanoid@5.1.16`** in `package.json` — it is already a production dependency.
+- **F06 imports `nanoid` directly**, `nanoid(21)`, for blob pathnames (its plan §Task 7).
+
+So the dependency ships either way, and hand-rolling would leave **two CSPRNG id generators with
+different alphabets** in one tree — the precise duplication R-7, R-8 and R-33 each struck down.
+
+**Ruling. `lib/id.ts` re-exports nanoid's generator.** Nothing observable changes: the default
+alphabet is the same 64 URL-safe symbols drawn from `crypto.getRandomValues` with no modulo bias, so
+F09 §2.2's 72-bit figure is unaffected. Only the symbol *ordering* differs, and no consumer may
+depend on it. `ID_ALPHABET` is now exported so `isValidId` and `ID_ENTROPY_BITS` are derived from the
+generator rather than asserted beside it.
+
+### R-35 · `formatJakartaLong` is an alias of `dayLabel`, not a second Intl implementation.
+
+R-21 accepted F09's `formatJakartaLong(iso)` into `lib/format.ts`. F09's body used
+`Intl.DateTimeFormat('id-ID', …)` anchored at Jakarta midnight. Its output — `Selasa, 18 Agustus
+2026` — is **character-for-character what `dayLabel(iso)` already returns** from the hardcoded name
+tables, and plan D-F rules out `Intl` for Indonesian names precisely so the string cannot drift with
+an ICU release.
+
+**Ruling. `formatJakartaLong = dayLabel`.** The export exists, F09 needs no edit, and there is one
+implementation. A unit test asserts the two agree across five dates so an "optimisation" that
+un-aliases one of them fails loudly.
+
+### R-36 · `isAfterCurrentMonth` moves into `lib/format.ts`.
+
+R-10 deleted `lib/month.ts` and listed seven symbols F07 imports from `lib/format.ts` instead. F07
+also used `isAfterCurrentMonth(monthKey)` to disable the "next month" arrow, and that symbol was on
+neither list — deleting the module would have stranded it.
+
+**Ruling. Added**, as `isAfterCurrentMonth(month, now?)`. The optional `now` makes it testable, which
+F07's version was not.
+
+### ⚠️ R-37 · `isValidMonthKey` has no year bound. F07's `/m/<year>` 404 behaviour changes.
+
+F07's `isMonthKey` rejected years outside 2000–2100; F03's `isValidMonthKey`, which R-10 makes the
+survivor, checks shape only. **Consequence F07 must absorb:** `/m/1899-01` and `/m/9999-12` now
+render an empty month instead of a 404.
+
+**Ruling. F03's shape wins** — it is also `MonthKeySchema`'s regex and F04/F08 already build against
+it. If F07 wants the 404 it adds the range check at the route boundary, where a routing decision
+belongs, rather than inside a shared validator three other features share.
+
+### R-38 · `NewPhotoInputSchema` lives in `lib/schema/expense.ts`, with dimensions **required**.
+
+R-2 changed `createExpense` to take `photos?: NewPhotoInput[]` but left the Zod object unowned — F06
+publishes only the TypeScript type, in `lib/photos/types.ts`.
+
+**Ruling.** F03a owns the Zod mirror, named `NewPhotoInputSchema`, next to the `CreateExpenseInput`
+that consumes it. It mirrors F06's `StagedPhoto` **field for field, with `width`/`height`/`sizeBytes`
+required** — F06's client compresses before upload and always has them. Note this differs from
+`AttachPhotoInput`, where the same three are optional: that path also serves `onUploadCompleted`,
+which does not see the image. The asymmetry is deliberate; do not "harmonise" it.
+
+### Test-suite provenance
+
+218 tests, all green, plus `tsc --noEmit`, `eslint .`, `prettier --check` and `next build`. The
+§8.1/§8.1b/§8.2/§8.3 money tables are transcribed row for row, including the
+`parseIdrLoose(formatIdr(n)) === n` round-trip property. F07's TZ-independence suite was kept per
+R-10 and now runs under Pacific/Kiritimati (UTC+14), Pacific/Midway (UTC-11), UTC and
+America/New_York; a runtime `process.env.TZ` change was confirmed to actually move Node's local-time
+getters, so that suite fails a naive implementation rather than passing vacuously.
