@@ -4,6 +4,9 @@
 // F10's, verbatim, because F08 has already built against `CATEGORY_META` and against
 // `CategoryMeta.color` being the custom-property NAME (`--color-cat-<id>`), not a value.
 // F10 owns the *values* of those properties in app/globals.css; this module owns the names.
+//
+// One field changed after the Claude Design pull: DESIGN_INTEGRATION.md R-34 replaces
+// `emoji` with a two-letter mono `code`. The assertions below are the contract for it.
 
 import { describe, expect, it } from 'vitest'
 import {
@@ -11,7 +14,9 @@ import {
   CATEGORY_LIST,
   CATEGORY_META,
   DEFAULT_CATEGORY,
+  categoryFill,
   categoryMeta,
+  categoryStyle,
   isCategory,
   toCategory,
 } from '@/lib/categories'
@@ -57,12 +62,12 @@ describe('CATEGORY_META', () => {
     }
   })
 
-  it('uses distinct labels, emoji and colour tokens', () => {
+  it('uses distinct labels, codes and colour tokens', () => {
     const labels = CATEGORIES.map((c) => CATEGORY_META[c].label)
-    const emoji = CATEGORIES.map((c) => CATEGORY_META[c].emoji)
+    const codes = CATEGORIES.map((c) => CATEGORY_META[c].code)
     const colors = CATEGORIES.map((c) => CATEGORY_META[c].color)
     expect(new Set(labels).size).toBe(8)
-    expect(new Set(emoji).size).toBe(8)
+    expect(new Set(codes).size).toBe(8)
     expect(new Set(colors).size).toBe(8)
   })
 
@@ -73,9 +78,38 @@ describe('CATEGORY_META', () => {
     }
   })
 
-  it('uses a single-codepoint-cluster emoji as the chip glyph', () => {
+  it('uses a two-letter uppercase ASCII code as the chip glyph (design R-34)', () => {
+    // Two chars exactly: the code sits in a 22px column on F08's bar list and next to a
+    // 14px amount in an item row. Three would not fit; one would not disambiguate.
     for (const id of CATEGORIES) {
-      expect([...new Intl.Segmenter().segment(CATEGORY_META[id].emoji)]).toHaveLength(1)
+      expect(CATEGORY_META[id].code).toMatch(/^[A-Z]{2}$/)
+    }
+  })
+
+  it('maps each category to the code the design specified', () => {
+    expect(CATEGORIES.map((c) => CATEGORY_META[c].code)).toEqual([
+      'MJ', // Makan & Jajan
+      'BH', // Belanja Harian
+      'TR', // Transport
+      'TG', // Tagihan
+      'TT', // Tempat Tinggal
+      'HB', // Hiburan
+      'KS', // Kesehatan
+      'LN', // Lainnya
+    ])
+  })
+})
+
+describe('categoryStyle / categoryFill', () => {
+  it('feeds .chip and .cell a single --c custom property', () => {
+    // globals.css reads exactly one property, so eight categories share one CSS rule.
+    expect(categoryStyle('food')).toEqual({ '--c': 'var(--color-cat-food)' })
+  })
+
+  it('resolves through the alias globals.css declares at :root', () => {
+    for (const id of CATEGORIES) {
+      expect(categoryFill(id)).toBe(`var(--color-cat-${id})`)
+      expect(categoryFill(id)).toBe(`var(${CATEGORY_META[id].color})`)
     }
   })
 })

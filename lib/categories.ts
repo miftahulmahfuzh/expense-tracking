@@ -7,7 +7,17 @@
  * because F08 had already built against `CATEGORY_META` and against `color` being the
  * custom-property NAME. F10 owns the *values* of the `--color-cat-*` properties in
  * app/globals.css; this module owns the names. Neither keeps a private copy.
+ *
+ * ONE FIELD HAS CHANGED SINCE. docs/design/DESIGN_INTEGRATION.md R-34 (the Claude Design
+ * pull) replaces `emoji` with `code` — a two-letter ledger mark set in IBM Plex Mono.
+ * Emoji rendering varies by OS, vendor and font version and cannot be tinted; a code is
+ * the same glyph everywhere, takes the category colour, and aligns in a column at 10px.
+ * It is also the accessibility channel: in a dense item row the code IS the category, so
+ * the redundancy that makes an 8-colour palette safe for colour-blind readers comes free
+ * on every screen rather than only in the picker. Applied by F10.
  */
+import type { CSSProperties } from 'react'
+
 export const CATEGORIES = [
   'food', // Makan & Jajan — warung, resto, kopi, snack
   'groceries', // Belanja Harian — Indomaret, Alfamart, supermarket
@@ -29,8 +39,11 @@ export interface CategoryMeta {
   id: Category
   /** Indonesian display label. */
   label: string
-  /** Single emoji, used as the chip glyph. */
-  emoji: string
+  /**
+   * Two-letter uppercase ledger mark — the chip/row glyph. Unique across the eight.
+   * Always set in `font-mono`, always tinted with the category colour.
+   */
+  code: string
   /**
    * Tailwind v4 `@theme` custom-property NAME (not a value). F10 defines the values in
    * app/globals.css; using the `--color-*` namespace means Tailwind auto-generates
@@ -45,56 +58,56 @@ export const CATEGORY_META: Readonly<Record<Category, CategoryMeta>> = {
   food: {
     id: 'food',
     label: 'Makan & Jajan',
-    emoji: '🍜',
+    code: 'MJ',
     color: '--color-cat-food',
     hint: 'warung, resto, kopi, snack',
   },
   groceries: {
     id: 'groceries',
     label: 'Belanja Harian',
-    emoji: '🛒',
+    code: 'BH',
     color: '--color-cat-groceries',
     hint: 'Indomaret, Alfamart, supermarket',
   },
   transport: {
     id: 'transport',
     label: 'Transport',
-    emoji: '🛵',
+    code: 'TR',
     color: '--color-cat-transport',
     hint: 'bensin, parkir, tol, ojek, grab',
   },
   bills: {
     id: 'bills',
     label: 'Tagihan',
-    emoji: '🧾',
+    code: 'TG',
     color: '--color-cat-bills',
     hint: 'internet, listrik, pulsa, IPL, iuran',
   },
   housing: {
     id: 'housing',
     label: 'Tempat Tinggal',
-    emoji: '🏠',
+    code: 'TT',
     color: '--color-cat-housing',
     hint: 'sewa apartemen, kos, service charge',
   },
   entertainment: {
     id: 'entertainment',
     label: 'Hiburan',
-    emoji: '🎬',
+    code: 'HB',
     color: '--color-cat-entertainment',
     hint: 'bioskop, game, langganan streaming',
   },
   health: {
     id: 'health',
     label: 'Kesehatan',
-    emoji: '💊',
+    code: 'KS',
     color: '--color-cat-health',
     hint: 'obat, dokter, vitamin',
   },
   other: {
     id: 'other',
     label: 'Lainnya',
-    emoji: '📦',
+    code: 'LN',
     color: '--color-cat-other',
     hint: 'tidak masuk kategori lain',
   },
@@ -115,4 +128,27 @@ export function categoryMeta(value: string): CategoryMeta {
 /** Coerce arbitrary text to a valid Category. Used at the DB read boundary and by F04's fallback parser. */
 export function toCategory(value: unknown): Category {
   return isCategory(value) ? value : DEFAULT_CATEGORY
+}
+
+/* ------------------------------------------------------------ presentation */
+
+/**
+ * Inline style that feeds the `.chip` / `.cell` component classes in
+ * app/globals.css. Those rules read a single `--c`, so eight categories share
+ * one CSS rule instead of needing eight.
+ *
+ * Additive: reconciliation R-7 froze the *shape* above and this does not touch
+ * it. `CSSProperties` is a type-only import, so `lib/` stays React-free at
+ * runtime.
+ */
+export function categoryStyle(value: Category): CSSProperties {
+  return { '--c': `var(${CATEGORY_META[value].color})` } as CSSProperties
+}
+
+/**
+ * Chart fill for F08's bar list: pass straight to a `style`/`fill`.
+ * categoryFill('food') === 'var(--color-cat-food)'
+ */
+export function categoryFill(value: Category): string {
+  return `var(${CATEGORY_META[value].color})`
 }
