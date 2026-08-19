@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 
 import { Button, Field, TextArea } from '@/components/ui'
+import { signInWithGoogleAction } from '@/lib/auth/actions'
 
 import {
   MANUAL_CTA,
@@ -37,7 +38,6 @@ export function PasteStage({
   onParse,
   onManual,
   onDiscardRestored,
-  onSignIn,
 }: {
   rawText: string
   parse: ParseStatus
@@ -48,7 +48,6 @@ export function PasteStage({
   onParse: () => void
   onManual: () => void
   onDiscardRestored: () => void
-  onSignIn: () => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const loading = parse.kind === 'loading'
@@ -96,9 +95,18 @@ export function PasteStage({
             <p className="text-body">{failure.message}</p>
 
             {failure.code === 'unauthorized' ? (
-              <Button variant="secondary" size="md" className="mt-2.5" onClick={onSignIn}>
-                {SIGN_IN_AGAIN}
-              </Button>
+              /*
+               * F02's own Server Action, exactly as `/` uses it — not a link to
+               * /api/auth/signin. That keeps `signIn` (which is server-only) away from this
+               * client boundary, routes through safeNext, and comes back to /new afterwards,
+               * where the draft is still in localStorage waiting.
+               */
+              <form action={signInWithGoogleAction} className="mt-2.5">
+                <input type="hidden" name="next" value="/new" />
+                <Button type="submit" variant="secondary" size="md">
+                  {SIGN_IN_AGAIN}
+                </Button>
+              </form>
             ) : null}
 
             {failure.code === 'input_too_long' ? (

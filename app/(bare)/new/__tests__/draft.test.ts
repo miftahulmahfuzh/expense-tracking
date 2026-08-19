@@ -77,13 +77,23 @@ describe('reducer · stage transitions', () => {
   })
 
   it('manual_entry keeps rows that already exist rather than adding a second blank one', () => {
-    const first = reducer(initialState(TODAY), { type: 'parse_success', parsed, source: 'llm' })
+    const first = reducer(initialState(TODAY), {
+      type: 'parse_success',
+      parsed,
+      source: 'llm',
+      degraded: false,
+    })
     const state = reducer(reducer(first, { type: 'back_to_paste' }), { type: 'manual_entry' })
     expect(state.draft.items).toHaveLength(2)
   })
 
   it('parse_success fills title, date, rows and source in one transition', () => {
-    const state = reducer(initialState(TODAY), { type: 'parse_success', parsed, source: 'llm' })
+    const state = reducer(initialState(TODAY), {
+      type: 'parse_success',
+      parsed,
+      source: 'llm',
+      degraded: false,
+    })
     expect(state.draft.stage).toBe('review')
     expect(state.draft.title).toBe('bakar duit tuesday')
     expect(state.draft.occurredOn).toBe('2026-08-18')
@@ -98,6 +108,56 @@ describe('reducer · stage transitions', () => {
       failure: { code: 'rate_limited', message: 'Kebanyakan request.' },
     })
     expect(reducer(failed, { type: 'set_raw', value: 'x' }).parse).toEqual({ kind: 'idle' })
+  })
+
+  it('parse_success carries F04 s degraded flag onto the state', () => {
+    const state = reducer(initialState(TODAY), {
+      type: 'parse_success',
+      parsed,
+      source: 'fallback',
+      degraded: true,
+    })
+    expect(state.degraded).toBe(true)
+  })
+
+  it('a fallback table clears degraded — its own banner explains it, and two notices would not', () => {
+    const withFlag = reducer(initialState(TODAY), {
+      type: 'parse_success',
+      parsed,
+      source: 'fallback',
+      degraded: true,
+    })
+    const failed = reducer(withFlag, {
+      type: 'parse_failure',
+      failure: { code: 'offline', message: 'x' },
+      fallback: parsed,
+    })
+    expect(failed.degraded).toBe(false)
+    expect(failed.parse).toMatchObject({ kind: 'error' })
+  })
+
+  it('restore raises the notice; restore_none does not', () => {
+    const draft = validDraft()
+    expect(reducer(initialState(TODAY), { type: 'restore', draft })).toMatchObject({
+      restored: true,
+      restoredNotice: true,
+    })
+    expect(reducer(initialState(TODAY), { type: 'restore_none' })).toMatchObject({
+      restored: true,
+      restoredNotice: false,
+    })
+  })
+
+  it('tapping Rapikan is acknowledgement enough to drop the restore notice', () => {
+    const restored = reducer(initialState(TODAY), { type: 'restore', draft: validDraft() })
+    expect(reducer(restored, { type: 'parse_start' }).restoredNotice).toBe(false)
+  })
+
+  it('dismiss_restored drops the notice without touching the draft', () => {
+    const restored = reducer(initialState(TODAY), { type: 'restore', draft: validDraft() })
+    const dismissed = reducer(restored, { type: 'dismiss_restored' })
+    expect(dismissed.restoredNotice).toBe(false)
+    expect(dismissed.draft).toEqual(restored.draft)
   })
 
   it('parse_start sizes the skeleton from the paste', () => {

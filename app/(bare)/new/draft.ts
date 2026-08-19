@@ -125,6 +125,19 @@ export type AddExpenseState = {
   focus: FocusRequest
   /** True once the localStorage restore attempt finished — blocks the write-before-read race. */
   restored: boolean
+  /**
+   * A draft WAS restored and the user has not acknowledged it. Lives here rather than in the
+   * host's useState for two reasons: PasteStage reads it, which is this module's own rule for
+   * what belongs in the reducer, and setting it is part of the `restore` transition — doing it
+   * with a setState beside the dispatch is a second render for one logical change.
+   */
+  restoredNotice: boolean
+  /**
+   * F04's `degraded`: the answer is real but came from the deterministic fallback, so every
+   * category is `other` and the names are rough. Parse-outcome state, so it belongs next to
+   * `parse` rather than in a separate flag the host has to keep in step.
+   */
+  degraded: boolean
 }
 
 export const NO_ERRORS: FieldErrors = { items: {} }
@@ -171,6 +184,8 @@ export function initialState(todayISO: string): AddExpenseState {
     errors: NO_ERRORS,
     focus: null,
     restored: false,
+    restoredNotice: false,
+    degraded: false,
   }
 }
 
@@ -219,7 +234,7 @@ export type Action =
   | { type: 'restore_none' }
   | { type: 'set_raw'; value: string }
   | { type: 'parse_start' }
-  | { type: 'parse_success'; parsed: ParsedExpense; source: DraftSource }
+  | { type: 'parse_success'; parsed: ParsedExpense; source: DraftSource; degraded: boolean }
   | { type: 'parse_failure'; failure: ParseFailure; fallback?: ParsedExpense | null }
   | { type: 'manual_entry' }
   | { type: 'back_to_paste' }
@@ -237,6 +252,7 @@ export type Action =
   | { type: 'save_failure'; message: string }
   | { type: 'invalid'; errors: FieldErrors; focus: FocusRequest }
   | { type: 'clear_focus' }
+  | { type: 'dismiss_restored' }
   | { type: 'reset'; todayISO: string }
 
 function touch(draft: DraftExpense, patch: Partial<DraftExpense>): DraftExpense {
@@ -266,10 +282,10 @@ function clearItemError(errors: FieldErrors, key: string, field: 'name' | 'amoun
 export function reducer(state: AddExpenseState, action: Action): AddExpenseState {
   switch (action.type) {
     case 'restore':
-      return { ...state, draft: action.draft, restored: true }
+      return { ...state, draft: action.draft, restored: true, restoredNotice: true }
 
     case 'restore_none':
-      return { ...state, restored: true }
+      return { ...state, restored: true, restoredNotice: false }
 
     case 'set_raw':
       // Clearing `parse` means editing the text dismisses the banner about the last attempt.
@@ -288,6 +304,8 @@ export function reducer(state: AddExpenseState, action: Action): AddExpenseState
           expectedRows: estimateRows(state.draft.rawText),
         },
         save: { kind: 'idle' },
+        // Tapping Rapikan is acknowledgement enough — the notice has done its job.
+        restoredNotice: false,
       }
 
     case 'parse_success':
@@ -297,6 +315,7 @@ export function reducer(state: AddExpenseState, action: Action): AddExpenseState
         parse: { kind: 'idle' },
         errors: NO_ERRORS,
         focus: null,
+        degraded: action.degraded,
       }
 
     case 'parse_failure': {
@@ -310,6 +329,7 @@ export function reducer(state: AddExpenseState, action: Action): AddExpenseState
           parse: { kind: 'error', failure: action.failure },
           errors: NO_ERRORS,
           focus: null,
+          degraded: false,
         }
       }
       // F04's 'no_items_found' arrives with nothing to show. Its plan asks for the manual
@@ -321,11 +341,12 @@ export function reducer(state: AddExpenseState, action: Action): AddExpenseState
           parse: { kind: 'error', failure: action.failure },
           errors: NO_ERRORS,
           focus: null,
+          degraded: false,
         }
       }
       // unauthorized / input_too_long / rate_limited / empty_input: stay on paste, draft
       // intact. Signing in or shortening the text comes before editing a table.
-      return { ...state, parse: { kind: 'error', failure: action.failure } }
+      return { ...state, parse: { kind: 'error', failure: action.failure }, degraded: false }
     }
 
     case 'manual_entry':
@@ -338,6 +359,8 @@ export function reducer(state: AddExpenseState, action: Action): AddExpenseState
         }),
         parse: { kind: 'idle' },
         errors: NO_ERRORS,
+        degraded: false,
+        restoredNotice: false,
       }
 
     case 'back_to_paste':
@@ -464,6 +487,9 @@ export function reducer(state: AddExpenseState, action: Action): AddExpenseState
 
     case 'clear_focus':
       return { ...state, focus: null }
+
+    case 'dismiss_restored':
+      return { ...state, restoredNotice: false }
 
     case 'reset':
       // `restored: true` so the persistence effect does not treat a deliberate reset as the
