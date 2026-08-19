@@ -4,3 +4,7 @@ coverage
 drizzle
 package-lock.json
 *.md
+
+# docs/design/* is pulled verbatim from Claude Design via DesignSync. Reformatting it
+# destroys its intentional column alignment and creates a diff on every re-sync.
+docs
