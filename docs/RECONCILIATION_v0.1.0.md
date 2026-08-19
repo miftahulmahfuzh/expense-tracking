@@ -937,18 +937,31 @@ same reason the health route keeps it: to document that this route must never be
 Edge. `maxDuration = 60` is kept — it is the Hobby ceiling and Vercel reads it from the build
 output.
 
-### R-76 · OQ-1 is still open, and it is a question for the user.
+### R-76 · OQ-1 — ANSWERED BY THE USER: `perumahan laddaland` is a film. It is a movie ticket.
 
 `perumahan laddaland 49k` sits beside `kungfu soccer 49k` at an identical cinema-ticket price,
-which reads as two film titles (Laddaland is a 2011 Thai horror film) — but *perumahan*
-literally means housing, which is also a category slug. The fixture accepts
-`entertainment | housing | other` rather than encoding a guess. Live GLM returns `housing`
-more often than not.
+which read as two film titles (Laddaland is a 2011 Thai horror film) — but *perumahan*
+literally means housing, which is also a category slug, and live GLM answered `housing` more
+often than not. The fixture accepted `entertainment | housing | other` rather than encode a
+guess.
 
-**Not a ruling — a question.** If that 49k was a cinema ticket, tighten
-`FIXTURES[0].expect.categories[2]` to `['entertainment']` and add the term to the
-entertainment examples in the system prompt. If it was rent, tighten it to `['housing']`. Until
-someone who was there answers, the allow-list is the honest encoding.
+**The user confirmed it was a cinema ticket, so the guess is gone.** Three changes:
+
+1. `FIXTURES[0].expect.categories[2]` is now `['entertainment']` — exact, not an allow-list.
+   Every category in the canonical fixture is now asserted exactly.
+2. The system prompt names the title in its entertainment examples, spelling out that
+   *perumahan* is part of the TITLE and not a housing payment.
+3. The ambiguity rule gained the magnitude tell that generalises past this one title: rent and
+   service charges are monthly amounts in the hundreds of thousands or millions, **not 49 ribu**.
+
+Verified live: `entertainment` on **three consecutive runs**, 15/15 each. This is the loop the
+plan's "fix the prompt, never the assertion" rule describes, run exactly once — and the only
+category assertion F04 ever loosened is now tightened.
+
+Incidental confirmation of R-70 from the same runs: the first live run after editing
+`prompt.ts` reports `input_tokens: 4412, cache_read_input_tokens: 0`, and every run after it
+reports `60 + 4352`. The cache is keyed on the prompt, so a prompt edit costs one full-price
+request and is then free again.
 
 Still open, unchanged: **OQ-4** (published GLM-5.2 rates, and whether z.ai's 429 body matches
 the Anthropic error envelope — no 429 was ever provoked, so `Anthropic.RateLimitError` vs a

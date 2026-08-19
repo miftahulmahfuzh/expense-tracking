@@ -2840,18 +2840,19 @@ actually proved*.
 
 ## Open questions for the integrator
 
-> **Status after execution.** Answered: OQ-2 (R-73), OQ-6 (R-70), OQ-7 (R-71), OQ-8 (R-72),
-> OQ-10 (R-73), OQ-3 (the convention held on every live fixture). Still open and genuinely
-> needing a human: **OQ-1** — one question for the user. Deferred by decision: **OQ-4**
+> **Status after execution.** Answered: OQ-1 (R-76 — the user confirmed it is a movie ticket),
+> OQ-2 (R-73), OQ-6 (R-70), OQ-7 (R-71), OQ-8 (R-72), OQ-10 (R-73), OQ-3 (the convention held on
+> every live fixture). Nothing is left needing a human. Deferred by decision: **OQ-4**
 > (published rates; also, no 429 was ever provoked, so z.ai's 429 body shape is still untested —
 > its 401 is `{"error":{"message":"token expired or incorrect","type":"401"}}`), **OQ-5**
 > (durable rate limiting — R-30 defers it), **OQ-9** (F05's call).
 
-**OQ-1 — What is `perumahan laddaland`? — STILL OPEN, and the only thing F04 needs from a human.**
-Live GLM returns `housing` more often than `entertainment`. The fixture accepts
-`entertainment | housing | other`. One answer closes it: if that 49k was a cinema ticket,
-tighten `FIXTURES[0].expect.categories[2]` to `['entertainment']` and add the term to the
-entertainment examples in the system prompt; if it was rent, tighten it to `['housing']`.
+**OQ-1 — What is `perumahan laddaland`? — ANSWERED (R-76): a film. It was a movie ticket.**
+So `FIXTURES[0].expect.categories[2]` is now exactly `['entertainment']`, the system prompt
+names the title in its entertainment examples (spelling out that *perumahan* is part of the
+TITLE), and the ambiguity rule gained the tell that generalises: rent is hundreds of thousands
+a month, not 49 ribu. Verified `entertainment` on three consecutive live runs. Every category
+in the canonical fixture is now asserted exactly — no allow-list remains on it.
 In the canonical roadmap example, `perumahan laddaland 49k` sits directly beside `kungfu soccer 49k` at an identical, cinema-ticket-shaped price. That strongly suggests both are film titles (Laddaland is a 2011 Thai horror film), which would make it `entertainment`. But the literal Indonesian word *perumahan* means "housing", which is a category slug. I have written the fixture to accept `entertainment | housing | other` rather than encode a guess into an assertion. **Ask the user what they actually spent that 49k on**, then tighten `FIXTURES[0].expect.categories[2]` to a single value and, if it is `entertainment`, add the term to the entertainment examples in the system prompt.
 
 **OQ-2 — `lib/format.ts` ownership — RESOLVED, but verify the exact `parseIdrLoose` behaviour.**

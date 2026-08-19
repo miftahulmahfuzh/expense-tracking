@@ -63,9 +63,11 @@ export const FIXTURES: Fixture[] = [
     categories: [
       ['food'],
       ['food'],
-      // "perumahan laddaland" is a film title, but the literal word "perumahan"
-      // means housing. See the plan's OQ-1. Accept either rather than encode a guess.
-      ['entertainment', 'housing', 'other'],
+      // "perumahan laddaland" is a FILM TITLE — the user confirmed it was a cinema
+      // ticket (OQ-1, closed 2026-08-19). The literal word "perumahan" means housing,
+      // which is why GLM used to answer `housing` here and why the system prompt now
+      // names this exact title in its entertainment examples.
+      ['entertainment'],
       ['entertainment'],
       ['food'],
       ['food'],

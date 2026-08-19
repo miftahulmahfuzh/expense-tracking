@@ -87,11 +87,14 @@ d('GLM-5.2 live — canonical fixture must be exact', () => {
       expect(r.expense.items[0]!.name.toLowerCase()).toContain('roti buaya')
       expect(r.expense.items[5]!.name.toLowerCase()).toContain('pak gembus')
 
-      // Categories: exact where unambiguous, allow-list where not (OQ-1).
+      // Every category is exact now that OQ-1 is closed: items 2 and 3 are both movie
+      // tickets, so `perumahan laddaland` answering `housing` is a real failure. The
+      // prompt names that title explicitly, and adds the magnitude tell — rent is
+      // hundreds of thousands a month, not 49 ribu.
       const cats = r.expense.items.map((i) => i.category)
       expect(cats[0]).toBe('food')
       expect(cats[1]).toBe('food')
-      expect(['entertainment', 'housing', 'other']).toContain(cats[2])
+      expect(cats[2]).toBe('entertainment')
       expect(cats[3]).toBe('entertainment')
       expect(cats[4]).toBe('food')
       expect(cats[5]).toBe('food')

@@ -6,16 +6,16 @@ estimated. Refresh them from the `[live] usage in=… cached=… out=…` line t
 
 ## Tokens per parse
 
-`messages.countTokens` works on this endpoint and reports **4,302 input tokens** for the
+`messages.countTokens` works on this endpoint and reports **4,412 input tokens** for the
 canonical 6-item paste — that is the honest size of one request:
 
 | Part                              | Tokens | Notes                                                     |
 | --------------------------------- | -----: | --------------------------------------------------------- |
-| System prompt                     | ~3,900 | 11,258 characters. Constant except the TODAY line.         |
+| System prompt                     | ~4,000 | 11,673 characters. Constant except the TODAY line.         |
 | Tool schema (`record_expense`)    |   ~400 | 1,666 characters of JSON. Constant.                        |
 | Wrapper + `<paste>` markers       |    ~30 | Constant.                                                  |
 | The user's pasted text            | 40–350 | 5–15 lines is typical; the 8,000-char cap is ~2,300 worst. |
-| **Input total, canonical fixture** | **4,302** | ~6,500 at the input cap.                              |
+| **Input total, canonical fixture** | **4,412** | ~6,600 at the input cap.                            |
 | Output (tool_use JSON, 6 items)   | 193–337 | ~35 tokens per item plus envelope. Varies run to run.     |
 
 ### z.ai caches the prompt by itself — this changes how to read `usage`
@@ -24,13 +24,19 @@ We send **no** `cache_control` (it is outside the portable surface §0.1 commits
 every warm request comes back as:
 
 ```
-usage: { input_tokens: 36, cache_read_input_tokens: 4288, output_tokens: 193 }
+usage: { input_tokens: 60, cache_read_input_tokens: 4352, output_tokens: 194 }
 ```
 
-36 + 4,288 = 4,324 ≈ the 4,302 `countTokens` reports. So `input_tokens` alone is the
+60 + 4,352 = 4,412 — exactly what `countTokens` reports. So `input_tokens` alone is the
 **uncached remainder**, not the prompt size: reading it by itself understates the request
-by ~50×. `ParseResult.usage` therefore reports `inputTokens` and `cachedInputTokens`
+by ~70×. `ParseResult.usage` therefore reports `inputTokens` and `cachedInputTokens`
 separately, and total input is the sum.
+
+The cache is keyed on the prompt itself, which is directly observable: the first live run
+after any edit to `prompt.ts` reports `input_tokens: 4412, cache_read_input_tokens: 0`, and
+every run after it reports the split above. So a prompt edit costs one full-price request
+and is then free again — worth knowing, and a cheap way to confirm a prompt change actually
+reached the wire.
 
 **Plan OQ-6 is closed: there is nothing to implement.** The caching we would have
 experimented with is already happening, for free, without a field the endpoint might
@@ -40,7 +46,7 @@ therefore not the cost lever it looked like. Do not trim the prompt to save toke
 A repair round-trip roughly doubles input (the whole prompt is resent, plus the failed
 `tool_use` and the error) and adds another ~200–350 output. Budget 2× for the p99.
 
-Cost per parse = `4,300 × input_rate + 250 × output_rate`, most of the input at whatever
+Cost per parse = `4,400 × input_rate + 250 × output_rate`, most of the input at whatever
 z.ai charges for a cache read. Fill in the published GLM-5.2 rates when they are to hand
 (plan OQ-4) — at any plausible rate this is fractions of a rupiah per parse, and the
 binding constraint is the abuse surface (roadmap D3 lets any Google account in), not unit

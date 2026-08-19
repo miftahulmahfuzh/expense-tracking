@@ -247,13 +247,13 @@ jajanan indomaret · indomaret · alfamart · superindo · hypermart · transmar
 **housing** — Tempat Tinggal. sewa apartemen · sewa apartemen bulan september · sewa kos · kontrakan · service charge · deposit sewa · cicilan rumah · biaya pindahan · perabot untuk tempat tinggal
 
 **entertainment** — Hiburan. Film titles, games, subscriptions, outings.
-kungfu soccer (this is a film) · bioskop · xxi · cgv · tiket konser · netflix · spotify · disney+ · youtube premium · steam · top up ml · top up genshin · game · karaoke · billiard
+kungfu soccer (this is a film) · perumahan laddaland (also a film — "Laddaland"; the word "perumahan" here is part of the TITLE, not a housing payment) · bioskop · xxi · cgv · tiket konser · netflix · spotify · disney+ · youtube premium · steam · top up ml · top up genshin · game · karaoke · billiard
 
 **health** — Kesehatan. obat · tebus obat · apotek · kimia farma · vitamin · vitamin c 1000mg · konsul dokter umum · klinik · rumah sakit · lab · vaksin · masker · plester · grab ke klinik is transport, not health
 
 **other** — Lainnya. Everything that fits none of the above: kado · sumbangan · amplop kondangan · transfer · biaya admin bank · tarik tunai · laundry · potong rambut · servis laptop · tip · elektronik (laptop, laptop bekas, headset, mouse, mousepad, kabel usb) · deposit galon
 
-Ambiguity rule: a proper noun that could be a film, game, restaurant, or place is often NOT what its literal words suggest. Judge from context — the surrounding lines and the price. Two adjacent lines at an identical ticket-like price (e.g. two lines at 49k next to each other) are usually two cinema tickets, not one housing payment. When you cannot tell, use \`other\`.
+Ambiguity rule: a proper noun that could be a film, game, restaurant, or place is often NOT what its literal words suggest. Judge from context — the surrounding lines and the price. Two adjacent lines at an identical ticket-like price (e.g. two lines at 49k next to each other) are usually two cinema tickets, not one housing payment: \`perumahan laddaland 49k\` next to \`kungfu soccer 49k\` is two movie tickets, both \`entertainment\`. Rent and service charges are monthly amounts in the hundreds of thousands or millions, not 49 ribu. When you cannot tell, use \`other\`.
 
 ## CONTEXT
 
