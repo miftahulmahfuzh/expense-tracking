@@ -50,3 +50,42 @@ describe('.sheet geometry', () => {
     expect(block('.sheet')).toMatch(/max-height:\s*none\s*;/)
   })
 })
+
+/**
+ * `Sheet` swallows pointer input for the span of the entry transition, to discard the ghost
+ * click iOS delivers up to ~300ms after a tap. Because the sheet fills the viewport that
+ * phantom tap always lands on something of ours — it was selecting a category and closing the
+ * picker the instant it opened. The window is a JS constant and the transition is a CSS one; if
+ * they drift the guard either ends early (the ghost gets through) or overstays (real taps
+ * ignored), and nothing else in the suite can see either failure.
+ */
+describe('Sheet entry window', () => {
+  const sheet = readFileSync(
+    fileURLToPath(new URL('../components/ui/Sheet.tsx', import.meta.url)),
+    'utf8',
+  )
+
+  it('keeps ENTRY_MS in step with the panel transition', () => {
+    const js = sheet.match(/const ENTRY_MS = (\d+)/)
+    expect(js, 'ENTRY_MS not found in Sheet.tsx').not.toBeNull()
+
+    const declared = block('.sheet-panel').match(/transition:\s*transform\s*(\d+)ms/)
+    expect(declared, 'panel transform transition not found in globals.css').not.toBeNull()
+
+    expect(Number(js![1])).toBe(Number(declared![1]))
+  })
+
+  it('discards a click that arrives inside that window', () => {
+    expect(sheet).toMatch(/performance\.now\(\) - openedAtRef\.current < ENTRY_MS/)
+  })
+
+  /*
+   * The panel goes inert, never the dialog. `pointer-events: none` on the dialog lets the ghost
+   * click fall THROUGH to the sheet stacked behind, and closing the editor under the picker is a
+   * worse bug than the one being fixed — it is what "the Ubah item moved to the bottom" was.
+   */
+  it('makes the panel inert, not the dialog', () => {
+    expect(sheet).toMatch(/panel\.style\.pointerEvents = 'none'/)
+    expect(sheet).not.toMatch(/dialog\.style\.pointerEvents = 'none'/)
+  })
+})
