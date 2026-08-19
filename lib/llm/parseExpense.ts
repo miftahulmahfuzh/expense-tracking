@@ -248,6 +248,13 @@ export async function parseExpenseWith(
  * under Vitest. `await import()` keeps the module graph honest at build time (the client
  * is still server-only) while leaving the parser testable. Node caches the module, so
  * only the first call pays anything.
+ *
+ * ADDENDUM (F06, R-95): that throw no longer happens under Vitest — F06 aliased
+ * `server-only` to a no-op stub in `vitest.config.ts`, which is how `client.test.ts` can
+ * exist at all. The lazy import stays anyway, and now for a simpler reason: nothing that
+ * merely imports this module should construct an API client or trigger env validation as a
+ * side effect. The route test and F05's tests import it purely to stub
+ * `parseExpenseWithMeta`.
  */
 async function productionClient(): Promise<{ client: LlmClientLike; model: string }> {
   const { llm, LLM_MODEL } = await import('./client')

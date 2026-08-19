@@ -1371,3 +1371,81 @@ used:
 
 **Do not mark F05 done on the strength of 613 green tests.** They say the state machine is
 right. They say nothing about whether a thumb can reach Simpan while the keyboard is up.
+
+---
+
+## Group L — F04 closed out after F05 and F06 landed
+
+Three loose ends, tied off once the features that consume F04 existed. Rulings R-95…R-97.
+
+### R-95 · F06's `server-only` stub supersedes R-67's *reason*, not its conclusion.
+
+R-67 routed `parseExpense.ts` to its client through a lazy `await import('./client')` because
+`import 'server-only'` throws under Vitest, making the module otherwise unloadable in a test.
+F06 then aliased `server-only` to a no-op stub in `vitest.config.ts`, so that throw no longer
+happens.
+
+**Ruling. The lazy import stays, on a simpler rationale**: nothing that merely imports
+`parseExpense.ts` should construct an API client or trigger environment validation as a side
+effect. The route test and F05's tests import it only to stub `parseExpenseWithMeta`. The
+addendum is recorded in the file itself, next to the original comment, because a reader who
+checks the stated reason and finds it no longer true will otherwise "simplify" the import back.
+
+The stub does buy something real, though: **`lib/llm/client.ts` is now unit-testable, and
+tested** — `lib/llm/__tests__/client.test.ts`, 7 cases. It pins the two SDK defaults this
+module exists to override, which F04 could previously only assert in a comment: `timeout`
+25.000 **milliseconds** (the TS SDK is ms, the Python one is seconds) and `maxRetries: 0`,
+against defaults of 10 minutes and 2 retries — a ~30-minute worst case behind a 60-second
+function ceiling. It also asserts `timeout × (maxRetries + 1) < 60_000` directly, that the base
+URL carries no `/v1` suffix of our own, and that a missing `LLM_MODEL` is a loud import-time
+crash. Neither number announces itself when wrong: the request simply hangs until the platform
+kills it.
+
+### R-96 · OQ-9 answered by F05: `degraded` does not block saving. And F04's fallback now ships to the browser.
+
+F05 renders a `role="status"` banner reading *"Kami cuma bisa merapikan sebagian. Cek lagi nama
+& kategorinya ya."* — verbatim the copy F04's plan proposed — and Simpan stays enabled. That is
+the outcome F04 recommended: D1 makes retagging one tap, and a saved-but-mistagged expense is
+recoverable while a lost paste is not.
+
+More consequential, and it changes a constraint on F04's own files: **F05 imports
+`fallbackParse` directly into a client component.** With no network there is no server to ask
+for a fallback, so without this the offline path would be the only dead end in the app. So
+`lib/llm/fallbackParse.ts` and its whole import graph — `lib/llm/types.ts`, `lib/format.ts`,
+`lib/schema/expense.ts`, `lib/categories.ts` — must stay free of `import 'server-only'`, of the
+database, and of the Anthropic SDK. `scripts/f05-preflight.sh` asserts it, and `fallbackParse.ts`
+now says so at the top: adding a server-only import there breaks `/new`'s build, not that file's
+own tests, so the failure would surface a long way from its cause.
+
+F05 also reuses `PARSE_ERROR_COPY` and `MAX_RAW_TEXT_CHARS` rather than re-wording either, and
+checks the length cap client-side before spending a round trip — which is exactly what R-69's
+schema amendment was for. The published wire contract needed no changes to be consumed.
+
+### R-97 · OQ-4 closed: real rates, and the abuse number OQ-5 needs.
+
+z.ai's published direct-API rates for GLM-5.2 (2026-08-19): **$1.40** per 1M input, **$0.26**
+per 1M cached input, **$4.40** per 1M output — not OpenRouter's cheaper $0.50/$3.15, since we
+call `api.z.ai` directly. Against F04's measured token counts that is **$0.0021 per typical
+parse** (~Rp 33), $0.0070 on a cache miss, $0.0220 for the worst legal call, and **$0.62 for
+300 parses**. Ordinary use is not a cost problem.
+
+The number that matters is the other one: **one signed-in account saturating the burst limiter
+at 10 req/min for 24 hours is 14,400 calls — ~$30/day of typical parses, ~$316/day if every
+call is a maximum-size paste, multiplied by the number of warm serverless instances** because
+the limiter is per-instance. Roadmap D3 lets any Google account sign in, so that is the
+exposure the moment the domain is public, and it is what OQ-5 (durable rate limiting) needs a
+decision about. R-30 deferred it consciously; this puts a figure on what is being deferred.
+The full table is in `lib/llm/COST.md`.
+
+One thing stays deliberately unmeasured: z.ai's 429 body shape. Finding out means hammering a
+paid endpoint until it refuses, and nothing in the code branches on the distinction —
+`parseExpense` treats every API throw identically. Its 401 is
+`{"error":{"message":"token expired or incorrect","type":"401"}}`.
+
+### F04 is closed
+
+Every open question from the plan is now answered or consciously deferred with a figure
+attached. Re-verified on `main` after F05 and F06: `npm test` **620 passed / 15 skipped**,
+`tsc --noEmit`, `eslint` and `prettier --check` clean, `scripts/f05-preflight.sh` green, and
+`npm run test:live` **15/15** against real GLM-5.2. No F04 file changed behaviour in the process
+— the additions are one test file and three comments.

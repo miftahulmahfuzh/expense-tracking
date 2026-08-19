@@ -32,11 +32,12 @@ usage: { input_tokens: 60, cache_read_input_tokens: 4352, output_tokens: 194 }
 by ~70×. `ParseResult.usage` therefore reports `inputTokens` and `cachedInputTokens`
 separately, and total input is the sum.
 
-The cache is keyed on the prompt itself, which is directly observable: the first live run
-after any edit to `prompt.ts` reports `input_tokens: 4412, cache_read_input_tokens: 0`, and
-every run after it reports the split above. So a prompt edit costs one full-price request
-and is then free again — worth knowing, and a cheap way to confirm a prompt change actually
-reached the wire.
+The cache is keyed on the prompt and it expires, both directly observable. A run reports
+`input_tokens: 4412, cache_read_input_tokens: 0` on the first request after any edit to
+`prompt.ts`, and also after the endpoint has been idle a while (observed after roughly an
+hour); every request after that reports the split above. So a prompt edit costs exactly one
+full-price request and is then free again — which doubles as a cheap way to confirm a prompt
+change actually reached the wire.
 
 **Plan OQ-6 is closed: there is nothing to implement.** The caching we would have
 experimented with is already happening, for free, without a field the endpoint might
@@ -46,12 +47,41 @@ therefore not the cost lever it looked like. Do not trim the prompt to save toke
 A repair round-trip roughly doubles input (the whole prompt is resent, plus the failed
 `tool_use` and the error) and adds another ~200–350 output. Budget 2× for the p99.
 
-Cost per parse = `4,400 × input_rate + 250 × output_rate`, most of the input at whatever
-z.ai charges for a cache read. Fill in the published GLM-5.2 rates when they are to hand
-(plan OQ-4) — at any plausible rate this is fractions of a rupiah per parse, and the
-binding constraint is the abuse surface (roadmap D3 lets any Google account in), not unit
-cost. See `app/api/parse/route.ts` for the four layers of defence and OQ-5 for the durable
-fix.
+## What a parse actually costs (OQ-4, closed)
+
+z.ai's published direct-API rates for GLM-5.2, as of 2026-08-19 — **$1.40** per 1M input,
+**$0.26** per 1M *cached* input, **$4.40** per 1M output. (Not OpenRouter's $0.50/$3.15;
+we call `api.z.ai` directly.) Applied to the measured token counts above:
+
+| Case                                       |     USD | ≈ IDR¹ | Notes                                     |
+| ------------------------------------------ | ------: | -----: | ----------------------------------------- |
+| Typical parse, warm prompt cache           | $0.0021 |  Rp 33 | 60 uncached + 4,352 cached in, 194 out    |
+| First parse after any `prompt.ts` edit     | $0.0070 | Rp 113 | 4,412 uncached in — the cache-miss run    |
+| Parse that needed the repair round-trip    | $0.0041 |  Rp 66 | ~2× input, ~2× output                     |
+| **Worst legal single call** (8,000 chars, 50 items) | $0.0220 | Rp 351 | 2,300 uncached in + 4,000 out |
+| 300 parses (≈10/day for a month)           |   $0.62 | Rp 9.900 | Ordinary personal use                   |
+
+¹ At Rp 16.000/USD — an assumption, not a quoted rate.
+
+So ordinary use is **fractions of a US cent per parse** and well under a dollar a month.
+Unit cost is not the constraint. **The abuse surface is** (roadmap D3 lets any Google
+account sign in):
+
+> One signed-in account, saturating the burst limiter at 10 requests/minute for 24 hours,
+> is 14,400 calls: **~$30/day** of typical parses, or **~$316/day** if every call is a
+> maximum-size paste. Multiply by the number of warm serverless instances, because the
+> limiter is per-instance (R-30).
+
+That is the number OQ-5 needs a decision about before the domain is public. It is also why
+the 8.000-char cap and `max_tokens: 4000` are not politeness — they are what turns an
+unbounded bill into a bounded one. See `app/api/parse/route.ts` for all four layers.
+
+Still unmeasured: z.ai's 429 body shape. No 429 was ever provoked, so whether the SDK
+raises `Anthropic.RateLimitError` or a generic `APIError` here is untested — and
+deliberately so: the way to find out is to hammer someone's paid endpoint. Its 401 body is
+`{"error":{"message":"token expired or incorrect","type":"401"}}`, which the SDK does map
+cleanly, and `parseExpense` treats every API throw identically anyway, so nothing in the
+code branches on the distinction.
 
 ## Latency
 

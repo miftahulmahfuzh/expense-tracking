@@ -2708,7 +2708,7 @@ A repair round-trip roughly **doubles input** (the prompt is resent plus the fai
 tool_use and the error) and adds another ~230 output. Budget ~2× for the p99.
 
 Cost per parse = `2050 × input_rate + 230 × output_rate`. Fill in z.ai's GLM-5.2
-rates (see OQ-4) — at any plausible rate this is fractions of a rupiah, and the
+rates (see OQ-4 — ANSWERED, see lib/llm/COST.md) — at any plausible rate this is fractions of a rupiah, and the
 binding constraint is z.ai's rate limit and our own abuse surface, not unit cost.
 
 The system prompt is ~88% of input tokens. If cost ever becomes the binding
@@ -2840,12 +2840,19 @@ actually proved*.
 
 ## Open questions for the integrator
 
-> **Status after execution.** Answered: OQ-1 (R-76 — the user confirmed it is a movie ticket),
-> OQ-2 (R-73), OQ-6 (R-70), OQ-7 (R-71), OQ-8 (R-72), OQ-10 (R-73), OQ-3 (the convention held on
-> every live fixture). Nothing is left needing a human. Deferred by decision: **OQ-4**
-> (published rates; also, no 429 was ever provoked, so z.ai's 429 body shape is still untested —
-> its 401 is `{"error":{"message":"token expired or incorrect","type":"401"}}`), **OQ-5**
-> (durable rate limiting — R-30 defers it), **OQ-9** (F05's call).
+> **FINAL STATUS — F04 is closed (R-95…R-97).** Every question below is answered: OQ-1 (R-76,
+> the user confirmed a movie ticket), OQ-2 (R-73), OQ-3 (held on every live fixture), OQ-4
+> (R-97, real rates and a costed abuse figure), OQ-6 (R-70, caching is automatic), OQ-7 (R-71),
+> OQ-8 (R-72), OQ-9 (R-96, F05 warns rather than blocks), OQ-10 (R-73).
+>
+> **OQ-5 alone remains a decision to make**, not a question to answer: durable rate limiting is
+> deferred by R-30, and R-97 now prices what that defers — one signed-in account saturating the
+> burst limiter for a day is ~$30, or ~$316 if every call is a maximum-size paste, times the
+> number of warm instances. Worth settling before the domain is public.
+>
+> Also unmeasured on purpose: z.ai's 429 body shape. Finding out means hammering a paid endpoint
+> until it refuses, and no code branches on it. Its 401 is
+> `{"error":{"message":"token expired or incorrect","type":"401"}}`.
 
 **OQ-1 — What is `perumahan laddaland`? — ANSWERED (R-76): a film. It was a movie ticket.**
 So `FIXTURES[0].expect.categories[2]` is now exactly `['entertainment']`, the system prompt
@@ -2868,7 +2875,13 @@ notes use the other convention. Original note follows.
 
 I decided the trailing number is the **total already paid**, not a unit price — so 30000, not 60000. Rationale: in real Indonesian expense notes the writer records what left their wallet, and inventing a multiplication risks silently doubling a real number, which is worse than under-reading a rare one. The `@` marker is the escape hatch for the unit-price case. **This is reversible in one prompt paragraph plus one fixture** — flag it if the user's actual notes use the other convention.
 
-**OQ-4 — GLM-5.2 pricing and rate limits on z.ai.**
+**OQ-4 — GLM-5.2 pricing and rate limits on z.ai. — ANSWERED (R-97).**
+$1.40 / 1M input, $0.26 / 1M cached input, $4.40 / 1M output on the direct z.ai API as of
+2026-08-19 — so $0.0021 for a typical parse and $0.62 for 300 of them. `lib/llm/COST.md` has
+the full table and, more usefully, the cost of an abusive day. The 429 question is deliberately
+left untested; see the status note at the top of this section. Original note follows.
+
+
 Needed to fill in `lib/llm/COST.md` and to size the burst limiter. Also: does z.ai return `retry-after` on 429, and does its 429 body match the Anthropic error envelope (so `Anthropic.RateLimitError` is thrown rather than a generic `APIError`)? Worth a single deliberate over-limit test.
 
 **OQ-5 — Durable rate limiting.**
@@ -2899,7 +2912,14 @@ the 25s timeout twice, which the fallback absorbed exactly as designed. Original
 
 `tool_choice: { type: 'tool', name: 'record_expense' }` is the whole structured-output strategy. Task 10's `source === 'llm'` assertion is the check: if the model ever replies with prose despite the forced choice, `parseExpenseWith` degrades to the fallback and the live test fails loudly. If that turns out to be frequent rather than rare, the mitigation is to keep the forced tool **and** add `Now call record_expense.` as the last line of the user turn as well as the system prompt.
 
-**OQ-9 — Should `degraded: true` block saving?**
+**OQ-9 — Should `degraded: true` block saving? — ANSWERED by F05 (R-96): no, it warns.**
+F05 renders a `role="status"` banner with exactly the copy proposed below and leaves Simpan
+enabled. It also imports `fallbackParse` into the browser for the offline path, which makes
+"no `server-only` in that import graph" a standing constraint on F04's files — asserted by
+`scripts/f05-preflight.sh` and now documented in `fallbackParse.ts` itself. Original note
+follows.
+
+
 Currently no: F05 gets a warning banner and the user can save whatever the fallback produced (all `other` categories). The alternative is to force a category choice before enabling Save. I lean toward **not blocking** — D1 says the user can retag with one tap, and a saved-but-mistagged expense is recoverable while a lost paste is not. **F05's call.**
 
 **OQ-10 — Test runner — CONFIRMED a duplicate (R-73): nothing was installed.**

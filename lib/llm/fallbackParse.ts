@@ -14,6 +14,14 @@ import type { ParseInput } from './types'
  * Pure and synchronous — no network, no clock, no I/O, no `Date.now()`. Every date it
  * emits comes from the text or from the caller's `todayISO`.
  *
+ * ⚠️ THIS MODULE SHIPS TO THE BROWSER. F05's `useParse` imports it directly, because with
+ * no network there is no server to ask for a fallback — the offline path would otherwise be
+ * the one dead end in the app. So this file and everything it imports (`lib/format.ts`,
+ * `lib/schema/expense.ts`, `lib/categories.ts`, `lib/llm/types.ts`) must stay free of
+ * `import 'server-only'`, of the database, and of the Anthropic SDK. `scripts/f05-preflight.sh`
+ * asserts exactly that; adding a server-only import here breaks `/new`'s build, not this file's
+ * tests.
+ *
  * All money parsing delegates to `parseIdrLoose` (F03 owns it, reconciliation R-8);
  * `lib/llm/__tests__/parseIdrLoose.contract.test.ts` is the gate on that dependency.
  */
