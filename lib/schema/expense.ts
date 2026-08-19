@@ -111,9 +111,22 @@ export const AttachPhotoInput = z.object({
 })
 export type AttachPhotoInput = z.infer<typeof AttachPhotoInput>
 
-/** POST /api/parse request body (§4.5). */
+/**
+ * POST /api/parse request body (§4.5), for callers — F05's client validates with this
+ * before spending a round trip.
+ *
+ * The cap is 8.000, matching MAX_RAW_TEXT_CHARS in lib/llm/types.ts. It was 20.000 here,
+ * which meant a paste this schema accepted could still come back 413 from the route: a
+ * client validator that is more permissive than the server it guards is worse than none.
+ * The literal is repeated rather than imported because this module is F03a — pure,
+ * dependency-free, wave 1 — and must not gain an edge into F04's tree.
+ *
+ * The route itself does NOT use this schema; it needs to tell an empty paste apart from a
+ * malformed body and from an oversized one, and `.trim().min(1)` collapses those. See
+ * app/api/parse/route.ts.
+ */
 export const ParseRequest = z.object({
-  rawText: z.string().trim().min(1).max(20_000),
+  rawText: z.string().trim().min(1).max(8_000),
   todayISO: DateISOSchema,
 })
 export type ParseRequest = z.infer<typeof ParseRequest>
