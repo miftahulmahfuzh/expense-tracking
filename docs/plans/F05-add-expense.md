@@ -2795,3 +2795,67 @@ the snippets above, rename at integration time — that is a find-and-replace, n
 
 11. **Do F10's `Input` / `TextArea` honour an explicit `id` and forward refs?** Task 9 has a
     documented fallback, but the clean version needs both. One line each in F10.
+
+---
+
+## Implementation checklist — as landed
+
+Recorded after the fact, in the shape F06's plan uses. Rulings **R-87…R-94** are in
+`docs/RECONCILIATION_v0.1.0.md`, which supersedes this file wherever the two differ.
+
+```
+Preflight
+  [x] 0  scripts/f05-preflight.sh — 44 PASS, exit 0. Retargeted at the code as SHIPPED, not
+         at this plan's assumptions: R-52j token names, Button's fullWidth,
+         lib/auth/requireUserId, PhotoPicker's onBusyChange
+Prerequisites the preflight found missing
+  [x] +  components/ui/Field.tsx — Input/TextArea now type a ref (contract delta 8 → R-88)
+  [x] +  app/actions/expenses.ts — createExpense DID NOT EXIST (R-87). F03 §9.4 assigns it
+         to F05; F07 adds updateExpenseMeta and deleteExpense to the same file
+Route
+  [x] 1  app/(bare)/new/page.tsx + NewHeader.tsx   ((bare), not (chrome) — R-51 → R-89)
+Pure layer
+  [x] 2  app/(bare)/new/draft.ts        (+ restoredNotice and degraded in state — R-92)
+  [x] 3  app/(bare)/new/draftStorage.ts
+  [x] 4  app/(bare)/new/validate.ts + copy.ts
+  [x] +  app/(bare)/new/__tests__/draft.test.ts — 61 cases
+  [x] +  app/actions/__tests__/expenses.test.ts  — 12 cases over the emitted SQL
+Chrome and the keyboard
+  [x] 5  lib/hooks/useVisualViewport.ts + StickyBar.tsx  (the pb-safe subtraction — R-90)
+Parse
+  [x] 6  app/(bare)/new/useParse.ts     (+ the local 8.000-char pre-check — R-91)
+Adoptions, not builds
+  [x] 7  F10's MoneyInput adopted; no AmountInput built (R-33; inputMode via design R-37)
+  [x] 8  F10's Chip + CategoryPicker adopted; no CategorySheet built (R-33)
+Components
+  [x] 9  app/(bare)/new/ItemRow.tsx
+  [x] 10 app/(bare)/new/ReviewSkeleton.tsx      (F10's global .skeleton, not animate-pulse)
+  [x] 11 app/(bare)/new/PasteStage.tsx          (sign-in via F02's action — R-93)
+  [x] 12 app/(bare)/new/ReviewStage.tsx         (no 'Foto' heading — F06's picker has one)
+  [x] 13 app/(bare)/new/AddExpenseClient.tsx
+Gates
+  [x] 14 scripts/f05-audit.sh — 6 PASS, exit 0 (17px floor, no bare input, no dead tokens,
+         no 100vh, F10's real Button props, no db/blob/attachPhoto import)
+  [x] 17 tsc, eslint, prettier, next build (ƒ /new), npm test 613 passed | 15 skipped
+  [x] +  live next dev probes with a synthetic session cookie: signed out → 307
+         /?next=%2Fnew; signed in → 200 with the header, back link, placeholder and CTAs
+  [ ] 15 accessibility sweep — keyboard pass, then VoiceOver   ← NEEDS THE DEVICE
+  [ ] 16 the 29-step manual QA table at 414×896                ← NEEDS THE DEVICE
+  [ ] +  one real end-to-end save against Neon                 ← NEEDS A REAL GOOGLE SESSION
+```
+
+**What is left, precisely.** Four things, and none of them can be discharged from a laptop:
+
+1. **No expense has ever been saved.** `createExpense` is asserted against the SQL it emits
+   with a probe driver. A synthetic `user_id` cannot be inserted — `expense_groups.user_id`
+   is an FK to `users.id` — so the round trip needs a real signed-in Google account.
+2. **§16's QA table**, especially steps 3 and 10: the sticky bar riding above the keyboard is
+   the single behaviour this plan spent the most design on, and R-90's height subtraction is
+   *reasoned* from two files rather than observed. DevTools cannot show it.
+3. **§15's accessibility sweep**, including whether `<dialog>` really does return focus to
+   the chip that opened the picker (Task 8 said to verify this before asking F10 for a ref).
+4. **No LLM call from the browser, and no offline run.** F04 verified the route; nothing has
+   verified F05's handling of a real response, or of `navigator.onLine === false`.
+
+613 green tests say the state machine is right. They say nothing about whether a thumb can
+reach Simpan while the keyboard is up.

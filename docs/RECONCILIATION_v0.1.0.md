@@ -1194,3 +1194,180 @@ the code path (`preserveExif: false`) is in place and the assertion is a one-lin
 
 **Do not mark F06 done on the strength of the unit suite.** 540 green tests say the plumbing is
 right; they say nothing about which way up the photo is.
+
+---
+
+## Addendum — rulings from F05 (landed during implementation)
+
+F05 shipped `app/(bare)/new/*`, `lib/hooks/useVisualViewport.ts`, `app/actions/expenses.ts`
+and two audit scripts. Numbering continues from R-86. **F07 reads R-87, R-88, R-90 and R-92
+before writing a line** — the first two are files F07 also owns, and the last two are
+patterns it will need verbatim.
+
+Every claim below was verified rather than reasoned: `npm test` (**613 green**, 73 of them
+new), `next typegen && tsc --noEmit`, `eslint`, `prettier --check .`, `next build`, the two
+audit scripts, and probes against a live `next dev` with a synthetic session cookie.
+
+### ⚠️ R-87 · `createExpense` did not exist. F05 wrote it, and §4.4's file has one export.
+
+§4.4 lists `app/actions/expenses.ts` with three exports and F03b shipped without the file,
+so `/new`'s save path had nothing to call. This was not an oversight anyone had recorded:
+**F03's plan §9.4 assigns it to F05 by name** ("`app/actions/expenses.ts` (F05)") and
+sketches the `db.batch` body, while §4.4's table reads as though F03 owned the whole file.
+
+**Ruling. F05 owns `createExpense`; F07 owns `updateExpenseMeta` and `deleteExpense` in the
+same file.** The shipped action follows F03 §9's five properties — session-derived `user_id`,
+Zod before any statement, one `db.batch` (R-4), no unscoped mutation — and takes `photos`
+per R-2.
+
+Two tightenings over F03a's `CreateExpenseInput`, both for reasons a pure wave-1 module
+structurally cannot encode:
+
+| Field | F03a | F05 | Why |
+|---|---|---|---|
+| `photos[].blobPathname` | `string().max(500)` | `PHOTO_STORED_PATHNAME_RE` | The same tightening `attachPhoto` applies, for the same reason: only F06 knows what a blob pathname looks like, and F03a cannot import its constants without giving wave-1 code an edge into wave-3. |
+| `photos` length | `.max(20)` | `.max(MAX_PHOTOS_PER_GROUP)` (10) | Ten is the per-group cap the picker enforces (F06 OQ-3). Accepting 20 here would let a crafted request walk straight past it. |
+
+What is deliberately **not** checked: whether a `blobPathname` is already referenced by
+another group's row. `attachPhoto` does not check it either, and a second divergent copy of
+that policy is the R-7 / R-8 / R-77 failure mode. Duplicates **within one request** are
+deduped, because two rows pointing at one blob is a state where deleting one photo silently
+breaks the other — including on a share page already sent to someone.
+
+### R-88 · `Input` and `TextArea` now type a `ref`. F05's contract delta 8, granted.
+
+React 19 passes `ref` to a function component as an ordinary prop, so it already reached the
+element through `Field.tsx`'s existing spread — only `InputHTMLAttributes` refused it at the
+type level, which is enough to stop the call site compiling.
+
+**Ruling. Widen the prop types, do not work around them.** F05's focus manager moves focus
+to a new row's name field after `+ Tambah item` and to the paste textarea on mount. The
+documented fallback was a bare `<input className={CONTROL_CLASS}>` inside the `Field`, which
+means hand-wiring the label and `aria-describedby` — the one thing `components/ui/index.ts`
+says never to do. `Chip` still forwards no ref and does not need to: `<dialog>` restores
+focus to the trigger itself.
+
+### R-89 · `/new` is `app/(bare)/new/`, and it ships its own header.
+
+R-51 already put `/new` outside `(shell)`; this records the consequence R-51 flagged and
+left open. The screen has no tab bar, so it supplies the design's pushed-view navigation —
+back chevron plus mono label, as on the Detail screen. `NewHeader` links to
+`/m/<currentMonthKey()>`, computed server-side, and there is no action on the right because
+the primary action is the sticky Simpan at the bottom and a second one would compete with it.
+
+**Consequence F07 must absorb:** `/e/[id]` is in the same group for the same reason (design
+R-38) and needs the same header. `NewHeader` is deliberately **not** exported for reuse —
+F07's header carries a **Bagikan** action on the right, so the two differ in exactly the way
+that made F10 decline to own screen headers at all.
+
+### ⚠️ R-90 · A fixed-height screen inside `(bare)` must subtract the layout's own `pb-safe`.
+
+`app/(bare)/layout.tsx` wraps every screen in `<div className="pb-safe">`. F05's root is a
+fixed-height flex column (`height: var(--app-h)`) with an internal scroller, which is the
+only arrangement that keeps a sticky bar above the iOS keyboard — iOS shrinks the *visual*
+viewport, never the layout one, so `100dvh` still measures the full screen while the bottom
+third of it is covered by keys.
+
+Composed naively those two are a bug: the column is `--app-h` tall **inside** a container
+that then adds the safe-area inset below it, so the document scrolls by exactly that inset —
+a ~34px wobble on a notched device, on the one screen where the bar must not move.
+
+**Ruling.** The root height is `calc(var(--app-h, 100dvh) - env(safe-area-inset-bottom))`,
+subtracting the same value the wrapper pads by, so it is exact rather than a guess whatever
+`env()` resolves to. `StickyBar` therefore carries **no** safe-area padding of its own; the
+wrapper's padding *is* the home-indicator clearance. **F07 hits this the moment `/e/[id]`
+gets a sticky footer** — take the same subtraction, do not add a second inset.
+
+### R-91 · The 8.000-character cap is pre-checked in the browser.
+
+R-69 settled `MAX_RAW_TEXT_CHARS` at 8.000 and amended F03a's `ParseRequest` to match, so a
+9.000-character paste no longer passes client validation and comes back 413. F05 goes one
+step further and refuses it **before** the fetch, rendering F04's own
+`PARSE_ERROR_COPY.input_too_long` rather than a second wording — one vocabulary, one place,
+and no round trip spent to be told something already known. This is the only place F05
+renders copy for a *server-side* code, and it does so by importing F04's constant, not by
+restating it.
+
+### R-92 · `restoredNotice` and `degraded` live in the reducer, not beside it.
+
+Both started as `useState` in the host, which is where the plan put them. Two things made
+that wrong, and the second is a rule worth keeping:
+
+1. Setting `restoredNotice` sat in the localStorage-restore effect, beside a `dispatch`. The
+   React lint rule against synchronous `setState` in an effect body is right — it is a
+   second render for one logical change.
+2. Both are read by a stage component and both are set as part of a transition, which is
+   F05's own stated rule for what belongs in the reducer (`draft.ts` header). Leaving them
+   out made the host responsible for keeping two sources in step: `degraded` in particular
+   must be cleared on *every* `parse_failure` branch, because a fallback table is already
+   explained by its own banner and two notices at once explain nothing.
+
+**Ruling, generalised for F07 and F09.** State that a child reads and that changes as part
+of a transition goes in the reducer. `useState` is for state one component owns and nothing
+persists — which chip opened the sheet, whether a disclosure is expanded, whether an inline
+confirm is showing. F05's remaining `useState` is exactly that plus `photosBusy`, which is
+pushed in from F06's picker rather than derived.
+
+### R-93 · Sign-in-again is F02's Server Action, not a link to `/api/auth/signin`.
+
+The plan's 401 branch navigated with `window.location.href = '/api/auth/signin'`. F02
+already publishes `signInWithGoogleAction`, which `/` uses, and which exists precisely so
+`signIn` — server-only — never appears near a `'use client'` boundary. F05 renders a form
+with a hidden `next=/new`, so the round trip lands back on `/new` where the draft is still
+in localStorage waiting. Also silences a real `@next/next` lint warning.
+
+### R-94 · F05's open questions, answered.
+
+| OQ | Answer |
+|---|---|
+| 1 — who fixes `createExpense`'s photo parameter? | Moot: the action did not exist. F05 wrote it against `photos` (R-2, R-87). |
+| 2 — will F06 add `onBusyChange`? | Already shipped (R-31). `/dev/photos` demonstrated the wiring and F05 copied it. |
+| 3 — `inputMode` on the amount field | Superseded twice: R-32 chose `decimal`, design R-37 reversed it to `numeric` with dots inserted as you type. F05 overrides nothing and gets `numeric`. |
+| 4 — how to distinguish a Server Action failure? | Not solved, and F05 stopped trying: Next redacts the message in production, so every `createExpense` rejection maps to one string and the draft is left untouched. **F07 will hit the same wall** — if it wants precise copy, `createExpense` has to return `{ ok, code }` and both features change together. |
+| 5 — should signing out sweep drafts? | Not done. The key is per-user so no cross-user read is possible; the first user's draft lingers up to the 7-day TTL. One `Object.keys(localStorage)` loop in F02's sign-out handler still closes it. |
+| 6 — one draft per user, or many? | One. A second unsaved `/new` overwrites the first, which matches the simplicity tenet. |
+| 7 — is `/new` outside `(chrome)`? | Yes — `(bare)`, see R-89. |
+| 8 — `todayJakartaISO()` across midnight | Left as-is. A tab open across Jakarta midnight pre-fills yesterday on a *new* draft; the field is visible and editable, and a background client clock is the worse trade. |
+| 9 — does F06's `max` default suit `/new`? | Yes, 10 (`MAX_PHOTOS_PER_GROUP`). F05 passes no `max`. |
+| 10 — who merges `categories.ts` / `format.ts`? | Already merged by R-7 / R-8 / R-9. F05 imports `CATEGORIES`, `Category`, `DEFAULT_CATEGORY`, `toCategory`, `todayJakartaISO`, `currentMonthKey` and `monthKey` from one path each. |
+| 11 — do `Input`/`TextArea` honour an `id` and forward a ref? | `id`, yes, as shipped. `ref`, now — see R-88. |
+
+### Verification: what F05 actually proved, and what it could not
+
+Green: `npm test` **613 passed | 15 skipped** (73 new — 12 `createExpense` over the emitted
+SQL, 61 over the reducer, storage codec and validator), `next typegen && tsc --noEmit`,
+`eslint`, `prettier --check .`, `next build` (lists `ƒ /new`), and
+`scripts/f05-preflight.sh` + `scripts/f05-audit.sh` both exit 0.
+
+Against a live `next dev` on port 3998, using a synthetic session cookie minted with
+`@auth/core/jwt`'s `encode()` at the real `AUTH_SECRET` — the technique F02 and F04 both
+used:
+
+- signed out, `/new` → **307** `/?next=%2Fnew`, so R-1's proxy still covers it;
+- signed in, `/new` → **200**, and the served HTML carries the header, the back link to
+  `/m/2026-08`, the canonical 7-line placeholder, `Rapikan`, `isi manual` and the labelled
+  textarea;
+- the only `100vh` in the response is Next's own dev not-found styling. F05's root is
+  `calc(var(--app-h, 100dvh) - env(safe-area-inset-bottom))`.
+
+**NOT VERIFIED, and this is the honest part:**
+
+1. **No expense has ever been saved.** `createExpense` is asserted against the emitted SQL
+   with a probe driver, not against Neon. A synthetic `user_id` cannot be inserted —
+   `expense_groups.user_id` is an FK to `users.id` — so the round trip needs a real signed-in
+   Google account, which needs a browser. The 12 tests prove the statement shape, the
+   ownership source and the batching; they prove nothing about the database accepting it.
+2. **The whole of plan §16's manual QA table (29 steps) is outstanding**, and the steps that
+   matter most cannot be faked in DevTools: zoom-on-focus, the sticky bar riding above the
+   keyboard (steps 3 and 10), the native date wheel, and `Ulangi dari teks`. R-90's
+   subtraction is *reasoned* from the two files; only a notched device shows whether the bar
+   sits where it should.
+3. **No LLM call was made from the browser.** F04 verified the route; nothing has yet
+   verified F05's handling of its responses against a real one — which is exactly what F04's
+   own verification note flagged as the one thing it could not cover.
+4. **The offline path was never run offline.** `fallbackParse` is asserted client-importable
+   by the preflight and unit-tested by F04, but no run has gone through `navigator.onLine
+   === false` in a real browser.
+
+**Do not mark F05 done on the strength of 613 green tests.** They say the state machine is
+right. They say nothing about whether a thumb can reach Simpan while the keyboard is up.
