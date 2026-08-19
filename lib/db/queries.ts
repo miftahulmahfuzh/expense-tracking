@@ -80,6 +80,10 @@ export async function assertGroupOwned(userId: string, groupId: string): Promise
 /**
  * Resolve the owning group id of an item, proving ownership on the way.
  * For revalidatePath('/e/<id>') after an item mutation.
+ *
+ * F07 uses `getOwnedItemAnchor` below instead: busting `/e/<id>` is only half the job,
+ * because an item's amount also moves its group's month total. This narrower version stays
+ * for a caller that genuinely needs nothing but the parent id.
  */
 export async function getOwnedGroupIdForItem(userId: string, itemId: string): Promise<string> {
   const rows = await db
@@ -89,6 +93,57 @@ export async function getOwnedGroupIdForItem(userId: string, itemId: string): Pr
     .limit(1)
   if (rows.length === 0) throw new NotFoundError('Expense item not found')
   return rows[0]!.groupId
+}
+
+/**
+ * The revalidation anchor for a group: proof of ownership AND the month the group is in,
+ * in one index-only round trip.
+ *
+ * WHY THIS EXISTS. F07's plan created `app/actions/_guard.ts` with its own `assertOwnedGroup`
+ * / `assertOwnedItem`, each re-implementing the join this module already owns. Ruling R-77
+ * struck exactly that down for F06 ("import, never re-declare"), and the failure mode is
+ * silent: the day one copy of the ownership check is hardened, the other is not. So the two
+ * anchors live here, beside `assertGroupOwned`, and F07's actions import them.
+ *
+ * WHY `occurredOn` COMES BACK WITH IT. Every mutation under a group has to revalidate the
+ * month page that group appears on, and `/m/[month]` is a literal path — the month is not
+ * derivable from a group id. Reading it as part of the mandatory ownership check makes the
+ * dual-month revalidation in `app/actions/_revalidate.ts` free rather than a second query.
+ *
+ * Throws NotFoundError when the group does not exist OR belongs to someone else —
+ * indistinguishable on purpose (see NotFoundError).
+ */
+export interface GroupAnchor {
+  groupId: string
+  /** 'YYYY-MM-DD'. Slice to 'YYYY-MM' for the month path. */
+  occurredOn: DateISO
+}
+
+export async function getOwnedGroupAnchor(userId: string, groupId: string): Promise<GroupAnchor> {
+  const rows = await db
+    .select({ groupId: expenseGroups.id, occurredOn: expenseGroups.occurredOn })
+    .from(expenseGroups)
+    .where(and(eq(expenseGroups.id, groupId), eq(expenseGroups.userId, userId)))
+    .limit(1)
+  if (rows.length === 0) throw new NotFoundError('Expense group not found')
+  return rows[0]!
+}
+
+/**
+ * Same thing for an item id, which proves nothing on its own: the correlated
+ * `itemOwnedBy(userId)` EXISTS is what ties it back to a user, and the join to
+ * expense_groups is what yields the month. One statement, no TOCTOU window that a
+ * SELECT-then-check pair would open.
+ */
+export async function getOwnedItemAnchor(userId: string, itemId: string): Promise<GroupAnchor> {
+  const rows = await db
+    .select({ groupId: expenseItems.groupId, occurredOn: expenseGroups.occurredOn })
+    .from(expenseItems)
+    .innerJoin(expenseGroups, eq(expenseGroups.id, expenseItems.groupId))
+    .where(and(eq(expenseItems.id, itemId), itemOwnedBy(userId)))
+    .limit(1)
+  if (rows.length === 0) throw new NotFoundError('Expense item not found')
+  return rows[0]!
 }
 
 /* ============================================================================

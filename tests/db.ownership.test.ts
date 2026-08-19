@@ -20,7 +20,9 @@ vi.mock('@/lib/db', () => import('./support/probeDb'))
 import { db } from '@/lib/db'
 import {
   assertGroupOwned,
+  getOwnedGroupAnchor,
   getOwnedGroupIdForItem,
+  getOwnedItemAnchor,
   itemOwnedBy,
   NotFoundError,
   photoOwnedBy,
@@ -136,5 +138,56 @@ describe('getOwnedGroupIdForItem', () => {
   it('throws NotFoundError for another user’s item', async () => {
     queueRows([])
     await expect(getOwnedGroupIdForItem('u2', 'itm000000000')).rejects.toBeInstanceOf(NotFoundError)
+  })
+})
+
+/**
+ * The revalidation anchors, added for F07. Same security property as everything above, plus
+ * one extra obligation: they must hand back `occurred_on`, because `/m/[month]` is a literal
+ * path and a group id alone cannot tell you which month page to invalidate. Without the date,
+ * a moved or edited expense leaves a wrong total on a month page that nothing will ever bust.
+ */
+describe('getOwnedGroupAnchor', () => {
+  it('filters on id AND user_id, and returns the month anchor', async () => {
+    queueRows([['grp000000000', '2026-08-18']])
+
+    await expect(getOwnedGroupAnchor('u1', 'grp000000000')).resolves.toEqual({
+      groupId: 'grp000000000',
+      occurredOn: '2026-08-18',
+    })
+
+    const flat = normalise(calls[0]!.sql)
+    expect(flat).toContain('"occurred_on"')
+    expect(flat).toContain('"user_id" = $')
+    expect(calls[0]!.params.slice(0, 2)).toEqual(['grp000000000', 'u1'])
+  })
+
+  it('throws NotFoundError when the group is missing OR belongs to someone else', async () => {
+    queueRows([])
+    await expect(getOwnedGroupAnchor('u2', 'grp000000000')).rejects.toBeInstanceOf(NotFoundError)
+  })
+})
+
+describe('getOwnedItemAnchor', () => {
+  it('proves ownership through the correlated EXISTS and joins for the month', async () => {
+    queueRows([['grp000000000', '2026-08-18']])
+
+    await expect(getOwnedItemAnchor('u1', 'itm000000000')).resolves.toEqual({
+      groupId: 'grp000000000',
+      occurredOn: '2026-08-18',
+    })
+
+    const flat = normalise(calls[0]!.sql)
+    expect(flat).toMatch(/from "expense_items"/)
+    expect(flat).toMatch(/exists/i)
+    expect(flat).toContain('"expense_groups"."user_id"')
+    // One statement. A SELECT-then-check pair would open a TOCTOU window (R-78).
+    expect(calls).toHaveLength(1)
+    expect(calls[0]!.params.slice(0, 2)).toEqual(['itm000000000', 'u1'])
+  })
+
+  it('throws NotFoundError for another user’s item', async () => {
+    queueRows([])
+    await expect(getOwnedItemAnchor('u2', 'itm000000000')).rejects.toBeInstanceOf(NotFoundError)
   })
 })

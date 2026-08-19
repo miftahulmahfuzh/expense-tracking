@@ -1,24 +1,31 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { and, eq } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { z } from 'zod'
 
 import { requireUserId } from '@/lib/auth/requireUserId'
+import { deleteBlobsQuietly } from '@/lib/blob/delete'
 import { db } from '@/lib/db'
+import { listOwnedGroupPathnames } from '@/lib/db/photos'
+import { getOwnedGroupAnchor } from '@/lib/db/queries'
 import { expenseGroups, expenseItems, expensePhotos } from '@/lib/db/schema'
-import { monthKey } from '@/lib/format'
+import { isValidDateISO, monthKey } from '@/lib/format'
 import { newGroupId, newItemId, newPhotoId } from '@/lib/id'
 import { MAX_PHOTOS_PER_GROUP, PHOTO_STORED_PATHNAME_RE } from '@/lib/photos/constants'
 import { CreateExpenseInput as CreateExpenseInputBase } from '@/lib/schema/expense'
 
+import { revalidateGroup } from './_revalidate'
+
 /**
  * Expense Server Actions — roadmap §4.4.
  *
- * OWNERSHIP NOTE. This file is listed under §4.4 with three exports, but only
- * `createExpense` is here. F03's plan §9.4 assigns it to F05 by name ("app/actions/
- * expenses.ts (F05)") and F03b shipped without it, so /new's save path had nothing to call.
- * `updateExpenseMeta` and `deleteExpense` belong to F07 and go in this same file.
+ * OWNERSHIP NOTE (R-87). §4.4 lists three exports here. `createExpense` is F05's — F03's
+ * plan §9.4 assigns it to F05 by name ("app/actions/expenses.ts (F05)") and F03b shipped
+ * without the file, so /new's save path had nothing to call. `updateExpenseMeta` and
+ * `deleteExpense`, at the bottom of this file, are F07's.
  *
  * Reconciliation R-5 makes every action its own security boundary: proxy.ts does not cover
  * Server Functions, so `requireUserId()` on line 1 and a Zod parse on line 2 are the
@@ -141,4 +148,102 @@ export async function createExpense(raw: unknown): Promise<{ id: string }> {
   // so there is nothing stale to drop, and F05 navigates there immediately.
   revalidatePath(`/m/${monthKey(input.occurred_on)}`)
   return { id: groupId }
+}
+
+/* ============================================================================
+ * F07 — the editing half of §4.4
+ * ==========================================================================*/
+
+const UpdateExpenseMetaZ = z
+  .object({
+    title: z.string().trim().min(1).max(120).optional(),
+    /**
+     * Shape AND calendar validity: `isValidDateISO` rejects 2026-02-30, which a regex
+     * cannot. A `date` column would take it and Postgres would throw at the driver, which
+     * surfaces as a redacted "an error occurred" in production.
+     */
+    occurredOn: z.string().refine(isValidDateISO, { message: 'Tanggal tidak valid' }).optional(),
+    /** `null` clears the note; `''` is normalised to `null` below so "empty" has one representation. */
+    note: z.string().trim().max(2_000).nullable().optional(),
+  })
+  .refine((patch) => Object.keys(patch).length > 0, { message: 'Tidak ada perubahan' })
+
+const GroupIdZ = z.string().min(1).max(64)
+
+/**
+ * §4.4 — updateExpenseMeta(id, { title?, occurredOn?, note? }) → void
+ *
+ * Called once per committed edit on /e/[id]: title on blur, note on blur, date on change.
+ * A partial patch rather than a whole-object save, so two fields edited in different
+ * transitions cannot overwrite each other's value.
+ */
+export async function updateExpenseMeta(id: string, input: unknown): Promise<void> {
+  const userId = await requireUserId()
+  const groupId = GroupIdZ.parse(id)
+  const patch = UpdateExpenseMetaZ.parse(input)
+
+  /*
+   * The anchor is read BEFORE the write, and its `occurredOn` is the month the group is
+   * LEAVING. Without it a date edit strands a stale total on the old month forever — the
+   * group is gone from that month's rows but the month page still says it is there. There is
+   * no code path where the old date is unread, because the ownership check that returns it
+   * is mandatory.
+   */
+  const before = await getOwnedGroupAnchor(userId, groupId)
+
+  await db
+    .update(expenseGroups)
+    .set({
+      ...(patch.title !== undefined ? { title: patch.title } : {}),
+      ...(patch.occurredOn !== undefined ? { occurredOn: patch.occurredOn } : {}),
+      ...(patch.note !== undefined ? { note: patch.note === '' ? null : patch.note } : {}),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(expenseGroups.id, groupId), eq(expenseGroups.userId, userId)))
+
+  // BOTH months. `revalidateGroup` dedupes when the date did not change, so an ordinary
+  // title edit still busts exactly one month path.
+  revalidateGroup(groupId, before.occurredOn, patch.occurredOn)
+}
+
+/**
+ * §4.4 — deleteExpense(id) → never (it redirects)
+ *
+ * TWO THINGS HERE ARE LOAD-BEARING AND EASY TO LOSE.
+ *
+ * 1. R-18 — the blob sweep. `expense_photos` cascades on the FK, so deleting the group
+ *    removes the rows and orphans the bytes in Blob storage FOREVER: nothing left in the
+ *    database points at them, so even the sweeper cannot tell them from a live photo by
+ *    reference. The pathnames must therefore be collected BEFORE the delete. This is the
+ *    fastest way to silently consume the 1 GB free tier.
+ * 2. R-17 / CD-2 — the redirect is server-side, and callers must never wrap this in
+ *    try/catch. `redirect()` signals by throwing NEXT_REDIRECT; a catch-all swallows it and
+ *    strands the user on a page whose data no longer exists. The client alternative
+ *    (`await deleteExpense(id)` then `router.replace`) races the revalidation and can paint
+ *    the 404 detail page for a frame.
+ */
+export async function deleteExpense(id: string): Promise<never> {
+  const userId = await requireUserId()
+  const groupId = GroupIdZ.parse(id)
+
+  const anchor = await getOwnedGroupAnchor(userId, groupId)
+
+  // Ownership-scoped, so this cannot read another user's blob pathnames even with a
+  // guessed group id (R-78's rule applied to a read).
+  const pathnames = await listOwnedGroupPathnames(userId, anchor.groupId)
+
+  // ON DELETE CASCADE takes items, photos and the share link with it (§4.2).
+  await db
+    .delete(expenseGroups)
+    .where(and(eq(expenseGroups.id, anchor.groupId), eq(expenseGroups.userId, userId)))
+
+  // Row first, then bytes — F06 §10's order, for its reason: a failed `del()` leaks ~300 KB
+  // that the sweeper can still find by prefix, while the user-visible outcome is exactly
+  // right. `deleteBlobsQuietly` never throws.
+  await deleteBlobsQuietly(pathnames)
+
+  revalidateGroup(anchor.groupId, anchor.occurredOn)
+
+  // OUTSIDE any try/catch, and the last statement in the function.
+  redirect(`/m/${monthKey(anchor.occurredOn)}`)
 }
