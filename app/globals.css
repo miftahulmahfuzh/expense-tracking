@@ -66,7 +66,20 @@
   --rule-strong: #8d887b;
 
   /* -- semantic ----------------------------------------------------------- */
-  --accent: #2f5d50; /* the active-tab dot, the current bar     */
+  --accent: #2f5d50; /* the active-tab dot, the completed bar   */
+  /*
+   * ADDED BY F08. The one-hue second step the 12-month chart needs for the
+   * in-progress month, so "this month is not finished yet" is encoded in the
+   * mark rather than only in the caption. `accent-soft` is a background wash
+   * (1.20:1 on card) and cannot carry a data mark; this sits at 3.15:1, which
+   * clears the 3:1 floor on its own and does not lean on the relief rule.
+   *
+   * Derived, not invented: accent mixed 35% toward `card`, so the hue spread is
+   * 0deg and the OKLCH lightness gap is above the 0.06 ordinal floor. Verified
+   * with the dataviz validator in --ordinal mode against #fbfaf5 / #1e1e1a --
+   * see the F08 addendum in docs/RECONCILIATION_v0.1.0.md.
+   */
+  --accent-2: #76948a;
   --accent-soft: #e0e8e2;
   --red: #8a3324; /* destructive, errors                     */
   --red-soft: #efdfd9;
@@ -133,6 +146,8 @@
     --rule-strong: #696962;
 
     --accent: #86bba6;
+    /* F08. Accent mixed 45% toward `card`; 3.26:1 on card, hue spread 2deg. */
+    --accent-2: #577467;
     --accent-soft: #1e2a25;
     --red: #c97a62;
     --red-soft: #2a1d18;
@@ -174,6 +189,7 @@
   --rule-strong: #696962;
 
   --accent: #86bba6;
+  --accent-2: #577467;
   --accent-soft: #1e2a25;
   --red: #c97a62;
   --red-soft: #2a1d18;
@@ -310,6 +326,7 @@
   --color-rule-strong: var(--rule-strong);
 
   --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
   --color-accent-soft: var(--accent-soft);
   --color-red: var(--red);
   --color-red-soft: var(--red-soft);

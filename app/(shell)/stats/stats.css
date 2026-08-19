@@ -1,0 +1,122 @@
+/* ==========================================================================
+   F08 — /stats chart chrome.
+
+   Route-scoped and deliberately small. Everything on this page that CAN be a
+   Tailwind utility IS one; this file holds only the two things utilities
+   cannot express:
+
+     1. THE TOKEN BRIDGE. Recharts writes `fill` and `stroke` onto its <path>
+        and <text> nodes as SVG PRESENTATION ATTRIBUTES, and `var()` does not
+        resolve inside a presentation attribute in Safari. But a CSS
+        declaration OUTRANKS a presentation attribute in the cascade, so the
+        rules below win and the chart becomes theme-reactive with zero JS — a
+        prefers-color-scheme flip repaints it with no re-render and no flash.
+        This is why <Cell> gets a className and never a hex `fill` prop.
+     2. DESCENDANT SELECTORS into Recharts' own DOM (.recharts-*), which no
+        utility class can reach from the outside.
+
+   NO COLOUR IS DEFINED HERE. Every value is an F10 token from
+   app/globals.css. F08 owns exactly one new token, `--accent-2`, and it is
+   declared there beside `--accent` because it has to flip with the scheme in
+   all three theme blocks.
+
+   Why the accent and not a chart palette of its own: the F08 plan specified a
+   blue ramp (#2a78d6 …) measured against surfaces #fcfcfb / #1a1a19. Neither
+   the hues nor the surfaces survived — design R-39 assigns the 12-month chart
+   `--accent`, R-28 makes F10's real surfaces (#fbfaf5 / #1e1e1a) the ones that
+   count, and there is exactly one accent in this design. A second blue would
+   be a foreign body on a warm-paper page.
+   ========================================================================== */
+
+/* ── the bars ───────────────────────────────────────────────────────────────
+   One series, one hue (dataviz: "one series -> one color for every bar", and
+   colouring bars BY their value is the named value-ramp-on-nominal-categories
+   anti-pattern). The second step is not a value ramp: it encodes DATA
+   COMPLETENESS — the current month is not finished — which is a two-step
+   ordinal on one hue, monotone in lightness. Validated with the dataviz
+   validator in --ordinal mode, both schemes, and backed by two non-colour
+   channels anyway: the tick is suffixed `•` and the caption says so.
+
+   Design R-39 put the completed months in `--rule`. Reversed on measurement:
+   `--rule` is 1.43:1 on card in light and 1.22:1 in dark, so eleven of twelve
+   bars would sit below every contrast floor with no relief (only the selected
+   bar carries a label). `--rule` keeps its real job below — the gridline. */
+.chart-bar--complete {
+  fill: var(--accent);
+}
+.chart-bar--partial {
+  fill: var(--accent-2);
+}
+
+/* ── grid, axes, ticks ─────────────────────────────────────────────────────
+   Recessive by construction: the gridline is the decorative hairline token and
+   the zero rule the bars stand on is `rule-strong`, which is the token WCAG
+   1.4.11 sizing already qualified at 3:1. */
+.chart-grid line {
+  stroke: var(--rule);
+  /* SOLID. Recharts' own examples default to strokeDasharray="3 3"; dashed
+     gridlines are an explicit dataviz anti-pattern. */
+  stroke-dasharray: none;
+  stroke-width: 1;
+}
+
+.chart-axis .recharts-cartesian-axis-line {
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+}
+
+/* SVG text takes its colour from `fill`, not `color`, so `text-ink-3` cannot
+   do this job. Mono because every number in this app is mono. */
+.chart-axis .recharts-cartesian-axis-tick-value,
+.chart-tick,
+.chart-caplabel {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-axis .recharts-cartesian-axis-tick-value {
+  fill: var(--ink-3);
+  font-size: 10px;
+}
+
+.chart-tick {
+  fill: var(--ink-3);
+  font-size: 10px;
+}
+
+/* Selection emphasis WITHOUT inventing a hue: the tick goes to primary ink and
+   gains a 2px accent rule. The bar fill is untouched — the entity's colour
+   never moves on selection (dataviz: the recolor-on-filter anti-pattern). */
+.chart-tick--sel {
+  fill: var(--ink);
+}
+.chart-tick__rule {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* The direct label on the SELECTED bar only — never a number on every point. */
+.chart-caplabel {
+  fill: var(--ink);
+  font-size: 11px;
+}
+
+/* ── the frame ─────────────────────────────────────────────────────────────
+   196px matches <ResponsiveContainer height>, so the lazy recharts chunk
+   arriving causes ZERO layout shift. On a re-scope the previous render is held
+   at reduced opacity rather than being replaced by a skeleton — dataviz
+   interaction: "refetch keeps the frame". No flash, no jump. */
+.chart-frame {
+  min-height: 196px;
+  transition: opacity 120ms var(--ease-out-soft);
+}
+.chart-frame[data-pending='true'] {
+  opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-frame {
+    transition: none;
+  }
+}
