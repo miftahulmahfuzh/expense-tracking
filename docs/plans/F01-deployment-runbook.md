@@ -41,7 +41,12 @@ Then confirm the runtime is Node 22 — it must match `engines.node` in `package
 vercel project inspect expense-tracking 2>&1 | head -20
 ```
 
-If **Node.js Version** is not `22.x`, set it in Project Settings → General.
+**Observed on the real project: `24.x`.** That satisfies `engines.node` (`>=22.0.0`) and
+Node 24 has everything F01 §4 relies on Node 22 for — a global `WebSocket`, so the Neon
+driver needs no `ws` polyfill. So this is not a blocker. It is still worth setting to
+**22.x** in Project Settings → General, for one reason: local dev runs 22.23.1, and a
+runtime-major gap between dev and production is exactly the kind of difference that
+surfaces as a bug you cannot reproduce locally. One dropdown, and you get parity.
 
 `.vercel/` is git-ignored. Do not commit it.
 
@@ -49,37 +54,49 @@ If **Node.js Version** is not `22.x`, set it in Project Settings → General.
 
 ## Step 2 — Push the environment variables
 
-**Do not use the loop in `F01-foundation.md` Task 27.** It pipes `cut -d= -f2-` straight
-into `vercel env add`, which keeps surrounding quotes. Three values in this repo's
-`.env.local` are quoted, so `LLM_BASE_URL` would be stored as
-`"https://api.z.ai/api/anthropic"` — quotes included — and the production build would then
-fail `lib/env.ts`'s `z.url()` check with a banner that reads like a *missing* variable
-rather than a malformed one.
+**Do not use the loop in `F01-foundation.md` Task 27.** It is wrong in two independent
+ways on Vercel CLI 59:
 
-Use the script instead. It strips quotes, uses `printf` so no trailing newline is stored,
-and prints names and value lengths but never values:
+1. It pipes `cut -d= -f2-` straight into `vercel env add`, which keeps surrounding quotes.
+   Three values in this repo's `.env.local` are quoted, so `LLM_BASE_URL` would be stored
+   as `"https://api.z.ai/api/anthropic"` — quotes included — and the production build would
+   then fail `lib/env.ts`'s `z.url()` check with a banner that reads like a *missing*
+   variable rather than a malformed one.
+2. `vercel env add KEY production preview` does **not** add one variable to two
+   environments. The signature is `vercel env add name [environment]`, and the third
+   positional is the *git branch* — so that command fails with ``Environment Variables
+   with `gitBranch` can only be used with target=preview``. Each environment needs its own
+   invocation. (The plan's note that "development cannot be combined with
+   production/preview" understates it: *no* two environments can be combined.)
+
+Use the script instead. It strips quotes, calls once per environment, passes values over
+stdin rather than `--value` (argv is world-readable via `/proc`), uses `printf` so no
+trailing newline is stored, passes `--force` so re-runs are idempotent, and prints names
+and value lengths but never values:
 
 ```bash
 ./scripts/vercel-env-push.sh            # dry run — shows exactly what will be sent
 ./scripts/vercel-env-push.sh --apply    # actually pushes
 ```
 
-Expected: 17 `vercel env add` calls — 8 variables × (production+preview, development),
-plus production-only `AUTH_URL`.
+Expected: 25 `vercel env add` calls — 8 variables × 3 environments, plus production-only
+`AUTH_URL`.
 
-Verify, then harden:
+Verify:
 
 ```bash
 vercel env ls
 ```
 
-You should see **25 rows**: 8 variables × 3 environments, plus `AUTH_URL` in production
-only. No variable may appear in fewer than three environments except `AUTH_URL`.
+You should see **25 rows**. No variable may appear in fewer than three environments except
+`AUTH_URL`.
 
-In Project Settings → Environment Variables, mark these four as **Sensitive**:
-`LLM_API_KEY`, `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET`. Sensitive values
-become write-only — unreadable from the dashboard and from `vercel env pull`, which is the
-correct posture for all four.
+Five of them are pushed with `--sensitive` for production and preview, so they are stored
+write-only — unreadable from the dashboard and from `vercel env pull`: `LLM_API_KEY`,
+`DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET`, `AUTH_GOOGLE_SECRET`. No dashboard
+step is needed. (F01's plan named only the first four; `AUTH_GOOGLE_SECRET` is an OAuth
+client secret and there is no argument for treating it differently. Vercel accepts
+`--sensitive` only for production and preview, so development is stored plain.)
 
 > `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` are F02's variables, but they already exist
 > locally, so they are pushed now. A preview deploy with F02 merged and these absent fails
