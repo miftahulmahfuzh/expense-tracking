@@ -1941,3 +1941,276 @@ three ways this regresses: a second `from 'recharts'` importer, a static import 
 percentages sum to 100, that a zero month cannot be dropped, that the delta cannot divide by zero
 and that recharts is in exactly one lazy chunk. They say nothing about whether the chart looks
 right.
+
+---
+
+## Addendum — rulings from F09 (landed during implementation)
+
+F09 shipped `lib/share/*` (config, origin, clipboard, tests), `app/actions/share.ts`,
+`components/share/*` (ShareButton, ShareLinkPanel, copy), `app/(bare)/s/[token]/*` (page,
+not-found, copy), `app/robots.ts`, a `headers()` block in `next.config.ts`,
+`public/brand/og.svg` + `public/og-default.png`, `scripts/f09-audit.sh` and
+`docs/plans/fixtures/f09-seed.sql`; it added one prop to F07's `ExpenseEditor`, one paragraph
+to F06's barrel docblock, and moved the import-graph walker out of F06's bundle test.
+Numbering continues from R-119.
+
+Verified rather than reasoned: `npm test` (**736 passed | 15 skipped**, 31 of them new),
+`next typegen && tsc --noEmit`, `eslint` (clean), `prettier --check .`, `next build`
+(`/s/[token]` listed **ƒ**), `scripts/f09-audit.sh` (**27/27**), and — for the first time in
+this project — **a real group rendered end to end** against a live `next start` on a seeded
+database (see R-130).
+
+### R-120 · Three of the plan's new modules already existed. None of them is created.
+
+The F09 plan predates F03a and the id ruling, and asks for `lib/share/token.ts`
+(`mintShareToken`), a `SHARE_TOKEN_RE` constant, `getShareTokenForGroup` and a
+`formatJakartaLong` implementation. Every one is already in the tree:
+
+| Plan asks for | What exists | Settled by |
+|---|---|---|
+| `mintShareToken()` | `newShareToken()` in `lib/id.ts`, documented as the share token | R-42 |
+| `SHARE_TOKEN_RE` | `isValidId()` — the same 12-symbol URL-safe check, derived from the generator's own alphabet | R-42 |
+| `getShareTokenForGroup(userId, groupId)` | `getGroupDetail().shareToken` | R-12 |
+| `formatJakartaLong` body using `Intl` | `formatJakartaLong = dayLabel` | R-43 |
+
+**Ruling. F09 imports all four and declares none of them.** This is R-7 / R-8 / R-33 / R-77
+applied a fifth time, and the token case is the one that would have hurt: two CSPRNG
+generators with different alphabets, and a shape regex that could drift from the alphabet the
+tokens are actually drawn from, so `/s/<a real token>` could start 404ing at the shape check.
+
+What F09 *does* own is a test that asserts those contracts **at the point sharing depends on
+them** (`lib/share/__tests__/config.test.ts`), including `ID_ENTROPY_BITS === 72` — because
+the plan's whole threat model is argued from that number, and a comment cannot fail.
+
+The plan's `lib/share/copy.ts` (clipboard) ships as `lib/share/clipboard.ts`: in this
+codebase `copy.ts` is where a screen's strings live (`app/(bare)/e/[id]/copy.ts`), and F09
+has two of those.
+
+### R-121 · The origin is a prop. It is never read in the browser, and never from `window`.
+
+Plan Open question 6, answered. `lib/env.ts` carries `server-only` and `AUTH_URL` is not
+`NEXT_PUBLIC_`, so a client component reading it gets `undefined` — not an error, a
+`localhost` URL in someone's WhatsApp message. And `window.location.origin`, the obvious
+fallback, is worse: shared from a Vercel preview it produces a `*.vercel.app` link that dies
+at the next push, so the friend receives a URL that is already broken.
+
+**Ruling.** `lib/share/origin.ts` (`server-only`) resolves `AUTH_URL` →
+`VERCEL_PROJECT_PRODUCTION_URL` → `localhost:$PORT`, `/e/[id]` calls it and passes `origin`
+down to both client components, and `shareUrl(origin, token)` takes it as an argument. No new
+`NEXT_PUBLIC_` variable. `VERCEL_PROJECT_PRODUCTION_URL` is the middle step because it is set
+on *every* deployment including previews and always names the production domain — exactly the
+value a link that has to outlive this deployment wants. The audit greps for
+`window.location` in `components/share` and `lib/share`.
+
+### ⚠️ R-122 · `export const dynamic = 'force-dynamic'` IS load-bearing on `/s/[token]`. R-75 and R-115 do not generalise.
+
+R-75 removed the export from `/api/parse` and R-115 from `/stats`, both citing that Next 16's
+route-segment-config table lists only `dynamicParams`, `runtime`, `preferredRegion` and
+`maxDuration`. Read again, the table's own Version History says why it is short:
+
+> `v16.0.0` — `dynamic`, `dynamicParams`, `revalidate`, and `fetchCache` **removed when Cache
+> Components is enabled**.
+> — `route-segment-config/index.md`
+
+This project does not enable Cache Components (`next.config.ts` has no `cacheComponents`), so
+the previous model applies and `dynamic` is documented and supported in
+`02-guides/caching-without-cache-components.md`. **Both earlier rulings are still right about
+their own routes, but for the other reason they gave: `/api/parse` is a POST handler and
+`/stats` calls `requireUserId()`, so each is dynamic by construction.**
+
+`/s/[token]` is the one route in the app that reads **no cookie** — that is the entire point
+of it. Nothing else makes it dynamic. Without the export it is a prerender candidate whose
+output can be served from the Full Route Cache after the link was revoked, and the failure is
+invisible: a stale share page is byte-identical to a live one.
+
+**Ruling. `/s/[token]` keeps `export const dynamic = 'force-dynamic'`**, backed by
+`Cache-Control: private, no-store, max-age=0, must-revalidate` in `next.config.ts` (a header
+is what a CDN reads), and `scripts/f09-audit.sh` fails if either is removed or if
+`generateStaticParams` / `unstable_cache` / `'use cache'` / `revalidate =` appears.
+**Verified, not assumed:** against a live `next start`, deleting the `share_links` row made
+three consecutive requests answer `404 404 404` with no warm-up, and re-inserting a different
+token served `200` while the old token stayed `404`.
+
+Also carried: **R-98's warning is live here**, and `/s` therefore ships **no `loading.tsx`**.
+A Suspense boundary would start streaming a `200` before `notFound()` ran and the status
+could no longer change. On the authenticated routes a soft 404 is fine because nothing crawls
+them; this is the one route where a link scanner, a mail gateway and an archiver read the
+status code. Confirmed: `/s/hello` and `/s/aaaaaaaaaaaa` both answer a hard **404**.
+
+### ⚠️ R-123 · `/s/[token]` imports `PhotoGallery` by path, NOT through `@/components/photos`.
+
+R-80 split the gallery so the public page's bundle carries no Server Action, and
+`tests/photos.bundle.test.ts` asserts it at the component level. At the **route** level it did
+not hold: the barrel re-exports `PhotoManager`, which imports `deletePhoto`, so importing the
+gallery through `@/components/photos` puts a Server Action in `/s/[token]`'s module graph.
+Turbopack would very probably tree-shake the re-export — and that is the problem. R-80's
+property would be resting on an optimisation, on the one route served to people with no
+account, with nothing failing if it stopped applying.
+
+**Ruling. The public page deep-imports `@/components/photos/PhotoGallery`**, F06's barrel
+docblock records the exception, and `tests/share.bundle.test.ts` walks the real import graph
+from `app/(bare)/s/[token]/page.tsx` and asserts it reaches **no** `app/actions/*` at all —
+plus a non-vacuity check that `/e/[id]` *does* reach `app/actions/share.ts`. Confirmed in the
+served HTML: the RSC payload for a real shared group contains one client reference,
+`PhotoGallery`, and no action id.
+
+### R-124 · The share control is TWO components in two slots, not one.
+
+The plan's `ShareControl` is a single `<section>` — button, status line and revoke confirm —
+placed in the page body. F07 had already shipped a `shareSlot` in `/e/[id]`'s **header**,
+because design R-38 specifies that header as back chevron · mono label · **Bagikan** as a text
+button top-right. Both cannot be true.
+
+**Ruling. Split by role, and honour both.**
+
+```tsx
+shareSlot={<ShareButton … />}          // the header action (design R-38)
+shareLinkSlot={<ShareLinkPanel … />}   // status + revoke, above Hapus pengeluaran (plan §Task 9)
+```
+
+`ShareButton` owns the mint, the pointerdown warming, `navigator.share`, the clipboard
+fallback and the manual-copy sheet. `ShareLinkPanel` owns the "Tautan aktif" status and the
+revoke confirm, and renders `null` when there is no link — which is why it is an unconditional
+slot rather than a conditional in `ExpenseEditor`. The plan's own reason for its placement
+survives intact: the two red affordances (`Batalkan tautan`, `Hapus pengeluaran`) are not
+adjacent, and the page still ends on its most destructive control.
+
+`ExpenseEditor` gains one prop, `shareLinkSlot`, alongside the `shareSlot` and `photoSlot` it
+already had. Both are rendered by the **server** page and handed down as `ReactNode` (R-104's
+pattern), so the client editor never learns what they are.
+
+They stay in step without shared state: `token` is a server prop everywhere (R-92 / R-105 — no
+`useState` mirror of server data, no prop-echoing effect), the actions call `revalidateGroup`,
+and `ShareButton` asks the router to refresh **only on a first mint**, which is once per group
+on the rarest action in the app. A failed revoke settles its transition with the prop
+unchanged, so the panel simply stays — the snap-back is free.
+
+### R-125 · The revoke confirm is a `Sheet`, and the feedback is F10's toast.
+
+The plan builds an inline two-step confirm and a local `aria-live` region, both because "F10's
+primitive list has no Toast" and because `window.confirm` gives no control of the wording. F10
+shipped both primitives after the plan was written: `Sheet` (the app's confirm pattern, used by
+`DeleteExpenseSheet`) and `ToastProvider` / `useToast`.
+
+**Ruling. Use the primitives.** The wording requirement is met either way — `Sheet` takes
+`title` and `description`, so the copy is still ours to the character:
+
+> **Batalkan tautan?** · Tautan yang sudah kamu kirim akan langsung mati. Kalau nanti kamu
+> bagikan lagi, tautannya baru — yang lama tidak akan hidup lagi.
+
+and the sheet body carries the sentence §7 says to tell the user out loud: *"Foto yang sudah
+sempat dibuka bisa saja masih tersimpan di sisi mereka."* Revoke kills the page, not the
+bytes — Vercel Blob URLs are unguessable but permanent and independent of the share link, and
+that is the one residual risk in this feature that v0.1.0 cannot fix.
+
+This is a confirm rather than F07's undo-toast for a reason worth writing down: undo is the
+better pattern when the damage is local and reversible, and here the damage lands on someone
+else's phone the instant it happens. There is nothing to undo — re-sharing mints a *different*
+token.
+
+### R-126 · `blobPathname` on the public projection is not a leak. The plan's list is otherwise upheld.
+
+Plan Task 5 lists four fields that must not appear in `SharedGroup`: `userId`, `users.email`,
+`rawText` and `blobPathname`. F03 already excludes the first three (and documents why at the
+definition site). It does include `blobPathname`, because `PhotoDTO` requires it.
+
+**Ruling. Keep it.** `blob_pathname` is the *path component of* `blobUrl` —
+`https://<store>.public.blob.vercel-storage.com/photos/2026/08/x.jpg` versus
+`photos/2026/08/x.jpg` — so a projection that ships the URL has already shipped the pathname.
+Removing it would change F06's published type to reduce an exposure of exactly zero bits. The
+other three matter and are asserted: the served HTML for a seeded group scores **0** for
+`user_id`, `userId`, `rawText`, `raw_text`, the owner's email, `deletePhoto`, `deleteExpense`,
+`createShareLink` and `revokeShareLink`, and the seed deliberately writes a `raw_text` that
+says so in Indonesian so the check cannot pass on an empty column.
+
+### R-127 · The footer reads "Dibagikan **lewat** expensetracking.online".
+
+Roadmap §5 and the F09 plan both write "Dibagikan via". Design **R-40** fixed the string as
+`Dibagikan lewat expensetracking.online`, and it post-dates both.
+
+**Ruling. The design wins**, as it did on every other string in R-40's table. Recorded because
+the roadmap's wording is what a reader checking the contract would find first.
+
+### R-128 · The import-graph walker moved to `tests/support/importGraph.ts`.
+
+F06's `tests/photos.bundle.test.ts` had a private module-graph traversal; F09 needs the same
+walk from a route entry point. Copying it would put two traversals in the tree, and the way
+that fails is silent — one copy stops resolving some import form, and its assertions start
+passing because they find nothing.
+
+**Ruling. One walker, imported by both** (R-77 applied to test infrastructure), with F06's
+non-vacuity test kept and a second one added on F09's side.
+
+### R-129 · What F09 verified, including the thing F07 and F08 could not.
+
+**R-108.1 and R-119.3 are discharged for this feature.** Both recorded that no group had ever
+been rendered, because `expense_groups.user_id` is an FK to `user.id` and a synthetic session
+has no row. `/s/[token]` needs **no session at all**, so it is the one page in this app that
+can be seen for real without a Google sign-in. The database was empty (0 rows in every table),
+`docs/plans/fixtures/f09-seed.sql` was applied, the page was fetched from a live `next start`,
+and the fixture was then torn down (one `DELETE FROM "user"`; the FK cascades do the rest,
+verified back to 0 rows in every table).
+
+What that fetch showed, on the roadmap's canonical example:
+
+- `200`, with `Cache-Control: private, no-store, …` and `X-Robots-Tag: noindex, nofollow, noarchive`;
+- `<title>bakar duit tuesday · Expense Tracking</title>`, the long-form Jakarta date
+  **Selasa, 18 Agustus 2026**, six item rows each carrying `CategoryCode` (`MJ`, `HB`, `LN`)
+  with its `sr-only` Indonesian label, the note, **Rp 266.350**, the `Foto` section, and the
+  footer;
+- `og:description` = `6 item · Selasa, 18 Agustus 2026` — **no rupiah figure anywhere in the
+  card** (R-110's sibling concern for a different surface: what leaves the origin);
+- `og:image` = the one static `/og-default.png`, `robots` = `noindex, nofollow, nocache`
+  plus a `googlebot` variant, `canonical` = the share URL;
+- exactly **one** outbound content link, the footer's `/`. No tab bar (`data-tabbar` absent),
+  no "Masuk", no `Hapus`, no month navigation;
+- revoke → `404 404 404` immediately; re-share with a new token → `200` while the old token
+  stayed `404`.
+
+Also verified against the same server: `/s/hello` → **404** (rejected on shape, before any
+query), `/e/aaaaaaaaaaaa` → **307** to `/?next=…`, and `robots.txt` carrying no `Disallow: /s`.
+
+**NOT VERIFIED, and this is the honest part:**
+
+1. **`navigator.share` has never run.** There is no jsdom or browser-driving in this repo, so
+   the entire client half of `ShareButton` — pointerdown warming, the share sheet appearing
+   within the activation window, `AbortError` silence when the sheet is swiped away, the
+   clipboard fallback, the manual-copy sheet — is reasoned from the contract and unobserved.
+   Plan QA steps 4, 5, 22 are the ones that matter, and step 5 (swipe the sheet away, expect
+   *nothing at all* to happen) is the one most likely to be wrong.
+2. **The idempotence assertion has only been made against a probe driver.** `createShareLink`
+   returning the same token on a second tap is covered by SQL-level tests, not by two real
+   taps on a phone. Plan QA step 7 is "the single most important assertion in the QA script"
+   for a reason: the failure silently breaks a link the user already sent, and nothing on
+   screen looks different.
+3. **No photo has been rendered.** The fixture's blob URL points at bytes that do not exist —
+   it proves the `Foto` heading, the grid and the absence of any delete affordance are in the
+   markup, and nothing about what a photo looks like. R-86 (EXIF orientation) still runs on
+   `/e/[id]`.
+4. **The WhatsApp preview card has never been scraped.** Everything about it is inference from
+   the emitted `og:*` tags. Plan QA steps 9 and B are outstanding, including the chat-list
+   snippet and the lock-screen check.
+5. **Production headers are unconfirmed.** Everything above is `next start` on localhost;
+   `x-vercel-cache` has never been observed, and `og:url` was `http://localhost:3998/...`
+   because `AUTH_URL` is unset locally. Plan Task 17 step 3 must run against
+   `https://expensetracking.online`.
+6. **The whole 22-step manual QA script is outstanding on a real iPhone**, both schemes.
+
+**Do not mark F09 done on the strength of 736 green tests and a 27/27 audit.** They say a
+stranger with a session cannot publish someone else's expenses, that a revoked token is
+indistinguishable from one that never existed, and that the public page's module graph
+contains no mutation. They say nothing about whether the share sheet opens.
+
+### R-130 · F09's open questions, answered
+
+| OQ | Answer |
+|---|---|
+| 1 — publish the `note`? | **Yes**, behind `SHARE_SHOWS_NOTE` in `lib/share/config.ts`. It is the owner's own text about this group and it is on the screen they are looking at when they tap Bagikan, so sharing it is informed. One line to flip if the user disagrees on seeing it. |
+| 2 — owner name? | **Nothing**, as the plan recommended. `SHARE_SHOWS_OWNER_NAME = false`; `ownerName` is fetched but never rendered, and the email is never in the projection at all. |
+| 3 — total in the preview card? | **No**, as the plan recommended, and this one is still worth showing the user both ways: the card is visible on a lock screen and in a chat list before anyone taps. `SHARE_PREVIEW_SHOWS_TOTAL`. |
+| 4 — gallery split or a `readOnly` prop? | Settled before F09 started: R-80 shipped `PhotoGallery` / `PhotoManager`. R-123 above closes the remaining hole in it. |
+| 5 — where does `TabBar` live? | `app/(shell)/layout.tsx` (R-25 / R-51). `/s/[token]` sits in `(bare)`, which is the same column with no chrome — and whose docblock already listed it. F09 needed **no** layout of its own; the plan's `app/s/[token]/layout.tsx` is not created. |
+| 6 — is `AUTH_URL` client-readable? | No. R-121. |
+| 7 — should a live link block deleting the expense? | **No, and no copy change either.** `deleteExpense` cascades the `share_links` row, so the shared page 404s — which is correct. The plan suggests adding "Tautan yang kamu bagikan juga akan mati." to F07's delete confirm; that sheet already says *"Semua item dan foto di dalamnya ikut terhapus. Tidak bisa dibatalkan."*, and a fourth clause about a link most groups do not have would make the sentence people actually need to read longer. Recorded as a decision, not an oversight. |
+| 8 — expiry? | Not in v0.1.0 (roadmap §4.2 has no column). The status panel on `/e/[id]` is the only reminder that a link exists, which is the honest state of it. |
+| — rate limiting | Deferred as the plan argues, with its tripwire intact: mints are capped by `share_links.group_id UNIQUE`, a malformed token costs **zero** queries (`isValidId` runs before the DB), and Vercel's Attack Challenge Mode is the zero-code response if `/s/*` 404s ever flatline. Do not pre-build `@upstash/ratelimit`. |

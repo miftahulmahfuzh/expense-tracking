@@ -1995,3 +1995,109 @@ export function shareUrl(token: string): string
 8. **Expiry.** v0.1.0 has none by design (roadmap §4.2). If the user's mental model turns out to be
    "this should stop working after a while", that is an `expires_at` column plus one `WHERE` clause
    — cheap, but it is a schema change and therefore a real contract delta. Not in v0.1.0.
+
+---
+
+## Implementation checklist (filled in on landing)
+
+Rulings **R-120…R-130** in `docs/RECONCILIATION_v0.1.0.md` are the arbitration record for
+everything below and supersede this plan wherever they disagree with it.
+
+```
+Task 1  Preflight
+  [x]    Every consumed symbol verified as shipped. shareLinks (token PK, group_id UNIQUE),
+         getGroupByShareToken (cache()-wrapped, no userId/email/rawText in the projection),
+         getOwnedGroupAnchor, getGroupDetail().shareToken, newShareToken, isValidId,
+         formatJakartaLong, PhotoGallery, Button/Card/Sheet/Money/CategoryCode/useToast.
+  [x]    proxy.ts (NOT middleware.ts — R-1) does not match /s. Verified live: signed out,
+         /s/aaaaaaaaaaaa → 404, /e/aaaaaaaaaaaa → 307 to /?next=…
+Task 2  lib/share/*
+  [x]    config.ts — SHARE_PREVIEW_SHOWS_TOTAL · SHARE_SHOWS_OWNER_NAME · SHARE_SHOWS_NOTE ·
+         SHARE_MINT_ATTEMPTS · shareUrl(origin, token). Client-safe: no process.env, no lib/env.
+  [x] −  token.ts and SHARE_TOKEN_RE NOT CREATED (R-120). newShareToken() and isValidId()
+         already exist in lib/id.ts and are derived from the same alphabet; a second generator
+         with a second regex is the R-7/R-8/R-33/R-42 duplication, and the failure mode is a
+         shape check that rejects real tokens.
+  [x] +  origin.ts (server-only) — AUTH_URL → VERCEL_PROJECT_PRODUCTION_URL → localhost:$PORT.
+         The origin is a PROP, never read in the browser (R-121, Open question 6).
+  [x]    clipboard.ts — Clipboard API then the selected-textarea fallback. Named clipboard.ts,
+         not copy.ts: in this repo copy.ts is a screen's strings.
+  [x]    lib/share/__tests__/config.test.ts — 9 cases, incl. ID_ENTROPY_BITS === 72, because
+         the whole threat model is argued from that number and a comment cannot fail.
+Task 4  app/actions/share.ts
+  [x]    createShareLink — requireUserId, Zod shape check, getOwnedGroupAnchor (R-99, not a
+         re-declared join), read-first, then insert .onConflictDoNothing() with NO target so
+         one path absorbs both constraints, disambiguated by re-reading on group_id.
+  [x]    IDEMPOTENT: a second Bagikan returns the SAME token and writes nothing. The constraint
+         is the product rule — a link already sent must keep working.
+  [x]    revokeShareLink — DELETE, idempotent, no revoked_at. Both revalidate via
+         app/actions/_revalidate.ts rather than inventing a second answer.
+  [x]    R-60 recorded in place: nothing throws on this path, and anyone who changes it to a
+         throwing insert must key off error.cause.code, never a message regex.
+  [x]    app/actions/__tests__/share.test.ts — 14 cases over the emitted SQL: ownership before
+         any write, cross-user indistinguishable from missing, idempotence, the concurrent-mint
+         branch, the PK-collision retry with a FRESH token, and the bounded give-up.
+Task 5  Queries
+  [x] −  getShareTokenForGroup NOT ADDED (R-12). getGroupDetail().shareToken was already there,
+         so the revoke panel is correct on first paint at the cost of zero extra queries.
+Task 8/9  The share control, and where it lives
+  [x]    SPLIT IN TWO (R-124). Design R-38 gives /e/[id]'s header exactly one action, and F07
+         had already shipped that slot: ShareButton → shareSlot (header), ShareLinkPanel →
+         shareLinkSlot (body, above Hapus pengeluaran, so the two red affordances are apart).
+  [x]    pointerdown warming · navigator.share called with the gesture intact · AbortError is
+         SILENCE · clipboard fallback · manual-copy sheet when even that fails · feature
+         detection inside the handler, never in render.
+  [x]    Revoke is a Sheet, feedback is F10's toast (R-125) — both primitives shipped after
+         this plan was written. The confirm says what dies, and carries §7's photo sentence.
+  [x]    ExpenseEditor gains one prop, shareLinkSlot. Both slots rendered by the SERVER page.
+Task 11/12  Layout isolation
+  [x] −  app/s/[token]/layout.tsx NOT CREATED. /s lives in app/(bare)/, whose docblock already
+         listed it (R-25 / R-51). Confirmed in the served HTML: no data-tabbar, no header menu.
+Task 13  Read-only gallery
+  [x]    PhotoGallery, no onDelete (R-80).
+  [x] +  IMPORTED BY PATH, not through @/components/photos (R-123). The barrel re-exports
+         PhotoManager, which imports deletePhoto — through it, R-80's property would rest on
+         the bundler tree-shaking a re-export, on the one route served to strangers.
+Task 14/15  The public page
+  [x]    Shape check before the DB · one 404 for unknown AND revoked · CategoryCode on every
+         row (R-111's condition, and this is the page it was written for) · the only outbound
+         link is the footer's / · no form, no action, no session read.
+  [x]    generateMetadata: noindex/nofollow/nocache + googleBot, canonical, og:* with the item
+         count and date and NO rupiah figure, one static og-default.png (a per-link OG image
+         would survive a revoke in Meta's cache).
+  [x] +  export const dynamic = 'force-dynamic' KEPT, and it is load-bearing here (R-122).
+         R-75/R-115 removed it from routes that read a cookie; this one reads none. No
+         loading.tsx either, or the 404 becomes a streamed 200 (R-98).
+Task 16  Headers and robots
+  [x]    next.config.ts headers() for /s/:token — private/no-store, noindex nofollow noarchive,
+         strict-origin-when-cross-origin. Verified on a live next start.
+  [x]    app/robots.ts allows /s deliberately: disallowing it would kill the WhatsApp card and
+         would not stop URL-only indexing. Verified: robots.txt carries no Disallow: /s.
+Task 17  Freshness
+  [x]    next build lists ƒ /s/[token]. Live: DELETE the row → 404 404 404 with no warm-up;
+         re-share with a new token → 200 while the old token stays 404.
+  [x] +  scripts/f09-audit.sh — 27 PASS, exit 0 (proxy matcher, no session read, no action in
+         the graph, barrel bypass, no PhotoManager, force-dynamic, no caching machinery, no
+         loading.tsx, both headers, robots, requireUserId ×2, anchor ×2, no re-declared
+         ownership, bare onConflictDoNothing, no Math.random, no console, no window.location,
+         client-safe config, no hex, CategoryCode, no per-link OG image)
+  [x] +  tests/share.bundle.test.ts — walks the real import graph from the route entry and
+         asserts it reaches no app/actions/* at all, plus a non-vacuity check. The walker moved
+         to tests/support/importGraph.ts, shared with F06's (R-128).
+Ship
+  [x]    npm test 736 passed | 15 skipped (31 new) · next typegen && tsc --noEmit · eslint ·
+         prettier · next build (ƒ /s/[token])
+  [x] +  A REAL GROUP RENDERED END TO END — the gap R-108.1 and R-119.3 both recorded. /s needs
+         no session, so f09-seed.sql was applied to the (empty) database, the canonical example
+         fetched from a live next start (Rp 266.350, six rows, MJ/HB/LN codes, Selasa 18
+         Agustus 2026), leak-swept to 0 hits, and the fixture torn down back to 0 rows.
+  [ ]    navigator.share HAS NEVER RUN. No jsdom, no browser in this repo: warming, the sheet,
+         AbortError silence, the clipboard fallback are reasoned from the contract (R-129.1).
+  [ ]    IDEMPOTENCE HAS NOT BEEN TAPPED TWICE ON A PHONE. QA step 7 is the one that matters —
+         a fresh token silently breaks a link the user already sent (R-129.2).
+  [ ]    No photo rendered; the fixture's blob does not exist (R-129.3).
+  [ ]    The WhatsApp card has never been scraped (R-129.4).
+  [ ]    Production headers unconfirmed; x-vercel-cache never observed, og:url was localhost
+         because AUTH_URL is unset locally (R-129.5).
+  [ ]    THE 22-STEP QA SCRIPT (§5) is outstanding in full, on a real iPhone, both schemes.
+```
