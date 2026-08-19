@@ -73,7 +73,18 @@ export default function MonthlyChartInner({ series, selectedMonth, onPick }: Pro
         <CartesianGrid vertical={false} className="chart-grid" />
 
         <YAxis
-          width={40}
+          /*
+           * 52, not 40. The compact axis labels are up to five glyphs ('850rb' measures 41px
+           * in the mono face) and Recharts lays a tick out RIGHT-aligned against the axis
+           * edge, so anything wider than `width` overhangs the SVG's left boundary and is
+           * clipped there. At 40 the mid tick rendered as '50rb' — the leading 8 cut off —
+           * which does not look broken, it looks like a number. A chart that misstates its
+           * own scale by 17x is the exact failure scripts/f08-audit.sh exists to catch, and
+           * it is invisible in every screenshot until you check the value against the data.
+           * Any month total in the 100rb-999rb band produces a five-glyph mid tick, which is
+           * this app's ordinary range rather than an edge case.
+           */
+          width={52}
           tickCount={3}
           axisLine={false}
           tickLine={false}
