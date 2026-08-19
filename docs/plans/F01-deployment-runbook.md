@@ -110,6 +110,11 @@ client secret and there is no argument for treating it differently. Vercel accep
 vercel deploy                    # preview
 ```
 
+> **The very first `vercel deploy` goes to production, not preview** — Vercel assigns a
+> project's first deployment to production regardless of the flag, and says so in its
+> output. Every later `vercel deploy` is a preview unless you pass `--prod`. So on a fresh
+> project this step and the next collapse into one.
+
 Probe it, substituting the URL the CLI prints:
 
 ```bash
@@ -117,6 +122,14 @@ curl -s https://<preview-url>/api/health; echo
 ```
 
 **Expected:** `{"ok":true,"db":true,"commit":"<sha>"}`
+
+Probe the **alias** (`https://<project>-<words>.vercel.app`), not the per-deployment
+`https://<project>-<hash>-<scope>.vercel.app` URL. Deployment Protection guards the latter,
+so `curl` gets `Redirecting...` there — which looks like a broken app but is authentication
+working as intended.
+
+*Confirmed on this project:* `{"ok":true,"db":true,"commit":"78b4f70…"}` — env vars resolve
+and Neon is reachable from Vercel.
 
 > The payload is deliberately smaller than `F01-foundation.md` Task 28 shows. Reconciliation
 > **R-27** trimmed it: `db` is a boolean now, and the database name, LLM base URL, model and
@@ -140,11 +153,19 @@ curl -s https://<production-url>/api/health; echo
 
 ## Step 4 — Attach the domain
 
+The signature is `vercel domains add domain [project]`. Without the project argument the
+domain is added to the **team** rather than attached to the project — and a subdomain is
+refused outright with *"Only apex domains can be added without a project"*. Always pass the
+project:
+
 ```bash
-vercel domains add expensetracking.online
-vercel domains add www.expensetracking.online
+vercel domains add expensetracking.online expense-tracking
+vercel domains add www.expensetracking.online expense-tracking
 vercel domains inspect expensetracking.online
 ```
+
+If the apex was already added bare (to the team), re-running it with the project attaches
+it. Should that report a conflict, `--force` moves it off whatever it is attached to.
 
 Read two values off that output (or Project → Settings → Domains). **Do not copy IPs out of
 any document, including this one** — Vercel assigns the A record from an anycast pool and
