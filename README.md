@@ -28,6 +28,65 @@ pak gembus 26k
 …and get back the title `bakar duit tuesday`, the date `2026-08-18`, six categorised items
 and a total of `Rp 266.350`, in an editable table you can fix with one tap before saving.
 
+<p align="center">
+  <img src="docs/media/parse.gif" width="300" alt="Pasting seven lines of Indonesian expense notes and tapping Rapikan; a skeleton appears while GLM-5.2 parses, then an editable table with six categorised items and a Rp 266.350 total.">
+</p>
+
+<p align="center"><em>Real capture: a real GLM-5.2 round trip against the fixture corpus, not a mockup.</em></p>
+
+---
+
+## Demo
+
+Everything below is captured from the running app at 414×896 — the iPhone XS Max the design
+targets — with seeded fixture data.
+
+<table>
+<tr>
+<td width="33%" align="center">
+  <img src="docs/media/category.gif" width="230" alt="Tapping an item row opens a bottom sheet; tapping the category chip opens a two-column picker; choosing Tempat Tinggal updates the row.">
+  <br><strong>Fix a category</strong><br>
+  <sub>Row → bottom sheet → 2-col picker.<br>The LLM guesses; you override in one tap.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="docs/media/stats.gif" width="230" alt="Tapping bars in the 12-month chart moves the readout to that month, then scrolling reveals the category bar list.">
+  <br><strong>Twelve months</strong><br>
+  <sub>Tap a bar, the readout follows.<br>April is empty on purpose — zero months are drawn, not closed.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="docs/media/04-month.png" width="230" alt="Month view: Agustus 2026, Rp 1.661.826 total, expense groups sub-grouped by day.">
+  <br><strong>The month</strong><br>
+  <sub>Total in the header, groups<br>sub-grouped by day, newest first.</sub>
+</td>
+</tr>
+<tr>
+<td width="33%" align="center">
+  <img src="docs/media/05-detail.png" width="230" alt="Expense detail: title, date, note, six inline-editable item rows with category codes, and the total.">
+  <br><strong>Detail</strong><br>
+  <sub><code>/e/[id]</code> — everything inline-editable.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="docs/media/07-share.png" width="230" alt="Public share page: title, date, note, items and total, with no owner identity and no edit affordances.">
+  <br><strong>Shared, read-only</strong><br>
+  <sub><code>/s/[token]</code> — no login. Note the<br>absence: no raw text, no edit, no identity.</sub>
+</td>
+<td width="33%" align="center">
+  <img src="docs/media/08-month-dark.png" width="230" alt="The same month view rendered in dark mode.">
+  <br><strong>Dark</strong><br>
+  <sub>From <code>prefers-color-scheme</code>.<br>There is no toggle, on purpose.</sub>
+</td>
+</tr>
+</table>
+
+<details>
+<summary>Sign-in and the parsed review table</summary>
+<p align="center">
+  <img src="docs/media/01-signin.png" width="260" alt="Sign-in landing: the wordmark, the tagline, and a single Lanjut dengan Google button.">
+  &nbsp;&nbsp;
+  <img src="docs/media/03-new-review.png" width="260" alt="The review stage: editable title, date, and six item rows each with a category chip and amount, above a sticky total and Simpan button.">
+</p>
+</details>
+
 ---
 
 ## What it does
