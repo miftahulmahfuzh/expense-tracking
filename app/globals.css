@@ -36,11 +36,34 @@
   /* -- text: three -------------------------------------------------------- */
   --ink: #20211d; /* primary                                 */
   --ink-2: #5d5c52; /* secondary — body prose, amounts in rows */
-  --ink-3: #8f8d81; /* tertiary — labels, meta, placeholders   */
+  /*
+   * AMENDED from the design's #8f8d81, which measured 2.85:1 on paper — a WCAG 1.4.3
+   * failure, and not a marginal one. ink-3 is every label, every meta line, every
+   * placeholder, the inactive tab and the ghost-button text: all of it content the user
+   * reads. Darkened along its own hue until it clears 4.5:1 (now 4.51 on paper, 5.05 on
+   * card). See scripts/palette-check.py and the F10 addendum in RECONCILIATION.
+   *
+   * The cost is that ink-2 and ink-3 sit close together in light mode. That is affordable
+   * here precisely because this design does not lean on colour for hierarchy: a label is a
+   * label because it is 10px mono uppercase at 0.2em tracking, not because it is pale.
+   */
+  --ink-3: #6e6c61; /* tertiary — labels, meta, placeholders   */
 
-  /* -- lines: two --------------------------------------------------------- */
-  --rule: #d8d3c4; /* container hairline                      */
+  /* -- lines: three ------------------------------------------------------- */
+  --rule: #d8d3c4; /* container hairline, decorative          */
   --rule-2: #eae6da; /* row separator inside a container        */
+  /*
+   * ADDED. `rule` at 1.28:1 on paper is right for a card edge or a row separator — both
+   * decorative, both backed up by layout — but WCAG 1.4.11 wants 3:1 for the boundary that
+   * *identifies a control*, and an input's fill only differs from the page by 1.09:1, so the
+   * border is doing that job alone. Used by inputs, secondary buttons and picker cells; never
+   * by a container edge. Restores the distinction F10's own palette had as
+   * --app-border/--app-border-strong and the design pull collapsed away.
+   *
+   * To revert to the design's whisper-soft fields, point this at var(--rule) and re-run
+   * scripts/palette-check.py to see what it costs.
+   */
+  --rule-strong: #8d887b;
 
   /* -- semantic ----------------------------------------------------------- */
   --accent: #2f5d50; /* the active-tab dot, the current bar     */
@@ -102,10 +125,12 @@
 
     --ink: #eeebe1;
     --ink-2: #a5a398;
-    --ink-3: #6e6d64;
+    /* AMENDED: the design's #6e6d64 measured 3.21:1 on card. Now 4.50 on card, 5.01 on paper. */
+    --ink-3: #86857b;
 
     --rule: #2e2e28;
     --rule-2: #242420;
+    --rule-strong: #696962;
 
     --accent: #86bba6;
     --accent-soft: #1e2a25;
@@ -142,10 +167,11 @@
 
   --ink: #eeebe1;
   --ink-2: #a5a398;
-  --ink-3: #6e6d64;
+  --ink-3: #86857b;
 
   --rule: #2e2e28;
   --rule-2: #242420;
+  --rule-strong: #696962;
 
   --accent: #86bba6;
   --accent-soft: #1e2a25;
@@ -281,6 +307,7 @@
 
   --color-rule: var(--rule);
   --color-rule-2: var(--rule-2);
+  --color-rule-strong: var(--rule-strong);
 
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
@@ -563,8 +590,11 @@
 
   /* The picker cell is the same idea at card scale: hairline and paper when
      unselected, so eight of them read as a grid rather than eight chips. */
+  /* rule-strong, not rule: an unselected cell is a control whose only boundary is its
+     border, and it sits on `paper` inside a `card` sheet — a 1.28:1 line would leave the
+     eight options reading as one block of text. */
   .cell {
-    border: 1px solid var(--rule);
+    border: 1px solid var(--rule-strong);
     background-color: var(--paper);
   }
   .cell[data-selected='true'] {

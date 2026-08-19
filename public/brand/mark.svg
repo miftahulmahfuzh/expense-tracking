@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    The mark is the money rail: three right-aligned bars of decreasing length — a column of
+    numbers, which is what the app is. Ink ground and paper bars, the same pair as the raised
+    Tambah button.
+
+    The opaque <rect> ground is REQUIRED: iOS does not honour transparency or rounded corners
+    on an apple-touch-icon, it applies its own squircle mask to an opaque square, and a
+    transparent PNG renders black.
+
+    The bars occupy the central 25%-75% horizontally and 35%-65% vertically, well inside the
+    80% maskable safe zone, so one piece of art serves both the plain and the maskable icon.
+  -->
+  <rect width="1024" height="1024" fill="#20211d"/>
+  <g fill="#f0ede4">
+    <rect x="256" y="360" width="512" height="72" rx="8"/>
+    <rect x="400" y="476" width="368" height="72" rx="8"/>
+    <rect x="512" y="592" width="256" height="72" rx="8"/>
+  </g>
+</svg>

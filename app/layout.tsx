@@ -23,6 +23,17 @@ export const metadata: Metadata = {
   // Stop iOS auto-linking "38.500" as a phone number and dates as calendar events. It
   // recolours our amounts and underlines them, which breaks the money rail.
   formatDetection: { telephone: false, date: false, address: false, email: false },
+  other: {
+    /*
+     * `appleWebApp.capable` above makes Next 16 emit the standardised
+     * `mobile-web-app-capable`, not the legacy `apple-mobile-web-app-capable` that F10's plan
+     * expected. Safari has honoured the standard name since iOS 16.4, and the target device
+     * (iPhone XS Max) runs up to iOS 18 — but standalone mode is the entire PWA pitch, and one
+     * line of insurance is cheaper than discovering on an un-updated phone that "Add to Home
+     * Screen" still opens in a browser tab.
+     */
+    'apple-mobile-web-app-capable': 'yes',
+  },
 }
 
 export const viewport: Viewport = {

@@ -95,7 +95,7 @@ export function MoneyInput({
   return (
     <div
       className={cn(
-        'flex h-control items-center gap-2 rounded-field border border-rule bg-card px-3.5',
+        'flex h-control items-center gap-2 rounded-field border border-rule-strong bg-card px-3.5',
         invalid && 'border-red',
         className,
       )}

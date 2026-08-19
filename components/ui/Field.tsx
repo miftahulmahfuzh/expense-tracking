@@ -94,9 +94,13 @@ export function Field({
  * `bg-card` assumes the field sits on `paper` — the normal case. Inside a sheet or a card,
  * where the surface is already `card`, pass `className="bg-paper"` to keep the well
  * readable; the caller's className is applied last, so it wins.
+ *
+ * `border-rule-strong`, not `border-rule`: the border is what identifies a text field, and
+ * the fill differs from the page by only 1.09:1, so WCAG 1.4.11's 3:1 falls entirely on the
+ * line. Container edges keep the soft `rule`.
  */
 export const CONTROL_CLASS =
-  'w-full h-control rounded-field border border-rule bg-card px-3.5 ' +
+  'w-full h-control rounded-field border border-rule-strong bg-card px-3.5 ' +
   'text-input text-ink placeholder:text-ink-3 aria-[invalid=true]:border-red'
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement>
@@ -130,7 +134,7 @@ export function TextArea({ className, id, rows = 6, ...rest }: TextAreaProps) {
       aria-describedby={rest['aria-describedby'] ?? field?.describedBy}
       aria-invalid={rest['aria-invalid'] ?? (field?.invalid || undefined)}
       className={cn(
-        'w-full rounded-card border border-rule bg-card p-4',
+        'w-full rounded-card border border-rule-strong bg-card p-4',
         'text-input leading-relaxed text-ink placeholder:text-ink-3',
         'resize-none aria-[invalid=true]:border-red',
         className,

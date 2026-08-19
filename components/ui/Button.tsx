@@ -48,7 +48,7 @@ const SIZES: Record<ButtonSize, string> = {
  */
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'border-ink bg-ink text-paper',
-  secondary: 'border-rule bg-transparent text-ink-2',
+  secondary: 'border-rule-strong bg-transparent text-ink-2',
   ghost: 'border-transparent bg-transparent text-ink-3',
   destructive: 'border-red bg-transparent text-red',
 }
