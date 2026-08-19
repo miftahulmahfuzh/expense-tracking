@@ -91,6 +91,22 @@ vercel env ls
 You should see **25 rows**. No variable may appear in fewer than three environments except
 `AUTH_URL`.
 
+> **Check this properly — do not assume the push completed.** On this project the first
+> `--apply` run left every variable in Production and Development but **none in Preview**,
+> and nothing surfaced that until a preview deploy failed with the `INVALID CORE
+> ENVIRONMENT` banner listing all five core vars. A working production deploy tells you
+> nothing about preview. Count the Preview rows explicitly:
+>
+> ```bash
+> vercel env ls | grep -c Preview      # want 9: 8 variables + BLOB_READ_WRITE_TOKEN
+> ```
+>
+> The script is idempotent (`--force`), so the fix is simply to run it again.
+
+Vercel may store production and preview variables as **Sensitive** regardless of the
+`--sensitive` flag, if the project carries a sensitive-by-default policy — that is why
+`LLM_MODEL` and `AUTH_URL` also show as Sensitive here. Harmless, and strictly safer.
+
 Five of them are pushed with `--sensitive` for production and preview, so they are stored
 write-only — unreadable from the dashboard and from `vercel env pull`: `LLM_API_KEY`,
 `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `AUTH_SECRET`, `AUTH_GOOGLE_SECRET`. No dashboard
@@ -268,13 +284,34 @@ vercel ls expense-tracking | head -5     # a deployment with source `github`
 
 - **Q1 (credentials)** — resolved. All 8 values are present in `.env.local`; nothing is a
   placeholder.
-- **Q4 (Neon region)** — resolved favourably. The database is
-  `ep-quiet-heart-azcoa9gb.c-3.**ap-southeast-1**.aws.neon.tech`, i.e. Singapore, the
-  closest region to Jakarta. Set the Vercel function region to `sin1` (Project Settings →
-  Functions) to match, or every query pays a cross-region round trip.
+- **Q4 (Neon region)** — **done.** The database is
+  `ep-quiet-heart-azcoa9gb.c-3.**ap-southeast-1**.aws.neon.tech`, i.e. Singapore. Functions
+  are pinned to `sin1` via `"regions": ["sin1"]` in `vercel.json` rather than the dashboard
+  Functions setting, so the choice is reviewable, diffable and travels with the repo.
+  Single-region is within the Hobby limit. Verified: every lambda reports `[sin1]` in
+  `vercel inspect`.
 - **Q3 (`/api/health` exposure)** — settled by R-27, already implemented: the payload is
   `{ ok, db: boolean, commit }`. Keep the route. **F02 must exclude `/api/health` from
   `proxy.ts`'s matcher**, or the probe starts redirecting.
-- **Q6 (Blob store)** — still open, and one minute of work while you are in the dashboard:
-  Storage → Create → Blob → connect to `expense-tracking`. Doing it now means
-  `BLOB_READ_WRITE_TOKEN` is already in all three environments when F06 starts.
+- **Q6 (Blob store)** — **done**, and no dashboard needed; the CLI can do it:
+
+  ```bash
+  vercel blob create-store expense-tracking-photos --access public --region sin1 --yes
+  ```
+
+  Created as `store_HQmfIsHBtKAgvUwU` in `sin1` (the flag defaults to `iad1` — set it, or
+  the store lands in Virginia while everything else is in Singapore). It auto-linked to the
+  project, put `BLOB_READ_WRITE_TOKEN` in all three environments, and pulled the token into
+  `.env.local`.
+
+  `--access public` is required by the design, not a shortcut: roadmap §4.2 stores
+  `blob_url` as a *public* Vercel Blob URL and F09's `/s/[token]` page renders photos to
+  unauthenticated viewers. The consequence to be aware of is that photo URLs are
+  unguessable but not access-controlled — anyone holding one can view it, and revoking a
+  share link does not revoke URLs already handed out.
+
+  > **Watch out:** `create-store` ends with a `vercel env pull`, which **rewrites
+  > `.env.local`** from the *development* environment. That is safe only because every
+  > variable was already pushed to development and `--sensitive` was applied to production
+  > and preview but never development, so the values are still readable. Verify after
+  > running it — all 9 keys survived here, which incidentally proves the push round-trips.
