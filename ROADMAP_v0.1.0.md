@@ -1,5 +1,10 @@
 # Expense Tracking — Roadmap v0.1.0
 
+> **Amended after plan reconciliation.** Ten feature plans were written against this
+> contract in parallel; several proved parts of it wrong. `docs/RECONCILIATION_v0.1.0.md`
+> is the arbitration record and **supersedes any individual plan file**. Rulings referenced
+> below as **R-n**.
+
 **Domain:** expensetracking.online · **Host:** Vercel Hobby · **DB:** Neon Postgres (free) · **Blob:** Vercel Blob (free) · **LLM:** GLM-5.2 via z.ai Anthropic-compatible endpoint
 
 > **Core tenet: simplicity.** Single-user-feeling, mobile-first (iPhone XS Max, 414×896 CSS px, safe-area insets). Every feature below earns its place or gets cut. No feature flags, no admin panel, no settings page, no dark-mode toggle (follow system), no i18n layer (copy is Indonesian-flavoured English, hardcoded).
@@ -162,10 +167,10 @@ export const ParsedExpense = z.object({
 
 | File | Export | Signature |
 |---|---|---|
-| `expenses.ts` | `createExpense` | `(input: ParsedExpense & { note?, rawText?, photoIds? }) → { id }` |
+| `expenses.ts` | `createExpense` | `(input: ParsedExpense & { note?, rawText?, photos?: NewPhotoInput[] }) → { id }`  ← **R-2** |
 | | `updateExpenseMeta` | `(id, { title?, occurredOn?, note? }) → void` |
 | | `deleteExpense` | `(id) → void` |
-| `items.ts` | `addItem` | `(groupId, { name, amountIdr, category }) → { id }` |
+| `items.ts` | `addItem` | `(groupId, { name, amountIdr, category, sortOrder? }) → { id }`  ← **R-16** |
 | | `updateItem` | `(id, { name?, amountIdr?, category? }) → void` |
 | | `deleteItem` | `(id) → void` |
 | `photos.ts` | `attachPhoto` | `({ groupId, blobUrl, blobPathname, width, height, sizeBytes }) → { id }` |
@@ -174,6 +179,14 @@ export const ParsedExpense = z.object({
 | | `revokeShareLink` | `(groupId) → void` |
 
 **Every action** starts with `const userId = await requireUserId()` and **every** query is filtered by `userId`, including nested ones (an item update must join back to `expense_groups.user_id`). This is the single most important security invariant in the app.
+
+> **R-5 — `proxy.ts` is not a security boundary.** Next.js routes Server Actions as POST requests to
+> the page they live on, so a proxy matcher that skips a path also skips its actions. `requireUserId()`
+> inside every action is *the* boundary; the proxy matcher is a UX redirect.
+>
+> **R-4 — no interactive transactions.** The `neon-http` driver does not support `db.transaction()`.
+> Multi-statement atomic writes (`createExpense`, `createShareLink`) use `db.batch([...])`, which Neon
+> runs as one transaction in one HTTP request.
 
 ### 4.5 Route Handlers
 
@@ -191,7 +204,7 @@ export const ParsedExpense = z.object({
 | `/new` | ✅ | Paste → parse → review → photos → save |
 | `/m/[month]` | ✅ | `YYYY-MM`. Month total, per-day grouped list, prev/next month |
 | `/e/[id]` | ✅ | Group detail: items (inline editable), photo gallery, share, delete |
-| `/stats` | ✅ | 12-month growth bar chart + current-month category donut |
+| `/stats` | ✅ | 12-month growth bar chart + current-month category **bar list** (R-3) |
 | `/s/[token]` | ❌ | Public read-only group view incl. photos |
 
 Bottom tab bar (3 tabs, safe-area aware): **Bulan Ini** (`/m/…`) · **Tambah** (`/new`, centre, raised) · **Statistik** (`/stats`).
@@ -237,7 +250,7 @@ Ten features. Dependency order matters: **F01 → F03 → F02** unblock everythi
 Scaffold Next 16 + TS + Tailwind v4. `lib/env.ts` Zod validation. `.env.local` from supplied credentials. ESLint/Prettier. Vercel project + `expensetracking.online` DNS at Domainesia. Neon connection smoke test. `pnpm`/`npm` scripts: `dev`, `build`, `db:generate`, `db:migrate`, `db:studio`.
 
 ### F02 — Auth & Session
-Auth.js v5, Google provider only, Drizzle adapter, JWT strategy. `auth.ts` at repo root exporting `{ handlers, auth, signIn, signOut }`. `middleware.ts` protecting `/new`, `/m`, `/e`, `/stats` (explicitly **not** `/s`). `requireUserId()` helper that throws on unauthenticated. Sign-in page. Sign-out in a header menu. **Also produces the step-by-step Google Cloud Console walkthrough** for the user, including exact redirect URIs.
+Auth.js v5, Google provider only, Drizzle adapter, JWT strategy. `auth.ts` at repo root exporting `{ handlers, auth, signIn, signOut }`. `proxy.ts` (R-1 — Next 16 renamed `middleware.ts`; export is `proxy`, Node runtime only) protecting `/new`, `/m`, `/e`, `/stats` (explicitly **not** `/s`). `requireUserId()` helper that throws on unauthenticated. Sign-in page. Sign-out in a header menu. **Also produces the step-by-step Google Cloud Console walkthrough** for the user, including exact redirect URIs.
 
 ### F03 — Data Layer & Contracts
 Drizzle schema for all tables above + Auth.js adapter tables. Migration generation and application to Neon. Typed query module `lib/db/queries.ts`: `getMonthGroups(userId, month)`, `getGroupDetail(userId, id)`, `getGroupByShareToken(token)`, `getMonthlyTotals(userId, months)`, `getCategoryBreakdown(userId, month)`. Zod contracts. `nanoid` id helper. **Owns the userId-scoping invariant** and must document it for every query.
@@ -255,7 +268,7 @@ Drizzle schema for all tables above + Auth.js adapter tables. Migration generati
 `/m/[month]`: sticky header with month name + big total, prev/next chevrons, groups listed newest-first and sub-grouped by day, each row showing title, item count, photo count, total. Empty state. `/e/[id]`: title/date/note inline edit, item rows with tap-to-edit sheet, category chip opens the 2×4 picker, add item, delete item, delete group with confirm. Optimistic UI via `useOptimistic` + `revalidatePath`.
 
 ### F08 — Monthly Stats & Charts
-`/stats`: 12-month bar chart of totals (Recharts, responsive, touch tooltip), month-over-month delta badge, category donut/bar for the selected month with amounts and percentages, biggest-single-expense callout. Tapping a bar navigates to that month. All aggregation in SQL, one round trip per view. Must read the `dataviz` skill for palette and chart-form decisions.
+`/stats`: 12-month bar chart of totals (Recharts, responsive, touch tooltip), month-over-month delta badge, category **bar list** for the selected month with amounts and percentages (R-3 — an 8-slice donut fails the CVD contrast gate), biggest-single-expense callout. Tapping a bar navigates to that month. All aggregation in SQL, one round trip per view. Must read the `dataviz` skill for palette and chart-form decisions.
 
 ### F09 — Public Share Links
 `createShareLink` mints `nanoid(12)`. Share sheet uses `navigator.share` with clipboard fallback. `/s/[token]` is a server component, no auth, `noindex` robots meta, renders title/date/items/total/photos, hides owner identity beyond a display name, shows a subtle "Dibagikan via expensetracking.online" footer. Revoke button on `/e/[id]` when a link exists. 404 for unknown/revoked tokens. Rate-limit consideration and token entropy note (~71 bits).
@@ -279,17 +292,18 @@ The design is produced in **Claude Design** (claude.ai/design) as a design-syste
 
 ## 8. Execution order
 
+Amended by **R-9**. F03 is split: `F03a` is the pure, dependency-free half
+(`categories.ts`, `format.ts`, `id.ts`, `schema/expense.ts`) that F10 needs in wave 1;
+`F03b` is the database half (`schema.ts`, `index.ts`, `queries.ts`, migrations).
+
 ```
-F01 ──┬── F03 ──┬── F02 ──┬── F06 ──┐
-      │         │         │         ├── F05 ──┐
-      └── F10   ├── F04 ──┘         │         │
-                │                   ├── F07 ──┼── F08
-                │                   │         └── F09
-                └───────────────────┘
+F01 → F03a → F10 → F03b → F02 → ┬── F04 ──┬── F05
+                                 └── F06 ──┴── F07 ──┬── F08
+                                                     └── F09
 ```
 
-1. **Wave 1:** F01, F10 (design tokens can land before features)
-2. **Wave 2:** F03, then F02
+1. **Wave 1:** F01 → F03a → F10   *(strictly ordered — F10 imports from F03a)*
+2. **Wave 2:** F03b, then F02
 3. **Wave 3:** F04, F06 (parallel)
 4. **Wave 4:** F05, F07 (parallel)
 5. **Wave 5:** F08, F09 (parallel)
