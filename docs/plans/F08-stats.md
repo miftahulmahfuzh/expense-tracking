@@ -2348,3 +2348,89 @@ four-line rule to `stats.css`.
 10. **Test runner.** F01 pins no framework. Task 4's tests are written for `vitest`; if F01 chose `node --test`,
     swap the import and the `expect` forms for `node:assert` — the module under test is framework-free either way.
     (F03's plan references `tests/categories.test.ts`, so whatever F03 used is the answer.)
+
+---
+
+## Implementation checklist (filled in on landing)
+
+Rulings **R-110…R-119** in `docs/RECONCILIATION_v0.1.0.md` are the arbitration record for
+everything below and supersede this plan wherever they disagree with it.
+
+```
+Task 0/1  Branch + contract check
+  [x]    Every consumed symbol verified as shipped. getMonthlyTotals/(3 args), fillZeroMonths,
+         getCategoryBreakdown, getBiggestExpense, getMonthToDatePair (R-15/R-57), CATEGORY_META
+         with color: `--color-cat-*`, and app/(shell)/layout.tsx — all present, all as published.
+  [x]    No branch. Every feature F04→F07 landed on main; F08 follows the repo's convention.
+Task 2  lib/stats/format.ts
+  [x]    monthTickLabel · monthMedium · monthsBetween · formatIdrAxis · formatDayShort ·
+         formatMtdRange. Each carries a comment naming the lib/format.ts helper it is NOT
+         duplicating. formatIdrAxis DELEGATES to formatIdrCompact rather than re-deriving the
+         thresholds — the plan's copy had already drifted on the billions suffix (R-117).
+Task 3  lib/stats/series.ts
+  [x]    toIdr · buildMonthSeries · chartWindowLength · computeDelta · largestRemainderPct
+  [x]    BreakdownRow.emoji → .code (R-112 — design R-34 removed emoji app-wide)
+Task 4  Unit tests
+  [x]    lib/stats/__tests__/series.test.ts + format.test.ts — 27 cases, incl. the window-edge
+         regression from R-113 and the deterministic remainder tie-break
+Task 5  Chart chrome
+  [x]    THE PLAN'S TWELVE --chart-* TOKENS ARE DELETED (R-110). F08 defines no colour; stats.css
+         holds only the Recharts token bridge and .recharts-* descendant selectors, every value
+         an F10 token. The audit greps for a literal hex so the palette cannot come back.
+  [x] +  --accent-2 added to app/globals.css (all three theme blocks + @theme inline):
+         #76948a / #577467, the in-progress-month step. R-39's "rest in --rule" REVERSED on
+         measurement — --rule is 1.43:1 / 1.22:1 on card and cannot carry a data mark.
+         Validated as an ORDINAL ramp, both schemes, ALL CHECKS PASS.
+  [x] +  R-28 re-discharged and R-50's waiver re-measured on F10's own hues (R-111). The donut's
+         all-pairs gate fails at ΔE 0.6 deutan — R-3 and design R-39 confirmed far more strongly
+         than either was argued. The waiver's condition is now enforced by the audit script.
+Task 6  MonthlyChartInner.tsx
+  [x]    The ONLY recharts importer. Named imports, isAnimationActive={false}, minPointSize={0},
+         solid grid, band-sized hit target via BarChart onClick, custom tick, selected-bar cap
+         label, neutered Tooltip. accessibilityLayer for the keyboard path.
+Task 7  MonthlyChart.tsx
+  [x]    next/dynamic({ ssr: false }), two-stage tap, <details> table twin, frame held at
+         reduced opacity on re-scope
+  [x]    useOptimistic, NOT useState + a resync effect — the plan's effect does not lint
+         (react-hooks/set-state-in-effect) and repeats what R-105 already ruled against (R-114)
+Task 8  DeltaTile.tsx + MonthSwitcher.tsx
+  [x]    Both server, zero JS. Delta uses --red / --accent, which is exactly how F10 typed
+         Money's danger/success tones; glyph + Indonesian word + basis on every state.
+  [x]    Chevrons are F07's MonthHeader chevrons glyph-for-glyph, incl. the unfocusable
+         aria-disabled <span> for the wall. Both ends walled: no future, no pre-window month.
+Task 9  CategoryBreakdown.tsx + BiggestExpenseTile.tsx
+  [x]    Bar list, not a donut (R-3 / design R-39 / R-111). CategoryCode carries identity on
+         every row — this is the condition R-50's waiver depends on, and the audit enforces it.
+         Fills read categoryFill() → var(--color-cat-*). No hex, no Recharts, zero JS.
+  [x] +  /e/[id] item anchor shipped, one attribute + scroll-mt-24, so the callout deep-links
+         instead of dropping the fragment (R-116). Answers Open question 4.
+Task 10  EmptyStates.tsx
+  [x]    0 months → EmptyState + /new CTA · 1 month → a stat tile, never a one-bar chart.
+         Recharts is not downloaded in either case.
+Task 11  page.tsx + loading.tsx
+  [x]    requireUserId first · four aggregates in ONE Promise.all · all maths server-side
+  [x]    FETCH 13 MONTHS, CHART 12 (R-113) — the plan's delta read previousMonth out of a
+         12-row array and announced "Bulan pertama" on the window's earliest month
+  [x]    No `export const dynamic` (R-75/R-115); build lists /stats as ƒ. loading.tsx is safe
+         here because /stats never calls notFound() (R-98 inert).
+  [x]    ?m= clamped: shape-checked, never future, never pre-window; garbage falls back silently
+Task 12  Wiring + guards
+  [x]    scripts/f08-audit.sh — 21 PASS, exit 0 (recharts single-import, dynamic+ssr:false, no
+         hex, no fill prop on a mark, no pie, CategoryCode present, minPointSize, no dashed grid,
+         table view, neutered tooltip, shell group, bare /stats tab href, one await boundary,
+         requireUserId, no dynamic export, no lib/month, the /e/[id] anchor)
+  [x] +  Bundle gate measured on the chunk manifests, not the size table — Turbopack prints no
+         First Load JS column in next@16.3.1 (R-118). One 352K recharts chunk; one lazy-loadable
+         entry in the whole app, on /stats; zero on /m/[month] and every other route.
+  [x] +  docs/plans/fixtures/f08-seed.sql written (U-EMPTY / U-THIN / U-FULL, empty month in the
+         middle, month offsets computed in SQL so it does not rot)
+Ship
+  [x]    npm test 705 passed | 15 skipped · next typegen && tsc --noEmit · eslint · prettier ·
+         next build (ƒ /stats) · unauthenticated live probes 307 to /?next=…
+  [ ]    THE 30-STEP QA TABLE (§7.3), both schemes, at 414 × 896 — outstanding in full
+  [ ]    THE CHART HAS NEVER BEEN RENDERED. ssr:false plus no jsdom/browser in this repo means
+         bar geometry, the two-stage tap, the cap label, the • tick and the keyboard walk are
+         reasoned from the contract, not observed (R-119).
+  [ ]    f08-seed.sql NOT APPLIED — seeding a hosted Neon database is the owner's call. No query
+         has run against real rows.
+```

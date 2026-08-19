@@ -1701,3 +1701,243 @@ They say nothing about what a thumb sees.
 | 9 — a restored item gets a new id | Accepted, as the plan proposed (A7). Nothing references an item id across requests, and the alternative — a deferred-delete timer — loses the delete when the tab closes mid-window. The row's *position* is preserved, which is the part the user can see (R-16). |
 | 10 — `useLinkStatus` in `next@16.3.1` | Not used, and not needed: default prefetch plus a real `loading.tsx` gives the pending affordance the plan wanted a spinner for (R-101). The export exists (`next/link`) if a future screen wants it. |
 | 11 — multi-tab / stale optimistic state | Accepted, unchanged: last write wins. Single-user personal app (D3 notwithstanding — data is per-user, not shared), and every patch is field-scoped, so two tabs editing different fields of one group both land. |
+
+---
+
+## Addendum — rulings from F08 (landed during implementation)
+
+F08 shipped `app/(shell)/stats/*` (page, loading, seven components, `stats.css`), `lib/stats/*`
+(`format.ts`, `series.ts`, 27 tests), one new design token in `app/globals.css`, one attribute on
+F07's `ExpenseEditor.tsx`, `scripts/f08-audit.sh` and `docs/plans/fixtures/f08-seed.sql`.
+Numbering continues from R-109. **F09 reads R-111 before writing a colour.**
+
+Verified rather than reasoned: `npm test` (**705 passed | 15 skipped**, 27 of them new),
+`next typegen && tsc --noEmit`, `eslint` (clean), `prettier --check`, `next build` (`/stats`
+listed **ƒ**), `scripts/f08-audit.sh` (**21/21**), the `dataviz` validator in four
+configurations, the Turbopack chunk manifests, and unauthenticated probes against a live
+`next start`.
+
+### ⚠️ R-110 · The F08 plan's entire chart palette is deleted. The chart wears `--accent`.
+
+The plan (§4.4) declares twelve `--chart-*` tokens with its own hexes — a blue series ramp,
+its own inks, its own grid and its own status pair — scoped to `.stats-root` and measured
+against surfaces `#fcfcfb` / `#1a1a19`. **None of it survives contact with the shipped design
+system**, and three independent rulings already said so before F08 started:
+
+- **R-28** made F10's real surfaces (`--card` `#fbfaf5` / `#1e1e1a`) the ones that count.
+- **R-39** assigns the 12-month chart `--accent`, and the design ships exactly one accent.
+- **R-24** reset the `--color-*` namespace precisely so five parallel features could not each
+  arrive with a private palette.
+
+A second blue on a warm-paper page is a foreign body, and twelve parallel tokens for ink, grid
+and status re-declare things `--ink`, `--rule` and `--red` already are.
+
+**Ruling. F08 defines no colour.** `app/(shell)/stats/stats.css` survives as a file but holds
+only the two things a utility cannot express — the Recharts token bridge and descendant
+selectors into `.recharts-*` — and every value in it is an F10 token. `scripts/f08-audit.sh`
+greps for a literal hex in `app/(shell)/stats` and `lib/stats` so the plan's palette cannot
+come back.
+
+**With one exception, and it is a real addition: `--accent-2`.**
+
+R-39 also said the *completed* months take `--rule`. Reversed on measurement: `--rule` is
+**1.43:1** on card in light and **1.22:1** in dark, so eleven of twelve bars would sit below
+every contrast floor, with no relief available (only the selected bar carries a label). `--rule`
+keeps its real job — the gridline. So completed months take `--accent` (7.17 / 7.70 on card) and
+the **in-progress** month takes a one-hue second step:
+
+| Token | Light | Dark | Role / measured contrast on card |
+|---|---|---|---|
+| `--accent` | `#2f5d50` | `#86bba6` | completed month bar — 7.17 / 7.70 |
+| `--accent-2` | `#76948a` | `#577467` | in-progress month bar — 3.15 / 3.26 |
+
+Derived, not invented: `--accent` mixed 35% (light) / 45% (dark) toward `--card`. Validated as an
+**ordinal ramp**, which is the correct check — the two steps encode *data completeness*, not
+magnitude, so the categorical checks would fail a correct ramp by design:
+
+```
+$ node scripts/validate_palette.js "#2f5d50,#76948a" --ordinal --mode light --surface "#fbfaf5"
+  [PASS] Lightness monotone · [PASS] Adjacent ΔL · [PASS] Light-end contrast 3.15:1 · [PASS] Single hue 0°  → ALL CHECKS PASS
+$ node scripts/validate_palette.js "#577467,#86bba6" --ordinal --mode dark --surface "#1e1e1a"
+  [PASS] Lightness monotone · [PASS] Adjacent ΔL · [PASS] Light-end contrast 3.26:1 · [PASS] Single hue 2°  → ALL CHECKS PASS
+```
+
+Both steps clear 3:1 unaided, so the relief rule is not being leaned on — and the distinction is
+carried by two non-colour channels anyway (the tick is suffixed `•`, the caption reads
+`• Bulan berjalan — belum penuh sebulan.`). `--accent-2` lives in `app/globals.css` beside
+`--accent`, in all three theme blocks plus `@theme inline`, because a token that exists in one
+scheme and not the other is how you ship a paper-on-paper screen.
+
+### ⚠️ R-111 · R-28 is re-discharged on F10's own hues, and R-50's waiver is now load-bearing.
+
+R-28 called for the validator to be re-run before `/stats` ships, and F10's addendum discharged
+it for *text* contrast. The **categorical separation** question was left to R-50's waiver. Run
+against F10's eight hues on the real card surfaces, that waiver is not marginal — it is the only
+thing holding:
+
+```
+8 slots, --pairs all (the donut's pairlist):
+  light  [FAIL] CVD ΔE 0.6 (deutan) #6d4a86↔#3e5c85 · normal-vision floor 6.5 (needs ≥15)
+  dark   [FAIL] CVD ΔE 0.9 (protan) #c9a95c↔#adb063 · normal-vision floor 4.2
+
+7 hues, --pairs adjacent (the bar list's pairlist, `other` grey excluded):
+  light  [FAIL] CVD ΔE 2.0 (deutan) · normal-vision floor 9.0
+  dark   [FAIL] CVD ΔE 1.8 (deutan) · normal-vision floor 6.6
+  both   [PASS] Contrast vs surface — all 7 ≥ 3:1
+```
+
+ΔE 0.6 under deuteranopia means violet and blue are **the same colour** for roughly 1 in 12 men.
+Two things follow, and the second is the important one.
+
+**First, R-3 and R-39 are confirmed far more strongly than either was argued.** The F08 plan
+rejected the donut on numbers that failed only the all-pairs gate and passed adjacent. F10's warm
+earth tones fail *both*, in *both* schemes. A donut here would have been a genuine information
+loss for full-colour readers, not only colour-blind ones.
+
+**Second — and this is the standing constraint — the palette is only legal because nothing keys a
+category by colour alone.** That is R-50's waiver, and R-50 states it lapses the moment a view
+breaks the condition. F08 therefore renders `CategoryCode` (visible two-letter mark + `sr-only`
+Indonesian label) on every breakdown row and on the biggest-expense tile, beside the label, the
+rupiah and the percent; the bar is a *second* rendering of numbers already stated in text, which
+is why it is `role="img"` with an `aria-label` rather than an unlabelled div.
+
+**Ruling. The waiver holds for `/stats`, and `scripts/f08-audit.sh` now enforces its condition
+mechanically** — it fails if `CategoryBreakdown.tsx` stops rendering `CategoryCode`, and it fails
+on any `PieChart`/`Pie`/`Sector` under `app/(shell)/stats`. **F09's `/s/[token]` inherits the same
+constraint**: it renders items with categories to a reader who is not the owner, and it must carry
+the code, never a bare colour swatch.
+
+### R-112 · `emoji` is not a field. `BreakdownRow` carries `code`.
+
+The plan's `BreakdownRow` type and its `CategoryBreakdown` component both read
+`CATEGORY_META[...].emoji`. Design **R-34** replaced `emoji` with `code` across the whole app
+before F08 started — emoji rendering varies by OS, vendor and font version and cannot be tinted,
+while a two-letter mark is the same glyph everywhere, takes the category colour and aligns in a
+10px mono column.
+
+**Ruling. `BreakdownRow.emoji` becomes `BreakdownRow.code`**, and the component renders F10's
+`CategoryCode` rather than a bare glyph — which was already documented in `Chip.tsx` as being for
+"the head of each bar in F08's category list", so the drop-in existed and the plan simply had not
+read it. This also answers the plan's Open question 5 in favour of the shared component.
+
+### ⚠️ R-113 · The delta tile compared against a month outside the fetch window. Fetch 13, chart 12.
+
+A real bug in the plan's `page.tsx`, not a style note. `getMonthlyTotals(userId, MONTHS, currentMonth)`
+returns exactly the twelve months of the chart window. `previousTotal` is then looked up in that
+same array:
+
+```ts
+const previousTotal = totals.find((t) => t.month === previousMonth)?.totalIdr ?? 0
+```
+
+When the user pages to the **earliest** month in the window, its previous month is one step
+outside the array, the `?? 0` fires, and `computeDelta` takes the `previousIdr <= 0` branch — so
+the tile announces **"Bulan pertama dengan pengeluaran"** for a month with a perfectly good
+predecessor. Silent, plausible, and wrong on exactly one of twelve months.
+
+**Ruling. The fetch window is `MONTHS + 1`; the chart window stays `MONTHS`.** The extra row
+never reaches the chart because `buildMonthSeries` re-runs `fillZeroMonths` from the anchor,
+which regenerates the window and drops anything outside it — the idempotent guard the plan
+included for a different reason turns out to pay for this one too. `activeCount` is computed over
+the **visible** twelve, not the fetched thirteen, because the 0-month and 1-month short-circuits
+are about what the chart would look like. Covered by a new test ("drops rows outside the
+requested window").
+
+### R-114 · `useEffect(() => setPicked(prop))` does not lint. `useOptimistic` does the job.
+
+The plan's `MonthlyChart` resyncs its optimistic selection with
+`useEffect(() => setPicked(selectedMonth), [selectedMonth])`. `eslint` rejects it outright
+(`react-hooks/set-state-in-effect`, "Calling setState synchronously within an effect can trigger
+cascading renders"), and it is the same prop-echo-in-an-effect shape **R-105** already ruled
+against on `/e/[id]`.
+
+**Ruling. `useOptimistic(selectedMonth)`**, with the setter called inside the same
+`startTransition` as the `router.replace`. The hook reverts to the passed-through prop when the
+transition settles — by which time `selectedMonth` *is* the new month — so the resync is the
+hook's own semantics rather than a second render written by hand. F07's `ExpenseEditor` uses the
+same hook for the same reason, so this is the codebase's existing answer, not a new one.
+
+### R-115 · No `export const dynamic`, and `loading.tsx` is safe here.
+
+Two carried-over rulings, applied:
+
+- The plan sets `export const dynamic = 'force-dynamic'`. **R-75** recorded that Next 16 dropped
+  `dynamic` from the route-segment-config table, so it is a no-op that *reads* as a guarantee.
+  Omitted, exactly as `/m/[month]` omits it: `requireUserId()` reads the session cookie, which
+  makes the route dynamic by construction. `next build` lists `/stats` as **ƒ**, and the audit
+  script fails on a re-added `export const dynamic`.
+- **R-98** warned F08 that `/stats` "will inherit this behaviour the moment it adds a loading
+  boundary". It does add one — and the warning is **inert here**, because `/stats` never calls
+  `notFound()`: an invalid `?m=` clamps to the current month rather than 404ing. There is no
+  status code to lose, and R-101's default prefetch on the Statistik tab prefetches down to
+  exactly this boundary, which is what makes the tab feel instant.
+
+### R-116 · F07's item anchor shipped, one attribute, so the callout deep-links.
+
+F08's plan Open question 4 asked whether `/e/[id]` renders `id="item-<itemId>"`. It did not.
+Rather than drop the fragment (the plan's fallback), F08 added the attribute to
+`ExpenseEditor.tsx`'s item `<li>`, plus `scroll-mt-24` so the anchored row is not parked under
+the sticky detail header.
+
+**Ruling. The one attribute is worth more than the fallback** — landing on the group and making
+the reader hunt for the item among eighteen rows defeats the point of a "biggest single expense"
+callout. `scripts/f08-audit.sh` asserts the anchor still exists, because the link is inert
+without it and nothing would fail.
+
+### R-117 · `formatIdrAxis` delegates to `formatIdrCompact`. The plan's copy had drifted already.
+
+The plan hand-rolls the axis formatter with its own thresholds and suffixes — and its billions
+suffix is `m` where F03's shipped `formatIdrCompact` uses `M`. Two implementations of one string,
+which is what **R-7/R-8** exist to prevent, and they had already disagreed on paper.
+
+**Ruling. `formatIdrAxis(n) = formatIdrCompact(n).replace('Rp ', '')`.** One set of thresholds,
+one set of suffixes; the only thing F08 owns is dropping a prefix a 40px axis gutter has no room
+for. Every other export in `lib/stats/format.ts` carries a comment naming the `lib/format.ts`
+helper it is *not* duplicating and why that helper does not fit a 414px column.
+
+### R-118 · The bundle gate, measured on the chunk manifests rather than the size table.
+
+The plan's verification is `npm run build | tail -40`, expecting `/stats` First Load JS ~100 kB
+above `/m/[month]`. **Turbopack's build output does not print a size table** in `next@16.3.1` —
+the route list is routes and rendering modes only. So the gate was measured where the truth
+actually lives:
+
+```
+$ grep -rl "recharts-cartesian-axis" .next/static/chunks/*.js
+  .next/static/chunks/429jl8siabnim.js      352K (uncompressed)
+
+$ for f in $(find .next/server/app -name react-loadable-manifest.json); do …
+  1 entries  .next/server/app/(shell)/stats/page/react-loadable-manifest.json
+  0 entries  .next/server/app/(shell)/m/[month]/page/react-loadable-manifest.json
+  0 entries  (every other route)
+```
+
+One recharts-bearing chunk, one lazy-loadable entry in the whole application, on `/stats`. A user
+who only ever opens the Bulan Ini tab downloads none of it. `scripts/f08-audit.sh` guards the
+three ways this regresses: a second `from 'recharts'` importer, a static import of
+`MonthlyChartInner`, or a dropped `ssr: false`.
+
+### R-119 · What is NOT verified.
+
+1. **The chart has never been rendered.** `ssr: false` means `MonthlyChartInner` does not run on
+   the server at all, and there is no jsdom or browser-driving in this repo — so the bar geometry,
+   the band-sized hit target, the two-stage tap, the cap label, the `•` tick, the
+   `accessibilityLayer` keyboard walk and both colour schemes are **reasoned from the contract,
+   not observed**. Everything the server renders (hero, delta, breakdown, callout, table view) is
+   covered by types and the audit; nothing about what a thumb sees is.
+2. **The 30-step manual QA table (plan §7.3) is outstanding in full**, both schemes. The steps
+   that need real hardware cannot be faked in DevTools: safe-area insets under the notch, and
+   colour by eye at 414 × 896.
+3. **The database is empty, so no query has run against real rows.**
+   `docs/plans/fixtures/f08-seed.sql` is written and ready (U-EMPTY / U-THIN / U-FULL, with a
+   deliberately empty month in the middle of U-FULL's window and month offsets computed in SQL so
+   the fixture does not rot), but it has **not** been applied — seeding a hosted Neon database is
+   the owner's call, not the implementer's.
+4. **Live probes were unauthenticated only.** `/stats`, `/stats?m=2026-08`, `/stats?m=banana` and
+   `/stats?m=2099-01` each 307 to `/?next=…` against a real `next start`, which proves the route
+   is wired and `proxy.ts` protects it, and nothing more.
+
+**Do not mark F08 done on the strength of 705 green tests and a clean build.** They say the
+percentages sum to 100, that a zero month cannot be dropped, that the delta cannot divide by zero
+and that recharts is in exactly one lazy chunk. They say nothing about whether the chart looks
+right.
