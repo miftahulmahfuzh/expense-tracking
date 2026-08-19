@@ -79,11 +79,13 @@ targets — with seeded fixture data.
 </table>
 
 <details>
-<summary>Sign-in and the parsed review table</summary>
+<summary>Sign-in, the parsed review table, and the full stats screen</summary>
 <p align="center">
   <img src="docs/media/01-signin.png" width="260" alt="Sign-in landing: the wordmark, the tagline, and a single Lanjut dengan Google button.">
   &nbsp;&nbsp;
   <img src="docs/media/03-new-review.png" width="260" alt="The review stage: editable title, date, and six item rows each with a category chip and amount, above a sticky total and Simpan button.">
+  &nbsp;&nbsp;
+  <img src="docs/media/06-stats.png" width="260" alt="Stats: month-over-month delta, a 12-month bar chart with an empty April, and the category bar list with amounts and percentages.">
 </p>
 </details>
 
