@@ -1,5 +1,19 @@
 # F02 — Auth & Session
 
+> **Corrected after implementation.** `docs/RECONCILIATION_v0.1.0.md` is authoritative and
+> supersedes this file. Read **R-1** and **R-5** before §3, and the **F02 addendum (R-61…R-66)**
+> before §5. In summary, and applied inline below:
+>
+> - There is no `middleware.ts` in Next 16. It is **`proxy.ts`**, exporting `proxy`, and it runs
+>   on the **Node.js runtime** — setting `runtime` in it throws (R-1). Every Edge claim in §2 and
+>   §3 as originally written was false; the split config survives as a bundle-size choice.
+> - `proxy.ts` is **not** the security boundary. `requireUserId()` is (R-5).
+> - The landing page is `app/(bare)/page.tsx`, not `app/page.tsx` (R-51), and renders through
+>   F10's design system, not the raw `neutral-*` classes below (R-66).
+> - Task 4 was already done by F01 (R-64). Task 1 too — F01 installed every pinned dependency.
+> - A fourth additive file, `lib/auth/safeNext.ts`, exists because `'use server'` modules may
+>   only export async functions (R-63).
+
 **Depends on:** F01 (Next scaffold, `lib/env.ts`, Tailwind, Vercel project), F03 (Drizzle `db` client + Auth.js adapter tables in `lib/db/schema.ts`)
 **Unblocks:** F05, F06, F07, F08, F09 — every one of them calls `requireUserId()`.
 **Contract sections this plan is bound by:** §3 (pinned versions), §4.2 (Auth.js adapter tables), §4.4 (`requireUserId()` at the top of every action), §4.5 (`/api/auth/[...nextauth]`), §4.6 (page routes + which are protected), §4.8 (env var names).
@@ -8,7 +22,7 @@
 
 ## 0. What this feature is, in one paragraph
 
-Google-only sign-in via Auth.js v5. The Drizzle adapter persists `users` / `accounts` rows so that `expense_groups.user_id` has a real foreign key to point at, but the **session itself is a stateless JWT cookie** so that `requireUserId()` — which runs at the top of every Server Action and every protected page render — costs zero database round trips. Middleware guards `/new`, `/m/*`, `/e/*`, `/stats` and deliberately leaves `/s/*` and `/api/auth/*` open. There is no allowlist: any Google account may sign in, and the app is safe because **every single query is filtered by `userId`**.
+Google-only sign-in via Auth.js v5. The Drizzle adapter persists `users` / `accounts` rows so that `expense_groups.user_id` has a real foreign key to point at, but the **session itself is a stateless JWT cookie** so that `requireUserId()` — which runs at the top of every Server Action and every protected page render — costs zero database round trips. `proxy.ts` guards `/new`, `/m/*`, `/e/*`, `/stats` and deliberately leaves `/s/*` and `/api/auth/*` open. There is no allowlist: any Google account may sign in, and the app is safe because **every single query is filtered by `userId`**.
 
 ---
 
@@ -21,10 +35,10 @@ Google-only sign-in via Auth.js v5. The Drizzle adapter persists `users` / `acco
 > 2. Every `SELECT` / `UPDATE` / `DELETE` that touches `expense_groups` carries `eq(expenseGroups.userId, userId)` in its `WHERE`.
 > 3. Every query on a **child** table (`expense_items`, `expense_photos`, `share_links`) must **join back to `expense_groups` and filter on `user_id` there**. A child row's id is not a capability. `deleteItem(id)` must not be `DELETE FROM expense_items WHERE id = $1`; it must be `DELETE ... WHERE id = $1 AND group_id IN (SELECT id FROM expense_groups WHERE user_id = $2)`.
 > 4. An action that finds zero rows after scoping must behave identically to an action on a non-existent id (`notFound()` / no-op). Never leak "this exists but isn't yours" through a distinct error.
-> 5. Middleware is a **convenience redirect, not a security boundary.** It only runs on the paths in its matcher and can be bypassed by anything that doesn't traverse it (direct Server Action POSTs, for instance, are matched by the *page* path, not by an action path — do not rely on that). Authorization lives in `requireUserId()` + the `userId` filter, full stop.
+> 5. `proxy.ts` is a **convenience redirect, not a security boundary.** It only runs on the paths in its matcher and can be bypassed by anything that doesn't traverse it (direct Server Action POSTs, for instance, are matched by the *page* path, not by an action path — do not rely on that). Authorization lives in `requireUserId()` + the `userId` filter, full stop.
 
 > **INVARIANT B — the public exception.**
-> `/s/[token]` (F09) is the *only* route that reads data without a `userId`. It is scoped by an unguessable `share_links.token` instead. It must never accept a `groupId` directly, and it must never be added to the middleware matcher.
+> `/s/[token]` (F09) is the *only* route that reads data without a `userId`. It is scoped by an unguessable `share_links.token` instead. It must never accept a `groupId` directly, and it must never be added to the `proxy.ts` matcher.
 
 F03 owns the query-level enforcement; F02 owns the identity that enforcement is keyed on. Both halves are required.
 
@@ -40,7 +54,7 @@ F03 owns the query-level enforcement; F02 owns the identity that enforcement is 
 | Cost of `auth()` | One Neon round trip **per call** | Zero round trips — decrypt a cookie |
 | Cost per protected page render | 1 query for the session + N queries for data | N queries for data |
 | Cost inside a Server Action | +1 query on **every** action | 0 |
-| Works in Edge middleware | ❌ needs the DB adapter in the Edge bundle | ✅ verification is pure crypto |
+| ~~Works in Edge middleware~~ | *Void — R-1. Next 16 proxy is Node-only, so neither strategy is excluded by runtime. JWT still wins on the four rows above.* ||
 | Instant server-side revocation | ✅ delete the row | ❌ valid until the cookie expires |
 | Session data freshness (e.g. renamed user) | Always fresh | Stale until the JWT rotates |
 
@@ -70,23 +84,37 @@ Plus a TypeScript module augmentation so `session.user.id` is typed `string` rat
 
 ## 3. Runtime constraint: Node vs Edge, and the split-config pattern
 
-Next.js middleware runs on the **Edge runtime** by default. `@auth/drizzle-adapter` pulls in `drizzle-orm` and `@neondatabase/serverless`; even where those *can* run on Edge, importing them into `middleware.ts` means the adapter, the whole schema module, and the DB client get bundled into a file that executes on **every matched request**. That is slow to boot, and it drags server-only code (and `lib/env.ts` server secrets) into the Edge bundle.
+> **R-1 rewrote this section. The original text is preserved below only so the reasoning is
+> traceable; the constraint it describes does not exist.** Next 16 `proxy.ts` runs on the
+> **Node.js runtime**, and the `runtime` config option is unavailable there — setting it throws.
+> Nothing forces the adapter out of the proxy bundle any more.
+>
+> **Keep the split anyway**, for the reason that survives: `proxy.ts` runs on every matched
+> request, and there is no sense loading the Drizzle adapter, the schema module and a database
+> client into it to decrypt a cookie. Measured at 384 KB with zero database code in it (R-62).
+> That makes it a bundle-size choice. Weigh future changes to it as such — nothing breaks.
+>
+> One hard rule *does* survive, for an unrelated reason: `auth.config.ts` must not import
+> `lib/env.ts`, which opens with `import 'server-only'` and throws outside a React Server
+> Components graph (R-64).
+
+~~Next.js middleware runs on the **Edge runtime** by default. `@auth/drizzle-adapter` pulls in `drizzle-orm` and `@neondatabase/serverless`; even where those *can* run on Edge, importing them into `middleware.ts` means the adapter, the whole schema module, and the DB client get bundled into a file that executes on **every matched request**. That is slow to boot, and it drags server-only code (and `lib/env.ts` server secrets) into the Edge bundle.~~
 
 **The fix is the split-config pattern**, which is the officially documented Auth.js v5 approach:
 
 ```
 auth.config.ts   ← edge-safe: providers, callbacks, pages, session strategy. NO adapter, NO db import.
       │
-      ├── imported by  middleware.ts   →  NextAuth(authConfig)          (Edge, JWT verify only)
+      ├── imported by  proxy.ts        →  NextAuth(authConfig)          (Node, JWT verify only)
       │
       └── imported by  auth.ts         →  NextAuth({ ...authConfig, adapter: DrizzleAdapter(db) })  (Node)
 ```
 
-This works **only because we chose JWT**: the middleware instance needs nothing but `AUTH_SECRET` to decrypt and verify the cookie. With `strategy: 'database'` the middleware would have to reach the DB and the split would not save you.
+The proxy instance needs nothing but `AUTH_SECRET` to decrypt and verify the cookie. (The original text said this works "only because we chose JWT" — with a Node-runtime proxy that is no longer true either; a database strategy would work there, it would just cost a round trip on every matched request on top of the one in every action.)
 
 `Google` from `next-auth/providers/google` is a pure-config object — safe to import in the Edge config.
 
-**Escape hatch (do not use unless forced):** Next.js ≥15.5 (so also `next@16.3.1`) supports `export const config = { runtime: 'nodejs' }` in `middleware.ts`. If you ever genuinely need the adapter in middleware, that is the lever. We do not need it, and the Edge path is faster — stay on Edge.
+~~**Escape hatch:** `export const config = { runtime: 'nodejs' }`.~~ **Void — R-1: the `runtime` option is not available in a Proxy file and setting it throws.** Node is already the default and there is no lever to pull.
 
 ---
 
@@ -97,14 +125,15 @@ This works **only because we chose JWT**: the middleware instance needs nothing 
 | `auth.config.ts` | Edge-safe Auth.js config (providers, callbacks, pages, session) |
 | `auth.ts` | **Repo root.** `NextAuth()` with the Drizzle adapter. Exports `{ handlers, auth, signIn, signOut }` |
 | `app/api/auth/[...nextauth]/route.ts` | Re-exports `handlers` as `GET` / `POST` |
-| `middleware.ts` | **Repo root.** Route protection, Edge, positive matcher |
+| `proxy.ts` | **Repo root.** Route protection, Node runtime, positive matcher (R-1) |
 | `lib/auth/requireUserId.ts` | `requireUserId()`, `getUserId()`, `UnauthorizedError`, `unauthorizedJson()` |
 | `lib/auth/actions.ts` | `signInWithGoogleAction`, `signOutAction` — Server Actions usable from client components |
+| `lib/auth/safeNext.ts` | The open-redirect guard. Its own module because `'use server'` forbids a non-async export (R-63) |
 | `types/next-auth.d.ts` | Module augmentation: `session.user.id: string` |
-| `app/page.tsx` | `/` — signed out: Google button. Signed in: redirect to `/m/<YYYY-MM>` |
+| `app/(bare)/page.tsx` | `/` — signed out: Google button. Signed in: redirect to `/m/<YYYY-MM>`. R-51 put it in the `(bare)` group; the route is unchanged |
 | `components/auth/SignOutButton.tsx` | Sign-out affordance, reusable by F07's header |
-| `.env.local` (append) | `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` |
-| `lib/env.ts` (edit, F01-owned) | Add the four `AUTH_*` entries to the Zod schema |
+| ~~`.env.local` (append)~~ | Already done by F01 — the credentials were in place before F02 ran |
+| ~~`lib/env.ts` (edit)~~ | Already done by F01, behind a lazy `authEnv()`. F02 supplies only the call site, in `auth.ts` (R-64) |
 
 ---
 
@@ -140,7 +169,10 @@ If `lib/format.ts` does not exist yet, do **not** invent your own timezone logic
 
 ---
 
-### Task 1 — Install the pinned auth dependencies
+### Task 1 — Install the pinned auth dependencies  *(already done by F01)*
+
+F01 installed every pinned dependency in the roadmap §3 table, `next-auth@5.0.0-beta.32` and
+`@auth/drizzle-adapter@1.11.3` included, exact and un-caretted. Verify rather than install.
 
 ```bash
 cd /home/miftah/expense-tracking
@@ -208,7 +240,11 @@ git check-ignore -v .env.local   # must print a .gitignore line
 
 ---
 
-### Task 3 — Obtain the Google credentials
+### Task 3 — Obtain the Google credentials  *(already done)*
+
+The walkthrough below was completed before F02 ran; real `AUTH_GOOGLE_ID` /
+`AUTH_GOOGLE_SECRET` / `AUTH_SECRET` values are in `.env.local`. Kept in full because it is
+still the record of which redirect URIs are registered, and §7 will send you back to it.
 
 Do **[Getting AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / AUTH_SECRET](#getting-auth_google_id--auth_google_secret--auth_secret)** now — it is a long manual walkthrough in the Google Cloud Console and everything downstream is blocked on it. Come back with a Client ID and Client secret in hand, appended to `.env.local`:
 
@@ -226,7 +262,10 @@ grep '^AUTH_GOOGLE_ID=' .env.local | grep -c 'apps.googleusercontent.com'       
 
 ---
 
-### Task 4 — Extend `lib/env.ts` with the auth variables
+### Task 4 — Extend `lib/env.ts` with the auth variables  *(already done by F01 — R-64)*
+
+F01 shipped the `AUTH_*` block behind a lazy `authEnv()`, with a comment reserving the call
+site for F02. All F02 adds is that call, at module scope in `auth.ts`.
 
 F01 owns this file. Add the auth block to its Zod schema. The exact surrounding code depends on F01's shape; the entries to add are:
 
@@ -242,7 +281,7 @@ F01 owns this file. Add the auth block to its Zod schema. The exact surrounding 
 
 Two rules for this file, given §4.8's "missing var = loud crash, never a silent `undefined`":
 
-- `lib/env.ts` must **not** be imported by `auth.config.ts` or `middleware.ts`. It is a Node-side boot guard; keep it out of the Edge bundle. The Edge side reads `process.env.AUTH_SECRET` implicitly through Auth.js itself.
+- `lib/env.ts` must **not** be imported by `auth.config.ts` or `proxy.ts` — not for the bundling reason originally given, but because it opens with `import 'server-only'`, which throws outside a React Server Components graph and `proxy.ts` is not one. The proxy reads `process.env.AUTH_SECRET` implicitly through Auth.js itself. `auth.ts` calls `authEnv()` at module scope instead (R-64).
 - Import `lib/env.ts` somewhere in the Node boot path (F01 will have wired this, typically `app/layout.tsx` or `lib/db/index.ts`) so a missing var crashes at startup rather than at first sign-in.
 
 ```bash
@@ -302,7 +341,7 @@ import Google from 'next-auth/providers/google'
  *
  * HARD RULE: nothing in this file — or in anything it imports — may touch the
  * database, the Drizzle adapter, `lib/env.ts`, or any Node-only builtin.
- * `middleware.ts` imports this and runs it on the Edge runtime for every
+ * `proxy.ts` imports this and runs it on the Node runtime for every
  * matched request. The adapter is bolted on in `auth.ts`, which is Node-only.
  * See docs/plans/F02-auth.md §3.
  */
@@ -336,7 +375,7 @@ export const authConfig = {
 
   // See docs/plans/F02-auth.md §2 for the full JWT-vs-database tradeoff.
   // Short version: requireUserId() runs on every Server Action; a stateless
-  // cookie makes that free, and it is what lets middleware run on the Edge.
+  // cookie makes that free. (The shipped comment drops the Edge clause — R-1.)
   session: {
     strategy: 'jwt',
     maxAge: 60 * 60 * 24 * 30, // 30 days
@@ -410,7 +449,7 @@ import { accounts, sessions, users, verificationTokens } from '@/lib/db/schema'
  * The Node-runtime Auth.js instance. This is the ONLY module that should be
  * imported when you need `auth()`, `signIn()`, `signOut()` or the route handlers.
  *
- * `middleware.ts` must NOT import this file — it would drag the Drizzle adapter
+ * `proxy.ts` must NOT import this file — it would drag the Drizzle adapter
  * and the Neon client into the Edge bundle. It imports `auth.config.ts` instead.
  *
  * Note the adapter + JWT combination: the adapter still writes `users` and
@@ -481,15 +520,17 @@ curl -s http://localhost:3000/api/auth/session; echo
 ```json
 {"google":{"id":"google","name":"Google","type":"oidc","signinUrl":"http://localhost:3000/api/auth/signin/google","callbackUrl":"http://localhost:3000/api/auth/callback/google"}}
 ```
-and `{}` for the session (signed out — an empty object, not an error).
+and `null` for the session (signed out). **R-65: the plan originally said `{}`;
+`next-auth@5.0.0-beta.32` returns the JSON literal `null`.** Either way the point is a 200 with
+no user in it, not an error.
 
 If `/api/auth/providers` 500s, the usual causes are: `AUTH_SECRET` missing, `AUTH_GOOGLE_ID`/`SECRET` missing, or `lib/db` failing to construct.
 
 ---
 
-### Task 9 — `middleware.ts`
+### Task 9 — `proxy.ts`  *(R-1: not `middleware.ts`)*
 
-**File: `middleware.ts`** (repo root, complete contents)
+**File: `proxy.ts`** (repo root). The shipped file names its export `proxy` and drops every Edge claim from the comments; otherwise the body below is what landed.
 
 ```ts
 import NextAuth from 'next-auth'
@@ -535,13 +576,14 @@ export const config = {
 
 Notes worth internalising:
 
-- `middleware.ts` lives at the **repo root** (sibling of `app/`), because this project has no `src/` directory. If F01 scaffolded with `src/`, it goes at `src/middleware.ts` and `authConfig` imports become `'./auth.config'` relative to that location.
+- `proxy.ts` lives at the **repo root** (sibling of `app/`); F01 scaffolded without `src/`. The exported function must be named `proxy` or be the default export — nothing else is picked up.
+- The shipped matcher and comments also exclude `/api/health`, which F01's liveness probe asked for in a comment on its own route file.
 - The matcher strings are compiled at build time and **cannot be dynamic** — no variables, no imported constants, no template literals.
 - `/m/:path*` also matches bare `/m`. Fine: F07 can redirect `/m` → current month, and it should be behind auth either way.
-- Middleware is a redirect for humans. It is **not** the authorization check. See §1.5.
+- The proxy is a redirect for humans. It is **not** the authorization check. See §1.5 and R-5.
 
 ```bash
-npx tsc --noEmit && git add middleware.ts && git commit -m "F02: edge middleware protecting /new /m /e /stats, leaving /s and /api/auth open"
+npx tsc --noEmit && git add proxy.ts && git commit -m "feat(f02): proxy.ts guarding /new /m /e /stats, leaving /s and /api open"
 ```
 
 ---
@@ -637,7 +679,7 @@ export function unauthorizedJson(): Response {
 Why `redirect('/')` and not `notFound()` or `throw new Error()`:
 - `throw new Error('unauthenticated')` surfaces as Next's generic error boundary — a red screen for what is a completely normal state (cookie expired after 30 days).
 - `notFound()` lies about what happened.
-- `redirect('/')` lands the user on the Google button, which is what they need. Middleware already covers the *navigation* case; `requireUserId()` covers the *action* and *direct-render* cases and the race where a cookie expires between page load and button press.
+- `redirect('/')` lands the user on the Google button, which is what they need. The proxy already covers the *navigation* case; `requireUserId()` covers the *action* and *direct-render* cases and the race where a cookie expires between page load and button press.
 - Next 16 also ships an `unauthorized()` interrupt behind the experimental `authInterrupts` flag with an `app/unauthorized.tsx` boundary. It is nicer in principle. It is experimental, and "no feature flags" is a core tenet — **do not use it in v0.1.0.** Revisit when it stabilises (see Open Questions).
 
 ```bash
@@ -690,7 +732,14 @@ npx tsc --noEmit && git add lib/auth/actions.ts && git commit -m "F02: sign-in/s
 
 ---
 
-### Task 12 — The sign-in page at `/`
+### Task 12 — The sign-in page at `app/(bare)/page.tsx`
+
+**R-51 for the path, R-66 for everything below the structure.** The route is still `/` — a route
+group never appears in a URL — but the file is `app/(bare)/page.tsx` and F10 had already
+composed it. The JSX below is superseded: its `neutral-*` / `red-50` classes are not in F10's
+token set, and the design replaced the full-colour Google mark with a serif `G` on a
+`secondary` `Button` reading `Lanjut dengan Google` (R-40). What survives verbatim is the
+**structure** the plan asked to keep: form → hidden `next` → submit button.
 
 Per §4.6: signed out → landing + Google button. Signed in → redirect to `/m/<current YYYY-MM>`. No email/password, no sign-up flow, no "create account" — with Google OAuth, first sign-in *is* sign-up (the adapter inserts the `users` row).
 
@@ -877,17 +926,18 @@ npm run build
 ƒ Middleware                             ~XX kB
 ```
 
-Sanity-check that the adapter did **not** leak into the Edge bundle. The middleware chunk should be tens of kB, not hundreds:
+Sanity-check that the adapter did **not** land in the proxy bundle. **R-1 demotes this from a correctness gate to a bundle-size check** — nothing breaks if it fails now, the proxy just got fatter than it needs to be. Note the artefact is still named `middleware.js` even though the source is `proxy.ts`; there is no `.next/server/proxy.js` to find (R-62):
 
 ```bash
 du -sh .next/server/middleware.js 2>/dev/null || ls -la .next/server/ | grep -i middleware
-grep -rl 'drizzle-orm\|@neondatabase' .next/server/middleware* 2>/dev/null && echo "LEAK — middleware imported the DB layer" || echo "clean"
+# Turbopack puts the real code in a chunk the entry only requires — check both.
+grep -rl 'drizzle-orm\|@neondatabase\|neon-http' .next/server/middleware* .next/server/chunks/*root-of-the-server* 2>/dev/null | head
 ```
 
-**Expected:** `clean`. If it says LEAK, something in the `auth.config.ts` import graph reaches the database — most likely you imported `@/auth` instead of `./auth.config` in `middleware.ts`, or added a `lib/env.ts` import to the config.
+**Expected:** no chunk in the proxy's own graph matches. Measured on the shipped build: one 384 KB chunk, zero matches. If one does match, something in the `auth.config.ts` import graph reaches the database — most likely you imported `@/auth` instead of `./auth.config` in `proxy.ts`, or added a `lib/env.ts` import to the config.
 
 ```bash
-git commit --allow-empty -m "F02: build gate green, middleware bundle free of the DB layer"
+git commit --allow-empty -m "F02: build gate green, proxy bundle free of the DB layer"
 ```
 
 ---
@@ -1194,7 +1244,8 @@ curl -s http://localhost:3000/api/auth/providers | node -e "let s='';process.std
 ```bash
 curl -s http://localhost:3000/api/auth/session
 ```
-**PASS:** `{}` — an empty object, HTTP 200. **FAIL:** a 500, or a body containing a user.
+**PASS:** `null` — HTTP 200 with no user (R-65; the plan originally expected `{}`, which
+`next-auth@5.0.0-beta.32` does not return). **FAIL:** a 500, or a body containing a user.
 
 ### 3. Protected routes redirect when signed out
 
@@ -1212,15 +1263,15 @@ done
 /stats         307 http://localhost:3000/?next=%2Fstats
 ```
 **FAIL:** any `200` — that route rendered without a session.
-(If F05/F07/F08 haven't shipped those pages yet you will still get `307` here, because middleware runs *before* routing. That is the point: this test is valid today, before those features exist.)
+(If F05/F07/F08 haven't shipped those pages yet you will still get `307` here, because the proxy runs *before* routing. That is the point: this test is valid today, before those features exist.)
 
 ### 4. `/s/*` stays public — THE critical assertion
 
 ```bash
 curl -s -o /dev/null -w '%{http_code} [%{redirect_url}]\n' http://localhost:3000/s/aBcDeF123456
 ```
-**PASS:** `404 []` — Next has no `/s/[token]` route yet (F09 owns it), so a 404 is correct, and crucially it is **not** a 307 to `/`. That proves middleware did not intercept the path.
-**FAIL:** `307 [http://localhost:3000/?next=%2Fs%2FaBcDeF123456]` — the matcher is wrong; `/s/*` must never appear in `middleware.ts`'s `config.matcher`.
+**PASS:** `404 []` — Next has no `/s/[token]` route yet (F09 owns it), so a 404 is correct, and crucially it is **not** a 307 to `/`. That proves the proxy did not intercept the path. `tests/auth.proxy.matcher.test.ts` now asserts the same property without a running server.
+**FAIL:** `307 [http://localhost:3000/?next=%2Fs%2FaBcDeF123456]` — the matcher is wrong; `/s/*` must never appear in `proxy.ts`'s `config.matcher`.
 After F09 ships, re-run with a real token and expect `200`.
 
 ### 5. `/api/auth/*` is not intercepted
@@ -1324,16 +1375,17 @@ git commit --allow-empty -m "F02: manual verification script passed (sign-in, se
 Everything F02 builds sits inside the authoritative contract as written:
 - `auth.ts` at the repo root exporting `{ handlers, auth, signIn, signOut }` — §5/F02.
 - `app/api/auth/[...nextauth]/route.ts` — §4.5, verbatim.
-- `middleware.ts` protecting `/new`, `/m`, `/e`, `/stats` and not `/s` — §4.6 auth column, verbatim.
+- `proxy.ts` protecting `/new`, `/m`, `/e`, `/stats` and not `/s` — §4.6 auth column, verbatim (R-1 for the filename).
 - JWT session strategy — §5/F02 already specifies it; §2 above records the reasoning rather than changing the decision.
 - Env var names `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`, `AUTH_URL` — §4.8, verbatim.
 - Auth.js tables come from the standard Drizzle adapter shape, hand-rolled by nobody — §4.2, honoured.
 
 Two additive files that the contract does not enumerate but does not forbid, flagged for visibility:
 
-1. `auth.config.ts` at the repo root. Required by the Edge/Node split (§3). It is an implementation detail of `auth.ts`; nothing outside `auth.ts` and `middleware.ts` should import it.
+1. `auth.config.ts` at the repo root. Required by the split (§3). It is an implementation detail of `auth.ts`; nothing outside `auth.ts` and `proxy.ts` should import it.
 2. `lib/auth/actions.ts` — sign-in/sign-out Server Actions. Deliberately **not** placed in `app/actions/`, so the §4.4 Server Actions table stays exactly as written and continues to describe only data mutations.
 3. `types/next-auth.d.ts` — type-only augmentation, zero runtime footprint.
+4. `lib/auth/safeNext.ts` — the open-redirect guard, hoisted out of `lib/auth/actions.ts` because a `'use server'` module may only export async functions, and `app/(bare)/page.tsx` needs it too (R-63).
 
 ---
 
@@ -1405,7 +1457,7 @@ signOut(options)
 handlers: { GET, POST }
 ```
 Prefer `requireUserId()` / `getUserId()` over calling `auth()` directly. Reach for `auth()` only when you need the *profile* (`name`, `email`, `image`) — as `AccountMenu` does.
-**Never import `@/auth` from `middleware.ts`** or from anything middleware transitively imports.
+**Never import `@/auth` from `proxy.ts`** or from anything the proxy transitively imports.
 
 ### `lib/auth/actions.ts`
 
@@ -1455,4 +1507,4 @@ The `userId` handed out by `requireUserId()` is always a value present in `users
 
 10. **Session length.** 30 days with a 1-day rolling refresh. For a personal daily-use expense tracker, "never asks me to sign in again" is arguably the right product answer — should this be 90 days? Cheap to change (`session.maxAge` in `auth.config.ts`), so it is not blocking, but pick deliberately.
 
-11. **Does anything need to run on *every* request that middleware could do cheaply?** Right now middleware only redirects. If F10 wants a nonce-based CSP or F09 wants `noindex` headers on `/s/*`, the matcher would have to widen — and widening it is exactly how `/s/*` accidentally becomes protected. Route any such request through this plan's §1 INVARIANT B.
+11. **Does anything need to run on *every* request that the proxy could do cheaply?** Right now it only redirects. If F10 wants a nonce-based CSP or F09 wants `noindex` headers on `/s/*`, the matcher would have to widen — and widening it is exactly how `/s/*` accidentally becomes protected. Route any such request through this plan's §1 INVARIANT B.

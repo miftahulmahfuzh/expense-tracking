@@ -675,3 +675,125 @@ day. Also proven rather than asserted: `SUM(bigint)` arriving as a JS `number`,
 `ON DELETE CASCADE` on all six FKs, the `share_links` UNIQUE constraint, cross-user isolation
 on every read plus the nested `UPDATE`, and the round-trip counter — `getGroupDetail` and
 `getGroupByShareToken` cost exactly **one** `fetch` each.
+
+---
+
+## Addendum — rulings from F02 (landed during implementation)
+
+R-1 and R-5 had already retargeted F02 before it ran; what follows is what implementation
+found on top of them. Numbering continues from R-60.
+
+### ⚠️ R-61 · `unstable_doesProxyMatch` does not exist in the shipped `next@16.3.1`.
+
+The Next 16.3.1 proxy docs — the copy in `node_modules/next/dist/docs`, so not a stale
+tutorial — document the matcher unit-test helper as `unstable_doesProxyMatch`. The shipped
+build exports **`unstable_doesMiddlewareMatch`**; the rename landed in the documentation
+ahead of the code. Same signature, same module (`next/experimental/testing/server`).
+
+**Ruling.** `tests/auth.proxy.matcher.test.ts` calls `unstable_doesMiddlewareMatch` and says
+why in a comment. Recorded because the docs will eventually catch up and the call will then
+look like the stale one.
+
+Two further things that bite anyone importing that module from Vitest, both worked around in
+the test rather than in `vitest.config.ts`:
+
+1. It throws **at import time** — `Invariant: AsyncLocalStorage accessed in runtime where it
+   is not available` — unless `globalThis.AsyncLocalStorage` already exists. Next's own
+   runtimes install it as a global; plain Node does not. The test assigns it from
+   `node:async_hooks` first, which forces the import of the helper to be dynamic, because a
+   static `import` would hoist above the assignment.
+2. Importing `@/proxy` pulls in `next-auth`, whose internals import the bare specifier
+   `next/server`, which Vitest's resolution cannot follow the way the Next bundler can. The
+   test stubs `next-auth`; it only wants the `config` export. The handler half is covered by
+   the live dev-server run below.
+
+### R-62 · The build artefact is still `.next/server/middleware.js`, from a `proxy.ts` source.
+
+F02's plan §Task 14 greps `.next/server/middleware.js` to prove the database layer never
+reached the proxy bundle. That path is still correct in Next 16.3.1 — the *file convention*
+renamed, the build output did not. Looking for `.next/server/proxy.js` finds nothing and
+reads as "the check no longer applies".
+
+Run as R-1 demoted it, a bundle-size check rather than a correctness gate. Measured: the
+proxy graph is one 384 KB chunk (Auth.js core, unavoidable) with **zero** occurrences of
+`drizzle-orm`, `@neondatabase` or `neon-http`. The split config is doing the job it is now
+kept for.
+
+### R-63 · `safeNext()` is a fourth additive file, because `'use server'` forbids the third.
+
+F02 §9 lists three additive files. There is a fourth: **`lib/auth/safeNext.ts`**.
+
+The plan put the open-redirect guard inside `lib/auth/actions.ts` as a module-private
+function. Two things make that impossible as written: every export of a `'use server'` module
+must be an async function, so the guard cannot be exported from there — and
+`app/(bare)/page.tsx` needs it, because it honours `?next=` for an *already signed-in*
+visitor too. A private copy in the page would be the same guard written twice, which is how
+one of the two copies later stops matching the other.
+
+Type-only widening while moving it: the parameter is `unknown`, not `FormDataEntryValue |
+null`, so the page can pass a `searchParams` value (`string | string[] | undefined`) without
+a cast. Unit-tested in `tests/auth.safeNext.test.ts`, including the `string[]` case Next
+hands back for a repeated query key.
+
+### R-64 · `lib/env.ts` already carried the `AUTH_*` block. F02 supplies only the call site.
+
+Plan Task 4 has F02 add four entries to `lib/env.ts`'s Zod schema. F01 had already shipped
+them, deliberately, behind a lazy `authEnv()` with the comment *"F02 owns these. Validated on
+first call, which F02's `auth.ts` makes module-scope."*
+
+**Ruling. F01's arrangement stands and F02 honours it**: `auth.ts` calls `authEnv()` at module
+scope, and Task 4 is already done. This is the only spot that works — `auth.config.ts` is
+imported by `proxy.ts`, and `lib/env.ts` opens with `import 'server-only'`, which throws
+outside a React Server Components graph. The plan's rule "`lib/env.ts` must not be imported by
+`auth.config.ts` or `proxy.ts`" therefore survives R-1 intact, for a reason that has nothing
+to do with the Edge runtime it was originally written about.
+
+### R-65 · `GET /api/auth/session` answers `null` when signed out, not `{}`.
+
+Plan §8 step 2 expects an empty object. `next-auth@5.0.0-beta.32` returns the JSON literal
+`null`. Both are falsy and no application code reads that endpoint, but a verification step
+whose stated pass condition never occurs is a step people learn to skip.
+
+### R-66 · The plan's UI is written against a token set that does not exist.
+
+`app/page.tsx`, `SignOutButton` and `AccountMenu` in F02's plan are styled with
+`text-neutral-500`, `bg-red-50`, `border-neutral-200`, `dark:bg-neutral-900` and a full-colour
+Google `<svg>`. R-52j removed exactly those names — the palette is `paper*` / `ink*` / `rule*`
+/ `accent` / `red` — and design R-34/R-40 replaced the mark with a serif `G` on a secondary
+button reading `Lanjut dengan Google`.
+
+**Ruling. The design wins, as R-6 always said it would**: F10 supplies the presentation, F02
+supplies the session logic. All three files render through `@/components/ui`. The plan's
+instruction to "keep the structure — form → hidden `next` → submit button" is honoured
+exactly; only its classes are gone.
+
+Consequence for F07, which R-6 leaves owning the header: `AccountMenu` ships unused. It is
+`px-gutter py-3`, a 44px `Button size="md"`, and no chrome of its own, so it drops into a
+sheet or a header row without a fight.
+
+### Verification: what F02 actually proved, and what it could not
+
+Green: `npm test` **306/306** (19 new — 5 `safeNext`, 8 `requireUserId`, 6 matcher),
+`next typegen && tsc --noEmit`, `eslint`, `prettier --check .`, `next build`.
+
+Against a live `next dev`, signed out: `/api/auth/providers` lists exactly one provider;
+`/new`, `/stats`, `/m/2026-08` and `/e/abc123` all 307 to `/?next=<encoded>`; **`/s/abc` does
+not redirect**; `/api/health` still answers 200; `/api/auth/signin` is not intercepted; `/`
+renders all four R-40 strings; `?error=` renders the alert; and the hidden `next` field holds
+`/` for `https://evil.com`, `//evil.com`, `/\evil.com` and `javascript:alert(1)`, but
+`/new?a=1` for `/new?a=1`.
+
+Signed in, using a **synthetic session cookie** minted with `@auth/core/jwt`'s `encode()` at
+the same `AUTH_SECRET` and salt — which is a real test of our own callbacks precisely because
+the JWT strategy means a session read touches no database: `/api/auth/session` returns
+`{"user":{…,"id":"usr_synthetic_test"}}`, so `token.sub` → `session.user.id` works end to
+end; the four protected routes stop redirecting and 404 instead, which is correct, F05/F07/F08
+have not built them; `/` redirects to `/m/2026-08`; `/?next=/stats` redirects to `/stats`;
+`/?next=https://evil.com` redirects to `/m/2026-08`.
+
+**Not verified, and unverifiable from here:** the Google round trip itself. Nothing in this
+session opened a browser, so the OAuth consent screen, the `redirect_uri` Google actually
+accepts, and the `user`/`account` rows the adapter writes on first sign-in are all untested.
+Plan §8 steps 7, 8, 12 and 13 remain outstanding and need a human with a browser. The
+credentials in `.env.local` are real and the console walkthrough in the plan was already
+completed, so this is one manual pass, not a blocked task.
