@@ -239,3 +239,52 @@ persistent counter.
 4. **Credential hygiene.** `LLM_API_KEY` and both Neon connection strings were pasted in plain text
    into a chat transcript. Rotating them before launch is cheap; not rotating them is a decision, so
    make it deliberately.
+
+---
+
+## Addendum — rulings from F05 (landed after the first pass)
+
+### ⚠️ R-31 · `PhotoPicker` must publish upload-busy state, or photos vanish silently.
+
+**Raised by:** F05. **Confirmed by reading F06**, which computes an `inFlight` value internally and
+explicitly records that it *did not* expose it.
+
+F05 owns the "Simpan" button; F06 owns the uploads. With no channel between them, a user who taps
+Simpan while a photo is still uploading gets a saved expense whose gallery is missing that photo —
+**no error, no retry, no trace.** Silent partial data loss is the worst failure mode we have, and it
+lands on the tap the user cares most about.
+
+**Ruling. F06 adds one prop:**
+
+```ts
+onBusyChange?: (busy: boolean) => void   // fires on every inFlight transition
+```
+
+F06 already tracks `inFlight`; this only publishes it. F05 disables Simpan while `busy` is true and
+shows "menunggu foto selesai diunggah…". This is the one case in the whole plan set where the save
+button is legitimately disabled — F05's own rule is that validation never disables it, because a
+dead button with no explanation is worse than an inline error.
+
+### R-32 · `inputMode` on the amount field: `decimal`, not `numeric`.
+
+My F05 brief mandated `inputMode="numeric"`; F10's `MoneyInput` ships `decimal`, alongside a
+documented refusal to use `type="number"` (which rejects the loose input — `45k`, `1,5jt` — that
+makes manual entry as forgiving as the LLM path).
+
+**Ruling. F10 wins.** On iOS both render a digits-only pad, so the user-visible difference is nil,
+and overriding a design-system component on a single screen is how design systems rot. My brief was
+the less-considered of the two.
+
+### R-33 · F05 ships zero shared components.
+
+F05 had specified `MoneyInput`, `Chip` and `CategoryPicker` under `components/expense/` — all three
+already published by F10. It deleted its own and rewired `DraftItem` from `amountText`/`amountIdr`
+to `amountIdr`/`amountRaw` to match `MoneyInput`'s callback contract. **Recorded so nobody
+reinstates them.** This is the correct resolution of the same class of collision as R-7 and R-8.
+
+### Note on F05's provenance
+
+F05 reported damaging its file mid-edit and rebuilding the body. **Verified after the fact:** 2,797
+lines, 18 task headings, all four required sections present exactly once, code fences balanced, and
+every remaining `photoIds` occurrence is discussion of the R-2 conflict rather than stale
+specification. The file is sound.
