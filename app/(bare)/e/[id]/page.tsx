@@ -2,9 +2,11 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { PhotoManager, PhotoPicker } from '@/components/photos'
+import { ShareButton, ShareLinkPanel } from '@/components/share'
 import { requireUserId } from '@/lib/auth/requireUserId'
 import { getGroupDetail } from '@/lib/db/queries'
 import { isValidId } from '@/lib/id'
+import { shareOrigin } from '@/lib/share/origin'
 
 import { ExpenseEditor } from './ExpenseEditor'
 
@@ -54,6 +56,15 @@ export default async function ExpenseDetailPage({ params }: PageProps<'/e/[id]'>
   const detail = await getGroupDetail(userId, id)
   if (!detail) notFound()
 
+  /*
+   * Resolved HERE, on the server, and passed down — never read in the browser. AUTH_URL
+   * lives behind `lib/env.ts`'s `server-only` pragma and is not NEXT_PUBLIC_, so a client
+   * component reading it would get `undefined` and silently share a localhost URL; and
+   * `window.location.origin` on a preview deployment would hand a friend a `*.vercel.app`
+   * link that dies at the next push (F09 Open question 6).
+   */
+  const origin = shareOrigin()
+
   return (
     <ExpenseEditor
       groupId={detail.id}
@@ -81,11 +92,24 @@ export default async function ExpenseDetailPage({ params }: PageProps<'/e/[id]'>
         </>
       }
       /*
-       * F09 fills this with <ShareControl groupId shareToken title />, which owns
-       * navigator.share, the clipboard fallback and the revoke button. `detail.shareToken`
-       * (R-12) is already fetched, so F09 needs no extra query — only this prop.
+       * F09. `detail.shareToken` (R-12) came back with the group detail F07 already
+       * fetched, so the whole feature costs no extra query — and the revoke panel is
+       * therefore correct on FIRST PAINT, with no loading flash and no client fetch on
+       * mount. Two slots, not one: the header carries the action (design R-38 allows
+       * exactly one there), the body carries the status and the destructive control.
        */
-      shareSlot={null}
+      shareSlot={
+        <ShareButton
+          groupId={detail.id}
+          title={detail.title}
+          occurredOn={detail.occurredOn}
+          origin={origin}
+          initialToken={detail.shareToken}
+        />
+      }
+      shareLinkSlot={
+        <ShareLinkPanel groupId={detail.id} token={detail.shareToken} origin={origin} />
+      }
     />
   )
 }

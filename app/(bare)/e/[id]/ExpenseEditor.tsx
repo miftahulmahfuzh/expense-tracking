@@ -67,12 +67,21 @@ export function ExpenseEditor({
   items,
   photoSlot,
   shareSlot,
+  shareLinkSlot,
 }: {
   groupId: string
   meta: EditableMeta
   items: EditableItem[]
   photoSlot?: ReactNode
+  /** F09's Bagikan button — the header's one optional action (design R-38). */
   shareSlot?: ReactNode
+  /**
+   * F09's live-link status and its revoke control. Renders nothing when the group has no
+   * share link, which is the common case, so the slot is usually an empty node rather than
+   * a conditional here. It goes above the delete button, not beside the header action:
+   * see the docblock on `ShareLinkPanel` for why status and action are separated.
+   */
+  shareLinkSlot?: ReactNode
 }) {
   const toast = useToast()
   const [, startTransition] = useTransition()
@@ -310,6 +319,8 @@ export function ExpenseEditor({
           onCommit={(note) => commitMeta({ note })}
         />
       </div>
+
+      {shareLinkSlot && <div className="mt-10 px-safe">{shareLinkSlot}</div>}
 
       <div className="mt-10 px-safe pb-8">
         <Button variant="destructive" fullWidth onClick={() => setConfirmingDelete(true)}>
