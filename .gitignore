@@ -53,3 +53,7 @@ next-env.d.ts
 # surviving a browser-image-compression bump.
 /public/vendor/
 .env*
+
+# git worktrees created for isolated feature work (see using-git-worktrees skill).
+# Nested checkouts of this same repo — tracking them would commit the repo into itself.
+/.worktrees/
