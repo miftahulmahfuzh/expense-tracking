@@ -174,6 +174,31 @@ the `www` CNAME target is per-project:
 - `A_VALUE` — an IPv4 address (commonly `76.76.21.21`; newer projects get e.g. `216.198.79.1`)
 - `CNAME_VALUE` — `<16-hex>.vercel-dns-0NN.com` (older projects: `cname.vercel-dns.com`)
 
+*This project was issued `A 76.76.21.21` for the apex.* Get the `www` target from
+`vercel domains inspect www.expensetracking.online` or the dashboard Domains page.
+
+### Two warnings to expect here, both benign
+
+Adding each domain prints **"This domain is not configured properly"**. That is the
+expected state until Step 5 — the DNS records do not exist yet. It is a to-do, not a
+failure.
+
+`vercel domains inspect` also shows a nameserver mismatch:
+
+```
+Intended Nameservers    Current Nameservers
+ns1.vercel-dns.com      ns1.domainesia.net     ✘
+ns2.vercel-dns.com      ns2.domainesia.net     ✘
+```
+
+**Those two ✘ marks are permanent and correct — do not chase them.** Vercel's own output
+offers two mutually exclusive paths: (a) set an `A` record at your existing DNS provider,
+or (b) move the nameservers to Vercel. This project deliberately takes **(a)**, keeping DNS
+at Domainesia, so "Current Nameservers" will read `domainesia` forever. Following the ✘ to
+option (b) would hand the whole zone to Vercel and take every other record on the domain
+with it. The signal that matters is the domain's **Configured / Valid Configuration**
+status after the A and CNAME records land, not this table.
+
 While on that screen: keep **`expensetracking.online`** as the primary domain and set
 **`www.expensetracking.online` → Redirect → `expensetracking.online` (308 Permanent)**.
 This is not cosmetic — `AUTH_URL` is pinned to the apex, so letting both origins serve the
