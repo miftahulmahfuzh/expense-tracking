@@ -128,7 +128,21 @@ export async function parseExpenseWith(
   const remaining = () => Math.max(1, deadline - Date.now())
 
   let inputTokens = 0
+  let cachedInputTokens = 0
   let outputTokens = 0
+
+  /**
+   * z.ai caches the prompt automatically — we send no `cache_control` — and reports the
+   * cached portion in `cache_read_input_tokens`, leaving `input_tokens` at the uncached
+   * remainder. Accumulating only the latter would log ~80 tokens for a ~4,300-token
+   * request. The SDK's Usage type carries the field, so no cast is needed.
+   */
+  const addUsage = (usage: Anthropic.Usage | undefined | null) => {
+    inputTokens += usage?.input_tokens ?? 0
+    cachedInputTokens += usage?.cache_read_input_tokens ?? 0
+    outputTokens += usage?.output_tokens ?? 0
+  }
+  const spent = () => inputTokens || cachedInputTokens || outputTokens
 
   // ---- Attempt 1 -----------------------------------------------------------------
   let first: Anthropic.Message | null = null
@@ -136,8 +150,7 @@ export async function parseExpenseWith(
     first = await client.messages.create(baseBody(options.model, system, messages), {
       timeout: Math.min(PRIMARY_TIMEOUT_MS, remaining()),
     })
-    inputTokens += first.usage?.input_tokens ?? 0
-    outputTokens += first.usage?.output_tokens ?? 0
+    addUsage(first.usage)
   } catch (cause) {
     logLlmFailure('primary', cause)
   }
@@ -156,7 +169,7 @@ export async function parseExpenseWith(
         expense: parsed.data,
         source: 'llm',
         degraded: false,
-        usage: { inputTokens, outputTokens },
+        usage: { inputTokens, cachedInputTokens, outputTokens },
       }
     }
 
@@ -183,8 +196,7 @@ export async function parseExpenseWith(
           baseBody(options.model, system, repairMessages),
           { timeout: Math.min(REPAIR_TIMEOUT_MS, remaining()) },
         )
-        inputTokens += second.usage?.input_tokens ?? 0
-        outputTokens += second.usage?.output_tokens ?? 0
+        addUsage(second.usage)
 
         const secondBlock = findToolUse(second)
         if (secondBlock && second.stop_reason !== 'max_tokens') {
@@ -194,7 +206,7 @@ export async function parseExpenseWith(
               expense: repaired.data,
               source: 'llm_repair',
               degraded: true,
-              usage: { inputTokens, outputTokens },
+              usage: { inputTokens, cachedInputTokens, outputTokens },
             }
           }
           logLlmFailure('repair-invalid', describeZodIssues(repaired.error))
@@ -216,7 +228,7 @@ export async function parseExpenseWith(
         expense: checked.data,
         source: 'fallback',
         degraded: true,
-        usage: inputTokens || outputTokens ? { inputTokens, outputTokens } : null,
+        usage: spent() ? { inputTokens, cachedInputTokens, outputTokens } : null,
       }
     }
     // Would be a bug in fallbackParse, not in the model. Its own suite asserts every

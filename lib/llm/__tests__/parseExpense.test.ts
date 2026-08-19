@@ -70,7 +70,7 @@ describe('parseExpense — happy path', () => {
     expect(r.source).toBe('llm')
     expect(r.degraded).toBe(false)
     expect(r.expense).toEqual(GOOD)
-    expect(r.usage).toEqual({ inputTokens: 1800, outputTokens: 220 })
+    expect(r.usage).toEqual({ inputTokens: 1800, cachedInputTokens: 0, outputTokens: 220 })
     expect(create).toHaveBeenCalledTimes(1)
   })
 
@@ -110,6 +110,16 @@ describe('parseExpense — happy path', () => {
     expect(JSON.stringify(msgs)).toContain('roti buaya')
   })
 
+  it('counts cache-read tokens as input — z.ai caches the prompt on its own', async () => {
+    const cached = toolUse(GOOD, {
+      usage: { input_tokens: 82, cache_read_input_tokens: 4224, output_tokens: 193 },
+    })
+    const { client } = fake(async () => cached)
+    const r = await parseExpenseWith(client, input, opts)
+    // Reading input_tokens alone would report 82 tokens for a ~4,300-token request.
+    expect(r.usage).toEqual({ inputTokens: 82, cachedInputTokens: 4224, outputTokens: 193 })
+  })
+
   it('passes a timeout under the Vercel ceiling', async () => {
     const { client, create } = fake(async () => toolUse(GOOD))
     await parseExpenseWith(client, input, opts)
@@ -130,7 +140,7 @@ describe('parseExpense — repair round-trip', () => {
     expect(r.expense).toEqual(GOOD)
     expect(create).toHaveBeenCalledTimes(2)
     // Usage accumulates across both calls — the repair is not free.
-    expect(r.usage).toEqual({ inputTokens: 3600, outputTokens: 440 })
+    expect(r.usage).toEqual({ inputTokens: 3600, cachedInputTokens: 0, outputTokens: 440 })
   })
 
   it('feeds the validation error back as a tool_result', async () => {

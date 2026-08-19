@@ -24,8 +24,17 @@ export interface ParseResult {
   source: ParseSource
   /** true when source !== 'llm' — F05 should warn the user to double-check. */
   degraded: boolean
-  /** Rough token usage of the primary + repair calls, for logging. null on fallback-only. */
-  usage: { inputTokens: number; outputTokens: number } | null
+  /**
+   * Token usage of the primary + repair calls, for logging. null when no LLM call
+   * contributed (fallback after a transport failure).
+   *
+   * `cachedInputTokens` is not decoration: z.ai applies prompt caching AUTOMATICALLY,
+   * without us sending `cache_control`, and reports the cached portion separately. A
+   * measured canonical parse is `inputTokens: 82` + `cachedInputTokens: 4224` — so
+   * reading `inputTokens` alone understates the real prompt by ~50x. Total input is the
+   * sum of the two.
+   */
+  usage: { inputTokens: number; cachedInputTokens: number; outputTokens: number } | null
 }
 
 export type ParseFailureReason = 'empty_input' | 'input_too_long' | 'no_items_found'
