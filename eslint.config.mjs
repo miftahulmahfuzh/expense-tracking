@@ -16,6 +16,13 @@ const eslintConfig = defineConfig([
     'drizzle/**',
     'next-env.d.ts',
     'scaffold-tmp/**',
+    /*
+     * F06 copies browser-image-compression's UMD bundle here for the Web Worker to
+     * importScripts() from our own origin (scripts/copy-image-compression-worker.mjs).
+     * A flat config does NOT read .gitignore, so without this line `eslint .` reports
+     * 222 warnings from one minified vendor file and buries anything real.
+     */
+    'public/vendor/**',
   ]),
 ])
 

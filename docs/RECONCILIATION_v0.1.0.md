@@ -1002,3 +1002,195 @@ The never-hard-blocked promise, against the real endpoint with a bogus key: z.ai
 
 **Not verified:** nothing in F04 is blocked on a browser. The one thing no test covers is F05's
 handling of these responses, which does not exist yet.
+
+---
+
+## Addendum — rulings from F06 (landed during implementation)
+
+F06 shipped `lib/photos/*`, `lib/db/photos.ts`, `lib/blob/delete.ts`,
+`app/api/photos/upload/route.ts`, `app/actions/photos.ts`, `components/photos/*` and
+`scripts/blob-sweep.ts`. Numbering continues from R-76. **F05, F07 and F09 read R-77, R-80
+and R-86 before writing a line against this feature.**
+
+Every claim below was verified rather than reasoned: `npm test` (**540 green**, 121 of them
+new), `tsc --noEmit`, `eslint`, `prettier --check`, `next build`, plus live probes against the
+real Vercel Blob store and a live `next dev`.
+
+### R-77 · F06 does not re-declare F03's primitives. Plan Task 10 is superseded in four places.
+
+The plan's `lib/db/photos.ts` sketch carried its own `NotFoundError`, its own
+`assertGroupOwned` with a hand-rolled join, and its own `PhotoDTO`; its `app/actions/photos.ts`
+sketch declared a second `AttachPhotoInput`. All four already existed:
+
+| Plan sketched | Shipped instead |
+|---|---|
+| local `assertGroupOwned` (join) | `assertGroupOwned` from `lib/db/queries.ts` |
+| local `NotFoundError` | re-exported from `lib/db/queries.ts` |
+| `findOwnedPhoto` (join) | ownership travels as `photoOwnedBy(userId)`, the same correlated EXISTS every other photo query uses |
+| local `AttachPhotoInput` | F03a's published schema, `.extend()`ed to tighten `blobPathname` only |
+
+**Ruling. Import, never re-declare.** Two copies of the app's ownership check is exactly what
+R-7, R-8 and R-33 each struck down, and the failure mode is silent: the day one copy is
+hardened the other is not.
+
+`PhotoDTO` in `lib/photos/types.ts` is the ONE deliberate duplicate — it mirrors F03's
+`PhotoRow` field for field because re-exporting `PhotoRow` puts a module that imports the
+Drizzle client one careless `import { PhotoRow }` away from the browser bundle. Duplication is
+only safe while divergence breaks something, so `tests/photos.types.test.ts` asserts mutual
+assignability at the type level for both `PhotoDTO`/`PhotoRow` and
+`StagedPhoto`/`NewPhotoInputSchema` (R-46). That guard was itself checked by feeding it two
+shapes that really differ and confirming `tsc` rejects it.
+
+### ⚠️ R-78 · `deletePhoto` is ONE `DELETE … WHERE id AND EXISTS(…) RETURNING`.
+
+The plan's §10 sequence was `findOwnedPhoto(userId, id)` and then
+`db.delete(expensePhotos).where(eq(expensePhotos.id, photo.id))`. Two problems, both structural:
+
+1. The ownership check has gone stale by the time the delete runs — a TOCTOU window.
+2. The mutation itself is scoped **by id alone**, which is the shape R-5 and F03 §9 both
+   forbid. It is only safe because of the SELECT before it, i.e. for a reason that lives in
+   another statement.
+
+**Ruling.** `deleteOwnedPhoto(userId, photoId)` is a single statement carrying
+`photoOwnedBy(userId)` with a `RETURNING` clause. No window, no unscoped mutation, one round
+trip, and the `blob_pathname` the caller must `del()` comes back with it. Asserted over the
+emitted SQL in `tests/photos.db.test.ts`.
+
+Deletion ORDER is unchanged and remains row-then-bytes (§10). The test pins it by recording how
+many statements had run at the moment `del()` was called, and a second test asserts that a
+FAILING `del()` still reports success — the user-visible outcome is correct, and ~300 KB of
+invisible, sweepable leakage beats telling someone an operation failed that they watched
+succeed.
+
+### R-79 · `vitest.config.ts` aliases `server-only` to a stub.
+
+`server-only`'s default export condition **throws on import**; only a bundler selecting the
+`react-server` condition gets the harmless branch, and Vitest selects the default. So every
+module opening with that pragma was untestable as shipped — including `lib/db/photos.ts`,
+which is where this feature's ownership SQL lives.
+
+Rejected alternatives: dropping the pragma (removes the build-time guard keeping the Drizzle
+client and `BLOB_READ_WRITE_TOKEN` out of a client bundle); `conditions: ['react-server']`
+globally (changes how React and `next/navigation` resolve, to fix one import);
+`vi.mock('server-only')` per file (works, but F07 and F09 must remember it, and forgetting
+looks like a failing test rather than a missing incantation).
+
+**Ruling.** One alias, in the one config R-11 allows, pointing at
+`tests/support/serverOnlyStub.ts`. Production is untouched: `next build` resolves the real
+package and still fails the build if a `'use client'` module reaches one of these.
+
+### ⚠️ R-80 · R-26 is implemented as `PhotoGallery` (presentational) + `PhotoManager` (actions).
+
+R-26 accepted F09's split but named it `PhotoGrid`/`PhotoManager`, while the F06 plan published
+a single `PhotoGallery` with an optional `onDelete`. Both names cannot survive, and the plan's
+single component leaves the security-relevant half to each caller — F07 would have had to build
+a wrapper of exactly this shape anyway, or become a client component.
+
+**Ruling.** The published names are **`PhotoGallery`** (presentational, imports no Server
+Action, three features already build against the name) and **`PhotoManager`** (imports
+`deletePhoto`, wires `router.refresh()`). R-26's *property* is what mattered and it holds; only
+its provisional `PhotoGrid` label is dropped.
+
+```tsx
+/e/[id]      <PhotoManager photos={group.photos} />          // F07
+/s/[token]   <PhotoGallery photos={group.photos} />          // F09 — no action in the bundle
+```
+
+`tests/photos.bundle.test.ts` walks the real import graph from each entry point and asserts it,
+stopping at `'use server'` boundaries exactly where the bundler stops. It also asserts the
+walker is **not vacuous** (`PhotoPicker` *does* reach the actions), because a graph test that
+quietly stops resolving imports passes for the wrong reason forever.
+
+### R-81 · `images.remotePatterns` is narrowed, and the narrowing is verified behaviourally.
+
+F01 shipped `hostname: '**.public.blob.vercel-storage.com'` with no `pathname` and no `search`.
+Per the Next 16 images docs, omitting those implies `/**` and `**`, which makes `/_next/image`
+an open optimizing proxy for every blob in the store — and `**.` matches any number of leading
+labels, so it also matches a host under an attacker-controlled registrable domain.
+
+**Ruling.** `*.` (a store host is exactly one label), `pathname: '/photos/**'`, `search: ''`.
+Confirmed against a live `next dev`:
+
+```
+/photos/x.jpg   → 404 "url parameter is valid but upstream response is invalid"   (allowed)
+/avatars/x.jpg  → 400 "url parameter is not allowed"                              (blocked)
+evil.public.blob.vercel-storage.com.attacker.test/photos/x.jpg → 400 not allowed   (blocked)
+```
+
+### R-82 · The stored-pathname regex is measured, and its suffix bound is loose on purpose.
+
+`addRandomSuffix: true` rewrites the pathname, and the plan guessed at the result. A real
+`put()` against the store turned `photos/Uk-igSGzS6rpPd1sRM9iz.jpg` into
+`photos/Uk-igSGzS6rpPd1sRM9iz-yLUxdLWq3Zqn5lg62luYDWXkeAHvwn.jpg` — `-` plus 30 mixed-case
+alphanumerics.
+
+**Ruling.** `PHOTO_STORED_PATHNAME_RE` enforces our prefix, alphabet and extension but bounds
+the suffix at 16..64 rather than pinning 30. Pinned, the day Vercel changes that length is the
+day every upload dies at `attachPhoto` with "invalid pathname" **after the bytes are already
+paid for**. The regex's job is stopping traversal, not pinning someone else's internal.
+
+### R-83 · The 74×74 tile carries state; the sentence explaining a failure lives under the strip.
+
+Design R-41 fixes the draft tile at 74×74. The plan's `UploadTile` put a three-line error
+message plus "Coba lagi" and "Hapus" text links inside it, none of which is legible at that
+size, and the plan's classes (`bg-black/5`, `text-sm`, `red-700`) do not exist since R-24 reset
+the `--color-*` and `--text-*` namespaces.
+
+**Ruling.** The tile shows a progress bar, a one-word mono label and one ✕ (cancel while in
+flight, dismiss after); the failed tile *is* the retry button, which makes the target 74×74
+instead of a 12px link; the readable message is listed below the strip. The picker is a
+horizontally scrolling strip rather than a 3-column grid, so adding a tenth photo never pushes
+the draft's running total off screen. The 3-up grid at 6px gaps stays where R-41 puts it: the
+gallery.
+
+Also: in `attached` mode a finished tile is dismissed when **`existingCount` grows**, not on a
+timer. That number comes from the server component, so it moves only once the row is confirmed
+and rendered — there is never a frame where a photo appears twice, or in neither place.
+
+### R-84 · `/dev/photos` exists so F06's own gates can be run before F05 and F07 ship.
+
+F06's Phase 8 is a 19-step manual table on a physical iPhone against a **preview deployment**,
+plus the EXIF/GPS privacy gate and R-29's orientation gate. F06 ships no page: `/new` is F05 and
+`/e/[id]` is F07. Without a harness, every one of those gates waits on two later features —
+which is how a "hard gate" quietly becomes something nobody ever ran.
+
+**Ruling.** A dev-only `/dev/photos` renders both picker modes, the owner gallery via
+`PhotoManager` and the read-only gallery, against a real scratch `expense_groups` row. It is
+gated on **`VERCEL_ENV`**, not `NODE_ENV`: a preview build sets `NODE_ENV=production`, so
+`/dev/ui`'s test would 404 the harness on exactly the deployment the QA table requires. Off
+Vercel it falls back to `NODE_ENV`, so a self-hosted production build stays closed. Verified: it
+404s in a local production build and 307s to `/` when signed out.
+
+**Delete `app/dev/photos/` when F07 ships** — at that point `/e/[id]` is the real harness. Its
+scratch group is created by `app/dev/photos/actions.ts` and is the only mutation of
+`expense_groups` outside F05/F07.
+
+### R-85 · F06's open questions, answered.
+
+| OQ | Answer |
+|---|---|
+| 1 — where is `requireUserId()`? | `@/lib/auth/requireUserId`, as assumed. The route uses `getUserId()` instead: a 307 to an HTML page is a terrible answer to `fetch()`. |
+| 2 — where is the id helper? | `@/lib/id` (`newPhotoId()`), **not** `@/lib/db/ids`, which does not exist — R-58 already recorded this for F07. `nanoid(21)` is still used directly for pathnames, deliberately: 72 bits is right for a key behind an ownership check, 125 for the only thing protecting a public URL. |
+| 3 — is the cap of 10 right? | Kept. One constant, cheap to revisit once there is real usage. |
+| 4 — does F05 block Simpan? | Superseded by R-31 and **implemented**: `onBusyChange`. `/dev/photos` demonstrates the wiring F05 should copy. |
+| 5 — cron the sweeper? | No. Manual stands; a scheduled job whose purpose is deleting storage is the larger risk on a personal app, and it would be a fourth route handler against D6. |
+| 6 — pin the blob hostname? | Not pinned, but narrowed per R-81. Pinning is a redeploy every time the store is recreated, for a marginal gain over `*.` plus a pathname. |
+| 7 — old Safari without OffscreenCanvas | Accepted as the plan proposed. The library falls back to the main thread: ~1.5 s of jank per photo, degraded not broken. |
+| 9 — photo count on the month list | Already shipped by F03 as `photoCount`, plus `firstPhotoUrl` (R-14). Nothing for F06 to do. |
+
+### ⚠️ R-86 · R-29 / OQ-8 — EXIF ORIENTATION IS STILL UNDISCHARGED. It needs the device.
+
+R-29 says ship nothing until a real portrait photo from the iPhone renders upright, and F06
+deliberately does **not** pass `exifOrientation` because passing it when the library has already
+rotated causes a *double* rotation. That cannot be settled in this environment: it needs a real
+iOS capture, a real canvas and a real decode.
+
+**Ruling. The gate stands, unchanged and unmet.** What has been done is to make it runnable in
+one sitting: `/dev/photos` prints each staged photo's `width×height` and labels it
+`portrait`/`landscape`, so the gate is a glance rather than a Web Inspector session, and the fix
+if it fails is in plan §6 ("If orientation is wrong"). The same applies to the EXIF/GPS check —
+the code path (`preserveExif: false`) is in place and the assertion is a one-liner with
+`exiftool` against a real uploaded blob, but no photo has been through it yet.
+
+**Do not mark F06 done on the strength of the unit suite.** 540 green tests say the plumbing is
+right; they say nothing about which way up the photo is.

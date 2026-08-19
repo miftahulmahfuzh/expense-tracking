@@ -1,6 +1,9 @@
 # F06 — Photos: Upload, Storage & Gallery
 
-> **Status:** plan, not yet implemented
+> **Status:** IMPLEMENTED 2026-08-19, except the two device gates — see the F06 addendum
+> (R-77…R-86) in `docs/RECONCILIATION_v0.1.0.md`, which **supersedes this file** where they
+> disagree. R-86 is the one to read first: **EXIF orientation is still unverified** and R-29
+> makes it a hard gate. Run `/dev/photos` (R-84) on a preview deployment from the iPhone.
 > **Depends on:** F01 (scaffold, `lib/env.ts`), F02 (`auth()`, `requireUserId()`), F03 (Drizzle schema, `db`, `newId()`)
 > **Consumed by:** F05 (`/new` — staged photos in the add flow), F07 (`/e/[id]` — gallery + add + delete), F09 (`/s/[token]` — read-only gallery)
 > **Authoritative contract:** `ROADMAP_v0.1.0.md` §4.2 (`expense_photos`), §4.4 (`attachPhoto` / `deletePhoto`), §4.5 (`POST /api/photos/upload`), D2, D8
@@ -2837,42 +2840,48 @@ on F03's list.
 
 ```
 Phase 1 — setup
-  [ ] 1  install @vercel/blob@2.8.0, browser-image-compression@2.0.2, tsx
-  [ ] 2  verify libURL / preserveExif option names against the shipped .d.ts
-  [ ] 3  next.config.ts images.remotePatterns + record the Hobby image quota
-  [ ] 4  scripts/copy-image-compression-worker.mjs + predev/prebuild + .gitignore
-  [ ] 5  create the PUBLIC blob store, vercel env pull, confirm BLOB_READ_WRITE_TOKEN
-  ✅ commit
+  [x] 1  @vercel/blob@2.8.0 + browser-image-compression@2.0.2 already pinned by F01; tsx
+         pinned explicitly (it was only transitive through drizzle-kit)
+  [x] 2  verified against the shipped .d.ts: libURL (not libraryUrl), preserveExif,
+         exifOrientation, maxIteration, signal, onProgress all present
+  [x] 3  narrowed to *. + pathname /photos/** + search '' — R-81, verified behaviourally
+  [x] 4  scripts/copy-image-compression-worker.mjs + predev/prebuild + /public/vendor/ ignored
+  [x] 5  store already existed; list() and a put/del round trip both confirmed it — R-82
 Phase 2 — contracts
-  [ ] 6  lib/photos/constants.ts
-  [ ] 7  lib/photos/types.ts
-  [ ] 8  lib/photos/format.ts + lib/photos/pathname.ts
-  ✅ commit
+  [x] 6  lib/photos/constants.ts
+  [x] 7  lib/photos/types.ts          (PhotoDTO mirrors F03's PhotoRow — R-77)
+  [x] 8  lib/photos/format.ts + lib/photos/pathname.ts
 Phase 3 — compression
-  [ ] 9  lib/photos/compress.ts
-  ✅ commit
+  [x] 9  lib/photos/compress.ts
 Phase 4 — server
-  [ ] 10 lib/db/photos.ts
-  [ ] 11 lib/blob/delete.ts
-  [ ] 12 app/api/photos/upload/route.ts
-  [ ] 13 app/actions/photos.ts
-  ✅ commit
+  [x] 10 lib/db/photos.ts             (imports F03's ownership primitives — R-77;
+                                       deleteOwnedPhoto replaces findOwnedPhoto — R-78)
+  [x] 11 lib/blob/delete.ts
+  [x] 12 app/api/photos/upload/route.ts
+  [x] 13 app/actions/photos.ts        (reuses F03a's AttachPhotoInput — R-77)
 Phase 5 — picker
-  [ ] 14 components/photos/usePhotoUploads.ts
-  [ ] 15 components/photos/UploadTile.tsx
-  [ ] 16 components/photos/PhotoPicker.tsx
-  ✅ commit
+  [x] 14 components/photos/usePhotoUploads.ts
+  [x] 15 components/photos/UploadTile.tsx     (state-only at 74px — R-83)
+  [x] 16 components/photos/PhotoPicker.tsx    (+ onBusyChange, R-31)
 Phase 6 — gallery
-  [ ] 17 components/photos/PhotoGallery.tsx
-  [ ] 18 components/photos/Lightbox.tsx
-  ✅ commit
+  [x] 17 components/photos/PhotoGallery.tsx   (presentational — R-80)
+  [x] 18 components/photos/Lightbox.tsx
+  [x] +  components/photos/PhotoManager.tsx   (R-26 / R-80) + components/photos/index.ts
 Phase 7 — housekeeping
-  [ ] 19 scripts/blob-sweep.ts + npm run blob:usage / blob:sweep
-  ✅ commit
+  [x] 19 scripts/blob-sweep.ts + npm run blob:usage / blob:sweep — exercised against the
+         live store, including a real --delete run
 Phase 8 — verification
-  [ ] 20 npm run build passes
-  [ ] 21 deploy preview, run the full iPhone QA table (19 steps)
-  [ ] 22 run the EXIF/GPS check — HARD GATE
-  [ ] 23 run npm run blob:usage, confirm 0 unexplained orphans
-  ✅ commit + open PR
+  [x] 20 npm run build passes; /api/photos/upload registered; tsc, eslint, prettier clean;
+         540 unit tests green, 121 of them F06's
+  [x] +  app/dev/photos — the harness that makes 21-22 runnable before F05/F07 (R-84)
+  [ ] 21 deploy preview, run the full iPhone QA table (19 steps)   ← NEEDS THE DEVICE
+  [ ] 22 run the EXIF/GPS check — HARD GATE                        ← NEEDS THE DEVICE (R-86)
+  [ ] 23 run npm run blob:usage, confirm 0 unexplained orphans     ← after 21
 ```
+
+**What is left, precisely.** Steps 21-23 need a physical iPhone XS Max on a preview
+deployment; nothing in them can be discharged from a laptop, and R-29/R-86 makes step 22's
+orientation check a gate on shipping. Everything else in this plan is done. Open
+`/dev/photos` on the preview to run them: it renders both picker modes and both galleries,
+and prints each photo's `width×height` with a `portrait`/`landscape` label so the
+orientation gate is a glance.
