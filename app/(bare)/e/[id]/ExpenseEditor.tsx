@@ -245,7 +245,15 @@ export function ExpenseEditor({
             the text column and the 44px delete target sits flush right without looking crammed. */}
         <Card as="ul" padded="rows">
           {optimisticItems.map((item) => (
-            <li key={item.id} className="flex items-stretch border-b border-rule-2 last:border-b-0">
+            <li
+              key={item.id}
+              /* F08's biggest-expense callout links to /e/[id]#item-<itemId>. One attribute,
+                 and without it the fragment is inert and the reader lands on the group with
+                 no idea which of eighteen rows the callout meant. scroll-mt clears the
+                 sticky detail header so the anchored row is not parked underneath it. */
+              id={`item-${item.id}`}
+              className="flex scroll-mt-24 items-stretch border-b border-rule-2 last:border-b-0"
+            >
               <button
                 type="button"
                 onClick={() => setEditing(item)}
