@@ -9,12 +9,6 @@ import { cn } from '@/lib/cn'
  */
 let lockCount = 0
 
-/*
- * How long the sheet ignores pointer input after opening. MUST track the entry transition in
- * globals.css — see the note in the effect below for what it is defending against.
- */
-const ENTRY_MS = 280
-
 function lockBody() {
   if (lockCount++ === 0) document.body.style.overflow = 'hidden'
 }
@@ -91,19 +85,16 @@ export function Sheet({
 }: SheetProps) {
   const dialogRef = React.useRef<HTMLDialogElement>(null)
   const panelRef = React.useRef<HTMLDivElement>(null)
-  /** When this sheet last opened, so its own handlers can discard the tap that opened it. */
-  const openedAtRef = React.useRef(0)
   const titleId = React.useId()
   const descId = React.useId()
 
   /*
-   * A PASSIVE effect, deliberately, and it must not be turned into a layout one.
-   *
-   * A layout effect runs while the click that opened the sheet is still being dispatched, so
-   * `showModal()` lands the new dialog under the very finger that opened it — and this sheet
-   * covers the whole viewport, so that finger is now over either the scrim or, worse, a
-   * control. A passive effect is flushed after the click is done. It costs a frame; the frame
-   * is the price of the sheet not reacting to the tap that summoned it.
+   * A PASSIVE effect, deliberately. 1d57431 made this a layout one to save the frame between
+   * commit and paint, on the theory that the sheet was arriving late; it was not — it was
+   * painting a whole panel-height off (see the `overflow: clip` note in globals.css), and the
+   * timing change fixed nothing. A layout effect also runs while the click that opened the
+   * sheet is still being dispatched, which lands the new dialog under the finger that opened
+   * it. Passive costs a frame and asks no questions.
    */
   React.useEffect(() => {
     const dialog = dialogRef.current
@@ -115,41 +106,7 @@ export function Sheet({
       // Land focus on the panel, not on whichever control happens to be first, so a screen
       // reader announces the sheet before its contents.
       panelRef.current?.focus()
-
-      /*
-       * Ignore pointer input until the sheet has finished arriving.
-       *
-       * iOS synthesises a `click` from a tap and can deliver a second, "ghost" one at the same
-       * coordinates up to ~300ms later. `.sheet` fills the viewport, so those coordinates are
-       * always over something of ours: the scrim, which closes the sheet, or a control inside
-       * the panel. Tapping the category chip inside the item editor hit the second case — the
-       * picker opened and immediately took a phantom tap on whichever category cell had landed
-       * under the finger, which reads as "it appears for a split second and vanishes".
-       *
-       * A time window rather than a cleverer test, because a ghost click is indistinguishable
-       * from a real one by target, button or coordinates — only by when it arrives. Nothing is
-       * lost: this is the span in which the panel is still sliding, and a native sheet does not
-       * accept input then either.
-       *
-       * THE PANEL GOES INERT, NOT THE DIALOG, and the difference is the whole trick. Putting
-       * `pointer-events: none` on the dialog makes the ghost click fall THROUGH to whatever is
-       * behind — with two sheets stacked that is the outer sheet's scrim, so the phantom tap
-       * closed the editor underneath instead of the picker. Two modal dialogs do not reliably
-       * make each other inert in WebKit, so the topmost one has to keep catching pointer events
-       * and swallow them itself; `openedAt` below is how its own handlers know to.
-       */
-      openedAtRef.current = performance.now()
-      const panel = panelRef.current
-      if (panel) panel.style.pointerEvents = 'none'
-      const settle = window.setTimeout(() => {
-        if (panel) panel.style.pointerEvents = ''
-      }, ENTRY_MS)
-
-      return () => {
-        window.clearTimeout(settle)
-        if (panel) panel.style.pointerEvents = ''
-        unlockBody()
-      }
+      return () => unlockBody()
     }
 
     if (dialog.open) dialog.close()
@@ -172,10 +129,6 @@ export function Sheet({
       // On a modal <dialog> the ::backdrop's event target is the dialog element itself, so
       // this identity test is exact: a tap inside the panel can never match.
       onClick={(e) => {
-        // Swallow, do not act on, a click arriving while the sheet is still animating in: see
-        // the ghost-click note in the effect. Returning here still consumes the event, which is
-        // the point — it must not reach a sheet stacked behind this one.
-        if (performance.now() - openedAtRef.current < ENTRY_MS) return
         if (e.target === dialogRef.current) onClose()
       }}
     >

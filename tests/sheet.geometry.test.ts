@@ -68,40 +68,47 @@ describe('.sheet geometry', () => {
 })
 
 /**
- * `Sheet` swallows pointer input for the span of the entry transition, to discard the ghost
- * click iOS delivers up to ~300ms after a tap. Because the sheet fills the viewport that
- * phantom tap always lands on something of ours — it was selecting a category and closing the
- * picker the instant it opened. The window is a JS constant and the transition is a CSS one; if
- * they drift the guard either ends early (the ghost gets through) or overstays (real taps
- * ignored), and nothing else in the suite can see either failure.
+ * A tripwire against re-adding the ghost-click guard, which was a fix for a bug that did not
+ * exist.
+ *
+ * 8d0f652 read "tap Kategori and the picker flashes and vanishes / hold it and the editor jumps
+ * to the bottom" as iOS delivering a synthesised second click ~300ms after a tap, and defended
+ * against it by making the panel `pointer-events: none` and dropping any click that arrived
+ * inside a 280ms window. Both symptoms were in fact the dialog's own scroll offset displacing
+ * the panel by exactly its own height — see the `overflow: clip` note in globals.css, which is
+ * what actually fixed them.
+ *
+ * The guard is not harmless. It swallows real input for the first 280ms of every sheet, on every
+ * platform, and the sheet it protected was never in danger. If a genuine ghost click is ever
+ * demonstrated on a device, reintroduce this deliberately and with the measurement attached —
+ * not as a guess.
  */
-describe('Sheet entry window', () => {
+describe('Sheet has no ghost-click guard', () => {
   const sheet = readFileSync(
     fileURLToPath(new URL('../components/ui/Sheet.tsx', import.meta.url)),
     'utf8',
   )
 
-  it('keeps ENTRY_MS in step with the panel transition', () => {
-    const js = sheet.match(/const ENTRY_MS = (\d+)/)
-    expect(js, 'ENTRY_MS not found in Sheet.tsx').not.toBeNull()
-
-    const declared = block('.sheet-panel').match(/transition:\s*transform\s*(\d+)ms/)
-    expect(declared, 'panel transform transition not found in globals.css').not.toBeNull()
-
-    expect(Number(js![1])).toBe(Number(declared![1]))
-  })
-
-  it('discards a click that arrives inside that window', () => {
-    expect(sheet).toMatch(/performance\.now\(\) - openedAtRef\.current < ENTRY_MS/)
+  it('does not suppress pointer events on open', () => {
+    expect(sheet).not.toMatch(/pointerEvents/)
   })
 
   /*
-   * The panel goes inert, never the dialog. `pointer-events: none` on the dialog lets the ghost
-   * click fall THROUGH to the sheet stacked behind, and closing the editor under the picker is a
-   * worse bug than the one being fixed — it is what "the Ubah item moved to the bottom" was.
+   * A time window is the shape this mistake takes: "ignore input for N ms after opening". It
+   * cannot distinguish a phantom tap from a fast, deliberate one, which is why the real fix had
+   * to be geometric.
    */
-  it('makes the panel inert, not the dialog', () => {
-    expect(sheet).toMatch(/panel\.style\.pointerEvents = 'none'/)
-    expect(sheet).not.toMatch(/dialog\.style\.pointerEvents = 'none'/)
+  it('does not gate its handlers on how long ago it opened', () => {
+    expect(sheet).not.toMatch(/ENTRY_MS|openedAt/)
+    expect(sheet).not.toMatch(/performance\.now\(\)/)
+  })
+
+  /*
+   * The scrim tap must stay unconditional. `e.target === dialog` is exact on a modal <dialog>:
+   * the ::backdrop's event target is the dialog element itself, so a tap inside the panel can
+   * never match it, and no timing test is needed to tell them apart.
+   */
+  it('closes on a scrim tap with nothing but the identity test', () => {
+    expect(sheet).toMatch(/if \(e\.target === dialogRef\.current\) onClose\(\)/)
   })
 })
