@@ -9,6 +9,23 @@ import { cn } from '@/lib/cn'
  */
 let lockCount = 0
 
+/*
+ * `showModal()` has to run in a LAYOUT effect, not a passive one.
+ *
+ * A passive `useEffect` is flushed after React has committed and the browser has had the
+ * chance to paint, so the tap that opens a sheet costs a wasted frame before the panel even
+ * starts travelling — on the deployed build that is the difference between the sheet
+ * responding to the tap and appearing to lag it. A layout effect runs before paint, in the
+ * same frame as the commit.
+ *
+ * Chosen at module scope rather than per render so the hook ORDER never varies. React warns
+ * that layout effects do nothing during server rendering, and it is right — `Sheet` is a
+ * client component but is still server-rendered, and `open` is what it is on the first paint
+ * either way, so the server takes the passive one and stays quiet.
+ */
+const useIsomorphicLayoutEffect =
+  typeof document === 'undefined' ? React.useEffect : React.useLayoutEffect
+
 function lockBody() {
   if (lockCount++ === 0) document.body.style.overflow = 'hidden'
 }
@@ -88,7 +105,7 @@ export function Sheet({
   const titleId = React.useId()
   const descId = React.useId()
 
-  React.useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
 

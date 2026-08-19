@@ -641,6 +641,19 @@
     position: fixed;
     inset: 0;
     width: 100%;
+    /* HEIGHT IS NOT OPTIONAL HERE, and leaving it out is the bug this line fixes.
+       The UA stylesheet gives every <dialog> `width: fit-content; height: fit-content`.
+       Overriding only the width — which this rule did — leaves `height: fit-content` in
+       force, and a non-auto height makes `top: 0; bottom: 0` over-constrained, so `bottom`
+       is dropped: the dialog becomes as tall as the panel and sits at the TOP of the
+       viewport. `align-items: flex-end` then has no room to push anything anywhere, and the
+       bottom sheet paints as a top sheet with the scrim below it. On iOS it does not paint
+       at all until a scroll forces a re-composite, which reads as "tap the item, nothing
+       happens, swipe, and the sheet appears at the top of the screen".
+       `100%` rather than `100dvh`: the containing block of a fixed element IS the viewport,
+       so this makes `height` agree with the `inset: 0` above instead of introducing a second
+       and possibly different measure of the same thing. */
+    height: 100%;
     max-width: none;
     max-height: none;
     margin: 0;
@@ -670,6 +683,9 @@
   }
   .sheet[open]::backdrop {
     opacity: 1;
+    /* Matches the panel: a scrim still fading after the sheet has landed is what makes a
+       fast sheet look slow. */
+    transition-duration: 180ms;
   }
   @starting-style {
     .sheet[open]::backdrop {
@@ -694,11 +710,19 @@
     border-top-left-radius: var(--radius-card);
     border-top-right-radius: var(--radius-card);
     transform: translateY(100%);
+    /* This duration governs the EXIT. The transition that actually runs is the one declared
+       on the state being moved TO, and this rule is the closed state — so leaving it soft
+       costs nothing: the user already has what they came for. */
     transition: transform 280ms var(--ease-out-soft);
     will-change: transform;
   }
   .sheet[open] .sheet-panel {
     transform: translateY(0);
+    /* ENTRY, deliberately faster than the exit. The CategoryPicker is a control the user
+       hits repeatedly while checking a parse, and 280ms of travel before the options exist
+       reads as the app thinking about it. Asymmetric in/out is what iOS itself does, and it
+       is the whole reason this feels quicker — there is no data to fetch or cache here. */
+    transition-duration: 180ms;
   }
   @starting-style {
     .sheet[open] .sheet-panel {
@@ -707,9 +731,15 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    /* The `[open]` variants are listed too, and must be: they now carry their own
+       transition-duration, and `.sheet[open] .sheet-panel` outranks `.sheet-panel`, so
+       omitting them would leave the entry animating at 180ms for someone who asked for no
+       motion at all. */
     .sheet,
     .sheet::backdrop,
-    .sheet-panel {
+    .sheet-panel,
+    .sheet[open]::backdrop,
+    .sheet[open] .sheet-panel {
       transition-duration: 1ms;
     }
   }
