@@ -363,6 +363,20 @@ required** — F06's client compresses before upload and always has them. Note t
 `AttachPhotoInput`, where the same three are optional: that path also serves `onUploadCompleted`,
 which does not see the image. The asymmetry is deliberate; do not "harmonise" it.
 
+### R-60 · A unique violation reaches you on `error.cause`, not in `error.message`.
+
+Plan Open question 6 asks whether F09 should retry a share-token collision. It must, and the
+detail it needs is one layer down: Drizzle wraps the driver error, so the outer `message` is
+only `Failed query: insert into "share_links" …`. The `NeonDbError` on **`.cause`** is what
+carries `code: '23505'` and `constraint: 'share_links_group_id_unq'`.
+
+**Ruling.** Any retry or friendly-error path keys off `error.cause.code`, never a regex over
+the outer message — a message regex silently never matches, which turns a formality into an
+unhandled 500 exactly as that open question warned. Measured against the live database and
+asserted in the integration suite. The recommendation in Open question 6 stands: F03 does not
+publish `mintShareToken`, because a mutation helper here would break the "F03 ships no
+mutations" boundary; F09 owns the retry, with this ruling as its spec.
+
 ### Test-suite provenance
 
 218 tests, all green, plus `tsc --noEmit`, `eslint .`, `prettier --check` and `next build`. The
@@ -532,3 +546,132 @@ that needs eyes or a touchscreen was not:
 - **Both colour schemes by eye.** `document.documentElement.dataset.theme = 'dark'` forces one.
 
 `/dev/ui` exists for exactly this pass and 404s in production.
+
+---
+
+## Addendum — rulings from F03b (landed during implementation)
+
+F03b shipped `lib/db/schema.ts`, `lib/db/index.ts`, `lib/db/queries.ts` and
+`drizzle/0000_clear_edwin_jarvis.sql`, applied to Neon. The generated migration matches the
+plan's §6.2 expectation statement for statement, and all six §6.4 verification queries
+pass against the live database (8 tables, 6 FKs all `confdeltype = c`, the four indexes
+including the `DESC NULLS LAST` composite and the UNIQUE on `share_links.group_id`).
+
+Six decisions were forced that no earlier ruling covered. **F05, F06, F07, F08 and F09 read
+R-54 and R-58 before writing a query.**
+
+### ⚠️ R-54 · A correlated aggregate written as a raw `sql` fragment silently returns Rp 0.
+
+The plan's §5.8 source for `getMonthGroups` writes its three aggregates as
+`` sql`... where ${expenseItems.groupId} = ${expenseGroups.id}` `` in the select list. In a
+select list with **no join**, Drizzle renders columns *unqualified*, so that emits:
+
+```sql
+select "id", coalesce((select sum("amount_idr") from "expense_items"
+                       where "group_id" = "id"), 0)   -- ← both names resolve INSIDE expense_items
+from "expense_groups"
+```
+
+`expense_items` has an `id` column of its own, so Postgres resolves both sides to the inner
+table and the correlation degrades to `expense_items.group_id = expense_items.id`. That
+matches nothing, every group total on `/m/[month]` reads **Rp 0**, and nothing anywhere
+errors. Verified by printing the emitted SQL for both forms.
+
+**Ruling. Correlated subqueries are built as sub-BUILDERS, never as raw fragments**, because
+a builder's `WHERE` is always fully qualified:
+
+```ts
+const totalSub = db.select({ v: sql`coalesce(sum(${expenseItems.amountIdr}), 0)` })
+  .from(expenseItems).where(eq(expenseItems.groupId, expenseGroups.id))
+// select list: sql<number>`(${totalSub})`.mapWith(Number)
+//   → (select coalesce(sum("amount_idr"), 0) from "expense_items"
+//      where "expense_items"."group_id" = "expense_groups"."id")
+```
+
+`tests/db.queries.sql.test.ts` counts the qualified correlation predicates, so the raw form
+cannot come back unnoticed. Two consequences worth knowing:
+
+- A `.limit(1)` inside a select-list subquery is parameterised, so `getMonthGroups`'
+  parameters are `[1, userId, startISO, endExclusiveISO]` — the `1` arrives *first*, because
+  the select list is rendered before the `WHERE`.
+- The same trap does **not** apply to the ownership predicates or to any of the other five
+  reads: `WHERE`-clause columns are always qualified, and every other read has a join.
+
+### R-55 · `lib/db/index.ts` reads `process.env.DATABASE_URL`. Plan Open question 1 is closed.
+
+The plan left open whether the client should import F01's validated `env` object. It must
+not: `lib/env.ts` opens with `import 'server-only'`, whose default export condition *throws
+on import*, and Vitest resolves the default condition. Routing the client through it would
+take every `lib/db` unit test down with it, and drizzle-kit plus `scripts/*.mjs` cannot
+import it either. `lib/env.ts` still validates both connection strings at app boot; the
+client reads the same variable one layer lower and keeps its own loud throw as the backstop.
+
+### R-56 · `npm run test:int` could not collect a single file. Fixed in the one Vitest config.
+
+F01's script was `vitest run --dir tests/integration` while its `exclude` named
+`tests/integration/**`. Two separate reasons that never worked, both verified:
+
+1. `--exclude` on the CLI **appends** to the config's list rather than replacing it, so the
+   exclusion could not be lifted from the command line.
+2. `--dir` re-roots file discovery, so the `tests/**/*.test.ts` include pattern no longer
+   matched anything under it.
+
+**Ruling.** R-11's "do not write a second config file" holds. The single config gates the
+exclusion on `VITEST_INTEGRATION=1`, and `test:int` becomes
+`VITEST_INTEGRATION=1 vitest run tests/integration` — an env flag plus a path filter, no
+`--dir`. `npm test` still never reaches a database, and the suite still `describe.skipIf`s
+itself when `TEST_DATABASE_URL` is unset, so both gates must be open for it to run.
+
+### R-57 · `getMonthToDatePair` brackets its `WHERE`; `throughDay` is validated.
+
+Additive to F08's Delta 3. F08's SQL sketch filters only on `user_id`, which scans every
+group the user has ever had in order to sum two 19-day windows. The shipped version keeps
+the two FILTERed sums but adds `occurred_on >= previousMonthStart AND < monthEnd`, so the
+`(user_id, occurred_on DESC)` index still drives the scan. `throughDay` must be an integer
+in 1..31 or it throws `RangeError` before the round trip, matching `getMonthlyTotals`'
+treatment of `months`. Return shape is unchanged: `{ currentIdr, previousIdr }`, both
+`.mapWith(Number)`, both `0` rather than `undefined` for an empty pair of windows.
+
+### R-58 · Two stale F03 references in F07's plan, and one additive field.
+
+F07 §"Interfaces I consume" was written against a draft of F03 and is wrong in two places
+that will not compile:
+
+- It imports `newId()` from **`lib/db/ids`**. There is no such module — R-42 put the
+  generator in **`lib/id.ts`**, re-exporting nanoid. Import from `@/lib/id`.
+- Its `MonthGroupRow` omits `note`, which the shipped row includes (it always did). Purely
+  additive; F07 may ignore the field.
+
+Recorded rather than silently absorbed because F07 is the next feature to consume this
+module and its Task 0 tells it to compare shapes and "stop and raise it with F03's owner".
+
+### R-59 · The unscoped read still names `user_id` — as a join key, not a filter.
+
+`getGroupByShareToken` must join `user` to resolve `ownerName`, so its first statement
+contains `"user"."id" = "expense_groups"."user_id"`. That is the join key, not a predicate:
+no user id is ever bound, and the only parameter in all three statements is the token. The
+test asserts the *predicate* form `"user_id" = $` is absent and that the bound string
+parameters are exactly `[token]`, rather than banning the substring — a substring ban would
+have to be weakened later by someone who no longer remembers why it was there.
+
+### Test-suite provenance
+
+287 unit tests green (69 new: 21 schema, 4 client, 10 ownership, 34 read-layer), plus
+`tsc --noEmit`, `eslint .`, `prettier --check .` and `next build`. The read-layer tests run
+the **shipped functions** against a fake Neon client (`tests/support/probeDb.ts`) and assert
+the SQL and parameters actually emitted, rather than rebuilding the query inside the test
+and asserting that the test agrees with itself — which is what caught R-54.
+
+`tests/integration/queries.int.test.ts` covers all twelve assertions in plan §10 plus R-15
+and the §9.2 cross-user `UPDATE`. **17/17 green against the live Neon database**, on the
+user's explicit go-ahead to use `main` rather than a branch (plan Open question 4) — the
+database held nothing but the freshly applied schema, and the suite deletes its own two users
+in teardown, which is assertion 10. Verified afterwards: every table back to zero rows.
+
+Re-run under `TZ=America/New_York` (UTC−4), `TZ=Pacific/Kiritimati` (UTC+14) and
+`TZ=Pacific/Midway` (UTC−11): **17/17 in all three**. That is the run that proves plan D-B —
+`occurred_on` is a `'YYYY-MM-DD'` string end to end and no process timezone can move it a
+day. Also proven rather than asserted: `SUM(bigint)` arriving as a JS `number`,
+`ON DELETE CASCADE` on all six FKs, the `share_links` UNIQUE constraint, cross-user isolation
+on every read plus the nested `UPDATE`, and the round-trip counter — `getGroupDetail` and
+`getGroupByShareToken` cost exactly **one** `fetch` each.

@@ -1,6 +1,6 @@
 # F03 — Data Layer & Contracts
 
-**Status:** plan · **Depends on:** F01 (Foundation) · **Blocks:** F02, F04, F05, F06, F07, F08, F09
+**Status:** shipped (F03a in wave 1, F03b in wave 2) · **Depends on:** F01 (Foundation) · **Blocks:** F02, F04, F05, F06, F07, F08, F09
 **Owner of:** `lib/db/*`, `lib/categories.ts`, `lib/schema/expense.ts`, `lib/format.ts`, `lib/id.ts`, `drizzle.config.ts`, `drizzle/`
 
 > **This is the keystone feature.** Seven other features import from this module set. Every exported symbol is a
@@ -220,6 +220,24 @@ Integration tests (§10) run separately via `npm run test:int` and are skipped u
 
 Every file below is final, copy-pasteable TypeScript. The TDD task list in §7 tells you the order to write them in
 and which test to write first.
+
+> **Read this before copying anything out of §5.** The files in the repo are now the source of truth; this section
+> is the plan they were written from, and five rulings landed on top of it. `docs/RECONCILIATION_v0.1.0.md`
+> supersedes it where they disagree:
+>
+> - **R-54** — `getMonthGroups`' correlated aggregates, as written below, emit
+>   `where "group_id" = "id"` and silently return **Rp 0** for every group. The block in §5.8 has been corrected
+>   in place; the reasoning is in R-54. This is the one place where copying the original text would ship a bug.
+> - **R-14** — `MonthGroupRow` gains `firstPhotoUrl: string | null`, from the same round trip.
+> - **R-15** — `getMonthToDatePair(userId, month, throughDay)` is added (see R-57 for the `WHERE` bracketing and
+>   the `throughDay` validation the shipped version adds to F08's sketch).
+> - **R-22** — `getGroupByShareToken` is wrapped in React `cache()`.
+> - **R-55** — `lib/db/index.ts` reads `process.env.DATABASE_URL` rather than `lib/env.ts` (Open question 1,
+>   now answered below).
+>
+> §5.1–§5.4 additionally predate the F03a rulings **R-42** (`lib/id.ts` wraps nanoid), **R-43**
+> (`formatJakartaLong = dayLabel`), **R-44** (`isAfterCurrentMonth`), **R-46** (`NewPhotoInputSchema`) and
+> design **R-34** (`CategoryMeta.code` replaces `emoji`).
 
 ### 5.1 `lib/categories.ts`
 
@@ -1060,6 +1078,8 @@ export interface MonthGroupRow {
   totalIdr: number
   itemCount: number
   photoCount: number
+  /** R-14 — blob_url of the lowest-sort_order photo, for F07's row thumbnail. Null when there is none. */
+  firstPhotoUrl: string | null
 }
 
 export interface ItemRow {
@@ -1147,27 +1167,43 @@ export interface BiggestExpense {
 export async function getMonthGroups(userId: string, month: MonthKey): Promise<MonthGroupRow[]> {
   const { startISO, endExclusiveISO } = monthRange(month)
 
+  /**
+   * CORRECTED PER R-54. The aggregates are correlated sub-BUILDERS, not raw `sql`
+   * fragments: in a select list with no join Drizzle renders columns unqualified, so the
+   * fragment form emits `where "group_id" = "id"`, Postgres resolves both names inside
+   * expense_items, and every total silently reads Rp 0. A builder's WHERE is always
+   * fully qualified.
+   */
+  const itemsOfGroup = eq(expenseItems.groupId, expenseGroups.id)
+  const photosOfGroup = eq(expensePhotos.groupId, expenseGroups.id)
+
+  const totalSub = db
+    .select({ v: sql`coalesce(sum(${expenseItems.amountIdr}), 0)` })
+    .from(expenseItems)
+    .where(itemsOfGroup)
+
+  const itemCountSub = db.select({ v: sql`count(*)` }).from(expenseItems).where(itemsOfGroup)
+
+  const photoCountSub = db.select({ v: sql`count(*)` }).from(expensePhotos).where(photosOfGroup)
+
+  // R-14. Same round trip; the ORDER BY makes "first" mean what the gallery shows first.
+  const firstPhotoSub = db
+    .select({ v: expensePhotos.blobUrl })
+    .from(expensePhotos)
+    .where(photosOfGroup)
+    .orderBy(asc(expensePhotos.sortOrder), asc(expensePhotos.createdAt))
+    .limit(1)
+
   return db
     .select({
       id: expenseGroups.id,
       title: expenseGroups.title,
       occurredOn: expenseGroups.occurredOn,
       note: expenseGroups.note,
-      totalIdr: sql<number>`coalesce((
-        select sum(${expenseItems.amountIdr})
-        from ${expenseItems}
-        where ${expenseItems.groupId} = ${expenseGroups.id}
-      ), 0)`.mapWith(Number),
-      itemCount: sql<number>`(
-        select count(*)
-        from ${expenseItems}
-        where ${expenseItems.groupId} = ${expenseGroups.id}
-      )`.mapWith(Number),
-      photoCount: sql<number>`(
-        select count(*)
-        from ${expensePhotos}
-        where ${expensePhotos.groupId} = ${expenseGroups.id}
-      )`.mapWith(Number),
+      totalIdr: sql<number>`(${totalSub})`.mapWith(Number),
+      itemCount: sql<number>`(${itemCountSub})`.mapWith(Number),
+      photoCount: sql<number>`(${photoCountSub})`.mapWith(Number),
+      firstPhotoUrl: sql<string | null>`(${firstPhotoSub})`,
     })
     .from(expenseGroups)
     .where(
@@ -2399,6 +2435,7 @@ export function getOwnedGroupIdForItem(userId: string, itemId: string): Promise<
 export interface MonthGroupRow {
   id: string; title: string; occurredOn: string; note: string | null
   totalIdr: number; itemCount: number; photoCount: number
+  firstPhotoUrl: string | null      // R-14
 }
 export interface ItemRow  { id: string; name: string; amountIdr: number; category: Category; sortOrder: number }
 export interface PhotoRow {
@@ -2417,6 +2454,7 @@ export interface SharedGroup {
   items: ItemRow[]; photos: PhotoRow[]; totalIdr: number
 }
 export interface MonthlyTotal   { month: string; totalIdr: number }
+export interface MonthToDatePair { currentIdr: number; previousIdr: number }   // R-15
 export interface CategoryTotal  { category: Category; totalIdr: number; itemCount: number }
 export interface BiggestExpense {
   itemId: string; name: string; amountIdr: number; category: Category
@@ -2430,8 +2468,15 @@ export function getMonthlyTotals(userId: string, months: number, anchorMonth: st
 export function getCategoryBreakdown(userId: string, month: string): Promise<CategoryTotal[]>
 export function getBiggestExpense(userId: string, month: string): Promise<BiggestExpense | null>
 
-/** ⚠️ THE ONLY UNSCOPED READ IN THE APPLICATION — /s/[token] only. No userId, by design. */
-export function getGroupByShareToken(token: string): Promise<SharedGroup | null>
+/** R-15 — days 1..throughDay of `month` vs the same window of the month before. Throws RangeError
+ *  unless throughDay is an integer in 1..31 (R-57). */
+export function getMonthToDatePair(
+  userId: string, month: string, throughDay: number,
+): Promise<MonthToDatePair>
+
+/** ⚠️ THE ONLY UNSCOPED READ IN THE APPLICATION — /s/[token] only. No userId, by design.
+ *  Wrapped in React cache() per R-22, so generateMetadata + the page cost one round trip. */
+export const getGroupByShareToken: (token: string) => Promise<SharedGroup | null>
 
 // ── pure helper, exported for tests and client-side reuse ──
 export function fillZeroMonths(
@@ -2458,10 +2503,11 @@ export function fillZeroMonths(
 
 ## Open questions for the integrator
 
-1. **`lib/env.ts` vs `process.env`.** `lib/db/index.ts` reads `process.env.DATABASE_URL` directly with a loud throw,
-   because F01 owns `lib/env.ts` and its export shape is not yet fixed. If F01 exports a validated `env` object,
-   swap the two lines in `createDb()` to `env.DATABASE_URL` and delete the backstop throw. Same for
-   `drizzle.config.ts`. **Decide before F02 lands.**
+1. **`lib/env.ts` vs `process.env`. ANSWERED — `process.env`, and it stays that way (R-55).** F01 does export a
+   validated `env`, but `lib/env.ts` opens with `import 'server-only'`, whose default export condition throws on
+   import. Vitest resolves the default condition, so importing it from `lib/db/index.ts` would fail every db unit
+   test; drizzle-kit and `scripts/*.mjs` cannot import it either. `lib/env.ts` validates both connection strings at
+   app boot; the client reads the same variable one layer lower and keeps its loud throw as the backstop.
 
 2. **"Biggest expense" — item or group?** `getBiggestExpense` currently returns the largest single **item**
    (`fan fries plaza blok m`, `Rp 58.850`), on the reading that a Rp 58.850 line item is a more interesting callout
@@ -2472,14 +2518,19 @@ export function fillZeroMonths(
 3. **Does F02 pass tables to `DrizzleAdapter` explicitly?** This plan assumes yes (Contract delta 1). If F02
    prefers name-based auto-detection, the SQL table names may need to change, which is a migration. Confirm early.
 
-4. **Neon branch for tests.** Task 19 needs a `TEST_DATABASE_URL` pointing at a throwaway Neon branch. Who creates
-   it, and is it recreated per run or reused? The teardown assumes reuse is safe because it deletes its own users.
+4. **Neon branch for tests. ANSWERED for v0.1.0.** `tests/integration/queries.int.test.ts` was run against the
+   project's own Neon database, on the user's explicit go-ahead, while it held nothing but the freshly applied
+   schema: 17/17, and again 17/17 under `TZ=America/New_York`, `Pacific/Kiritimati` and `Pacific/Midway`. Reuse is
+   safe — the suite creates users with random uuids and deletes them in teardown, which is assertion 10, and every
+   table was verified back to zero rows afterwards. **Once there is real data in `main`, point `TEST_DATABASE_URL`
+   at a branch instead:** `TEST_DATABASE_URL="…" npm run test:int`.
 
 5. **Time-travel in tests.** `todayJakartaISO(now?)` takes an injectable clock rather than using `vi.setSystemTime`.
    If the project standardises on fake timers, the parameter becomes redundant — harmless, but worth knowing.
 
 6. **Share-token collision retry.** `share_links.token` is the PK, so a collision is a unique violation on insert.
-   F09 must catch Postgres `23505` and retry once. At 72 bits this is a formality, but "formality" is how you get an
+   F09 must catch Postgres `23505` and retry once — **on `error.cause.code`, not on the outer message, which
+   Drizzle replaces with a generic `Failed query: …` (R-60).** At 72 bits this is a formality, but "formality" is how you get an
    unhandled 500. Should F03 publish a `mintShareToken(groupId)` helper that owns the retry instead of leaving it to
    F09? *Recommendation: yes, but only once F09 is being written — writing a mutation helper here would break the
    "F03 ships no mutations" boundary.*
