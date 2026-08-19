@@ -2459,3 +2459,68 @@ and passes `detail.shareToken` straight through.
     Task 16 step 2; it is a nice-to-have and can be dropped.
 11. **Multi-tab / stale optimistic state.** Single-user personal app, so two tabs editing the same group is not
     defended against. Last write wins. Confirm nobody cares.
+
+---
+
+## Implementation checklist — as landed
+
+Recorded after the fact, in the shape F05's and F06's plans use. Rulings **R-98…R-109** are in
+`docs/RECONCILIATION_v0.1.0.md`, which supersedes this file wherever the two differ. The three
+places this plan was wrong about the codebase, all recorded there rather than fixed silently:
+`lib/month.ts` (deleted by R-10), `app/actions/_guard.ts` (R-99), and the month-row thumbnail
+(R-103).
+
+```
+Data layer — the anchors this feature needs and F03 did not have
+  [x] +  lib/db/queries.ts — getOwnedGroupAnchor / getOwnedItemAnchor, returning
+         { groupId, occurredOn } (R-99). NOT app/actions/_guard.ts: R-77 forbids a second
+         copy of the ownership check, and the month path needs the date
+  [x] +  tests/db.ownership.test.ts — 4 new cases on the anchors
+Task 1  lib/month.ts
+  [x]    NOT CREATED (R-10). Imports addMonths, monthLabel, dayLabel, isValidMonthKey,
+         isAfterCurrentMonth, monthKey, currentMonthKey, isValidDateISO from lib/format.ts.
+         R-45's year bound lives at the route boundary instead → monthParam.ts
+Task 2  Toast primitive
+  [x]    NOT CREATED. F10 shipped components/ui/Toast.tsx, mounted in the ROOT layout, with
+         show(message, { action, duration, tone }) — a different signature to this plan's
+Task 3  Navigation shell
+  [x]    NOT CREATED. F10 shipped app/(shell)/layout.tsx + a route-aware TabBar; F02 owns
+         app/page.tsx and its redirect (R-6). /e/[id] is in (bare), not (shell) — R-51/R-38
+Tasks 4–6  /m/[month]
+  [x] 4  app/(shell)/m/[month]/MonthHeader.tsx   (sticky, Money size="hero", future wall)
+  [x] 5  app/(shell)/m/[month]/GroupRow.tsx      (meta line "3 item · ⧉ 2" — no thumbnail, R-103)
+  [x] 6  page.tsx + loading.tsx + not-found.tsx  (one query; empty state is design R-40's copy)
+  [x] +  monthParam.ts + buckets.ts, both pure, both unit-tested (11 cases)
+Tasks 7–9  Server actions
+  [x] 7  app/actions/_revalidate.ts — revalidateGroup(groupId, ...isoDates), dual-month
+         (F06's photo actions deliberately unchanged — R-100, with the condition attached)
+  [x] 8  app/actions/items.ts — addItem (sortOrder? per R-16) / updateItem / deleteItem
+  [x] 9  app/actions/expenses.ts — updateExpenseMeta + deleteExpense (R-17 redirect, R-18 blobs)
+  [x] +  app/actions/__tests__/items.test.ts (14) + expenses.meta.test.ts (18), over emitted SQL
+Task 10  Category chip + grid
+  [x]    NOT CREATED (R-33). F10's Chip, CategoryCode and CategoryPicker already existed;
+         the item sheet opens the picker as a SIBLING dialog (R-106)
+Tasks 11–14  /e/[id]
+  [x] 11 app/(bare)/e/[id]/page.tsx + loading + not-found + error   (isValidId before any query)
+  [x] 12 ExpenseEditor.tsx — useOptimistic meta + items; fields resync by key, not effect (R-105)
+  [x] +  items.ts — the reducer, extracted so it is testable as the pure function it is (11 cases)
+  [x] 13 ItemSheet.tsx      (F10 Sheet + Field/Input/MoneyInput + Chip → CategoryPicker)
+  [x] 14 DeleteExpenseSheet.tsx  (the app's ONE confirm; no try/catch around deleteExpense)
+Task 15  Wire F06 and F09
+  [x]    PhotoPicker mode="attached" then PhotoManager, both as a server-rendered photoSlot
+         (R-104). shareSlot={null} until F09 fills it with <ShareControl>
+  [x] +  app/dev/photos/ DELETED (R-84). /e/[id] is now the harness for R-86's unmet gate
+Task 16  Navigation polish
+  [x]    No explicit prefetch, no useLinkStatus: default 'auto' + loading.tsx is the instant
+         skeleton A9 wanted, without the 5-minute client-cache staleness (R-101)
+Task 17  Security pass
+  [x]    scripts/f07-audit.sh — 16 PASS, exit 0 (requireUserId counts, no bare-id mutation,
+         no second ownership check, no client import of lib/db, no try/catch on deleteExpense,
+         17px floor, no dead R-52j tokens, no 100vh, no double safe-area inset, no hand-set money)
+Task 18  Ship
+  [x]    npm test 678 passed | 15 skipped · tsc · eslint · prettier · next build with
+         ƒ /m/[month] and ƒ /e/[id] · live next start probes with a synthetic session cookie
+  [ ]    THE 24-STEP DEVICE QA TABLE, and with it every optimistic-UI step (9, 13, 14, 16),
+         the native date wheel, zoom-on-focus, safe areas and both colour schemes — see R-108
+  [ ]    R-86, EXIF orientation, still unmet and now hosted here (R-104)
+```

@@ -1449,3 +1449,255 @@ attached. Re-verified on `main` after F05 and F06: `npm test` **620 passed / 15 
 `tsc --noEmit`, `eslint` and `prettier --check` clean, `scripts/f05-preflight.sh` green, and
 `npm run test:live` **15/15** against real GLM-5.2. No F04 file changed behaviour in the process
 — the additions are one test file and three comments.
+
+---
+
+## Addendum — rulings from F07 (landed during implementation)
+
+F07 shipped `app/(shell)/m/[month]/*`, `app/(bare)/e/[id]/*`, `app/actions/items.ts`, the
+editing half of `app/actions/expenses.ts`, `app/actions/_revalidate.ts`, two additions to
+`lib/db/queries.ts` and `scripts/f07-audit.sh`; it deleted `app/dev/photos/` per R-84.
+Numbering continues from R-97. **F08 reads R-98 and R-101 before writing a page; F09 reads
+R-99, R-100 and R-103.**
+
+Every claim below was verified rather than reasoned: `npm test` (**678 passed | 15 skipped**,
+58 of them new), `next typegen && tsc --noEmit`, `eslint`, `prettier --check .`,
+`next build` (both new routes listed **ƒ**), `scripts/f07-audit.sh` (16/16), and probes
+against a live `next start` with a synthetic session cookie.
+
+### ⚠️ R-98 · `notFound()` on a route with `loading.tsx` answers **200**, not 404.
+
+Plan QA step 7 expects `/m/2026-13`, `/m/agustus` and `/m/2026-8` to return HTTP 404.
+They return **200 with the correct not-found UI**, in production as well as in dev, and the
+Next 16 docs say why:
+
+> "Because the check runs inside the `<Suspense>` boundary, the response has already begun
+> streaming as a `200`, and the status can't change once streaming has started. The `noindex`
+> tag keeps a soft 404 out of search results."
+> — `not-found.md`, *Status codes*
+
+A `loading.tsx` IS that Suspense boundary, and it is also what `<Link>`'s default
+`prefetch: 'auto'` prefetches on a dynamic route — deleting it to win the status code would
+make every month page-turn a blank wait.
+
+**Ruling. The soft 404 stands, and the *page* is what gets asserted, not the status.**
+Verified on the real build: `/m/2026-13`, `/m/agustus`, `/m/1899-01` render "Bulan tidak
+ditemukan" and `/e/garbage`, `/e/aaaaaaaaaaaa` render "Pengeluaran tidak ditemukan", each with
+Next's injected `<meta name="robots" content="noindex">`. Nothing crawls these routes anyway —
+`proxy.ts` 307s an unauthenticated visitor away from all of them, and `/e/[id]` sets `noindex`
+itself. **If a hard 404 is ever needed** (it is not, for an authenticated personal app), the
+two options are dropping `loading.tsx` or moving the shape check into `proxy.ts`, which the
+same doc recommends. F08's `/stats` will inherit this behaviour the moment it adds a loading
+boundary; F09's `/s/[token]` is the one route where the status genuinely matters, because it is
+public — it should therefore **not** have a `loading.tsx` over its token lookup.
+
+### ⚠️ R-99 · `app/actions/_guard.ts` is not created. The anchors live in F03's read layer.
+
+F07's plan Task 7 creates `assertOwnedGroup` / `assertOwnedItem` in `app/actions/_guard.ts`,
+each re-implementing the join `lib/db/queries.ts` already owns — the precise thing R-77 struck
+down for F06 ("import, never re-declare"), whose failure mode is silent: the day one copy of
+the ownership check is hardened, the other is not.
+
+**Ruling. Two additions to `lib/db/queries.ts` instead**, beside `assertGroupOwned`:
+
+```ts
+export interface GroupAnchor { groupId: string; occurredOn: DateISO }
+export function getOwnedGroupAnchor(userId: string, groupId: string): Promise<GroupAnchor>
+export function getOwnedItemAnchor(userId: string, itemId: string): Promise<GroupAnchor>
+```
+
+Both throw `NotFoundError`, both are one statement, and `getOwnedItemAnchor` carries the
+correlated `itemOwnedBy(userId)` EXISTS rather than trusting an item id — an item id proves
+nothing, because `expense_items` has no `user_id`.
+
+**Why they return `occurredOn`.** `/m/[month]` is a literal path, so the month cannot be
+derived from a group id, and every mutation under a group has to bust the month page it appears
+on. Reading the date as part of the ownership check that was mandatory anyway makes the
+dual-month revalidation free instead of a second query. F03's existing
+`getOwnedGroupIdForItem` could not do this (id only) and is now documented as the narrower
+variant. **F09 uses `getOwnedGroupAnchor` for `createShareLink` / `revokeShareLink`.**
+
+### R-100 · `revalidateGroup` ships; F06's photo actions are deliberately left alone.
+
+Plan Task 15 instructs F07 to make `attachPhoto` / `deletePhoto` call `revalidateGroup`, on the
+grounds that the month row's photo badge otherwise goes stale. Both actions know only a group
+id, so that would cost an extra indexed round trip per photo — up to ten per group.
+
+**Ruling. `app/actions/_revalidate.ts` is published and F07's own actions use it; F06's are
+unchanged, because the staleness it protects against cannot currently occur.** The month page
+reads a cookie, so it is never in the Full Route Cache; in the *client* Router Cache a dynamic
+route's `staleTimes` default is **0** (`staleTimes.md`: "Default: 0 seconds (not cached)"), and
+it only moves to the 5-minute `static` bucket for a link with `prefetch={true}` — which F07
+does not use (see R-101). So a month page is re-fetched on every navigation back to it and the
+badge is already fresh.
+
+**The condition attached to this ruling:** the moment anything adds `prefetch` (explicit
+`true`) to a link pointing at `/m/[month]`, F06's two actions must start calling
+`revalidateGroup(groupId, occurredOn)` — the anchor from R-99 is how they get the date. That is
+recorded here, in `_revalidate.ts`'s docblock and in the plan's revalidation matrix, because it
+is a two-line change with a failure mode nobody would spot.
+
+### R-101 · No `prefetch` on the month chevrons. Plan A9 is reversed.
+
+Plan A9 sets `prefetch` explicitly `true` on the prev/next month links "plus a `loading.tsx`
+skeleton". In Next 16 that is redundant *and* costly: the default `'auto'` already "prefetches
+the partial route down to the nearest segment with a `loading.js` boundary"
+(`link.md`, *prefetch*), which is exactly the instant skeleton A9 wanted, while `true` promotes
+the month into the client cache's 5-minute `static` bucket and re-opens the photo-badge
+staleness R-100 closes.
+
+**Ruling. Default prefetch, real `loading.tsx` on both routes.** Fresh money beats a
+pre-warmed month, and the skeleton is what the user actually perceives.
+
+### R-102 · Day headings do not stick, and `lib/month.ts` still does not exist.
+
+R-10 deleted `lib/month.ts`; F07 imports `addMonths`, `monthLabel`, `dayLabel`,
+`isValidMonthKey`, `isAfterCurrentMonth`, `monthKey`, `currentMonthKey` and `isValidDateISO`
+from `lib/format.ts` as ruled, and R-45's year bound is applied at the route boundary in
+`app/(shell)/m/[month]/monthParam.ts` (2000–2100, unit-tested against the shared validator so
+the split cannot be "unified" away by accident).
+
+The plan's sticky day headings needed `top-[8.5rem]` — a measured literal its own note flagged
+as fragile, with no `--header-h` token from F10 to key off, and a failure mode of headings
+hiding behind the header with nothing failing anywhere. **Ruling: the month header sticks (it
+carries the total and the navigation); day headings scroll.** One less magic number, and the
+number that has to stay on screen still does.
+
+### R-103 · The month row has no thumbnail. `firstPhotoUrl` ships unused.
+
+R-14 added `firstPhotoUrl` to `getMonthGroups` for F07's row thumbnail (its plan A10, plus a
+`next/image` remote pattern). Design R-40 then specified the photo evidence as `⧉ 3` **inside
+the mono meta line**, and roadmap §5 describes the row as "title, item count, photo count,
+total" — no image. Both post-date the plan.
+
+**Ruling. The design wins.** The row renders `3 item · ⧉ 2`, and twenty `next/image` requests
+per month view are not spent. `firstPhotoUrl` stays in `MonthGroupRow` — it costs nothing (same
+aggregate, same round trip) and F08's biggest-expense callout or F09 may want it — so this is
+recorded rather than reverted, the same way R-66 left `AccountMenu` shipped-but-unused.
+
+### R-104 · `/e/[id]` composes F06's two photo components; the picker owns the heading.
+
+R-80 published `PhotoManager` (owner, carries `deletePhoto`) and `PhotoGallery` (public). F07
+needs a third thing R-80 does not name: the way to ADD a photo to an existing group. That is
+`PhotoPicker mode="attached"`, which R-31's `onBusyChange` and R-83's tile states already cover.
+
+**Ruling.** `/e/[id]` renders, in this order, `<PhotoPicker mode="attached" groupId
+existingCount>` then `<PhotoManager photos>` — picker first because F06 owns the "Foto" heading
+and the `n/10` counter, and a gallery above them would orphan the heading. Both are rendered by
+the **server** page and handed to `ExpenseEditor` as a `photoSlot: ReactNode`, so F06's
+components keep their own boundary and the client editor never learns which they are. F07 ships
+no gallery, no lightbox, no compression and no upload code, and `onBusyChange` is unused here:
+there is no Simpan button to block, because every edit saves itself.
+
+**R-86 is now F07's to host, and it is still unmet.** `/dev/photos` is deleted per R-84, so the
+EXIF-orientation gate runs on `/e/[id]`: attach a portrait photo from a real iPhone and confirm
+it renders upright in the 3-up grid and the lightbox. What is lost with the harness is its
+`width×height` / portrait-landscape readout; the same numbers are in `expense_photos` if the
+gate fails and someone needs to know which way the decode went.
+
+### R-105 · The detail screen resyncs its text fields with a `key`, not an effect.
+
+`Judul` and `Catatan` hold in-progress text (an input someone is typing into is not server
+state) while the committed value lives in `useOptimistic`. Two sources of truth need a
+reconciliation rule, and the obvious one — a `useEffect` that copies the prop into local state —
+is the R-92 anti-pattern: a second render for one logical change, and it fights the caret.
+
+**Ruling, generalised for F09.** The parent keys each field on the committed value
+(`key={`title:${optimisticMeta.title}`}`), so a commit remounts the field with the new value and
+a **failed** write remounts it with the old one — the same snap-back that rolls back an item row,
+for free, with no effect and no desync. Both fields are blurred by the time either happens, so
+no keystroke is ever lost. The date field needs none of this: it is fully controlled and commits
+on `change`, because a wheel-spin that emits two writes (last one wins, both months revalidated)
+is a better trade than losing an edit when someone picks a date and taps Back without blurring.
+
+### R-106 · The item sheet opens the category picker as a SIBLING dialog.
+
+F10's `CategoryPicker` is a 2×4 grid already wrapped in a `Sheet`, and F07's `ItemSheet` needs a
+category control inside itself. Re-implementing the grid inline would be the R-7 / R-8 / R-33
+duplication again — eight cells, one `--c` custom property, and a second idea of what "selected"
+looks like.
+
+**Ruling. Render the picker as a sibling `<dialog>`, not a nested one.** Two modal dialogs both
+sit in the top layer, so the picker paints above the editor and neither is inert; `Sheet`'s
+body-scroll lock is already reference-counted "so a nested sheet closing does not unlock the page
+while its parent is still open", which is the case this exercises. `ItemSheet` also passes
+`showCloseButton` (R-52d's opt-in) because it is an editor with a destructive action in its
+footer, not a picker.
+
+### R-107 · `deleteExpense` and the toast that cannot follow a redirect.
+
+`deleteExpense` implements R-17 (server-side `redirect`) and R-18 (collect blob pathnames
+BEFORE the delete, then `deleteBlobsQuietly`) — both asserted over the emitted SQL, including
+that the pathname read carries the ownership EXISTS and that the bytes go only after all three
+statements have run.
+
+Design R-40 lists a `Pengeluaran dihapus` toast. It is **not implemented**: the action redirects
+to `/m/<month>`, and a toast raised in the dying page's transition cannot survive the
+navigation. Carrying it across would need a query param or a cookie, i.e. state that outlives
+the thing it describes. The row being gone from the month list is the feedback. Recorded so the
+missing string is a decision rather than an oversight. `Item dihapus` + `Urungkan`, which is the
+toast that matters (it is the undo), ships as specified with a 7-second window.
+
+### R-108 · What F07 verified, and what it could not
+
+Green: `npm test` **678 passed | 15 skipped** (58 new — 11 route-param and day-bucket, 11
+reducer/type-assignability, 14 item actions, 18 meta/delete actions, 4 ownership anchors),
+`tsc --noEmit`, `eslint`, `prettier --check .`, `next build` listing **`ƒ /m/[month]`** and
+**`ƒ /e/[id]`** (a `○` on either would mean the auth call had been lost and the page was being
+cached across users), and `scripts/f07-audit.sh` 16/16 — which includes "no client module under
+`/e` or `/m` imports `lib/db` or `lib/blob`", "no mutation scoped by a bare id", "no second
+ownership check" and "no `try/catch` around `deleteExpense`".
+
+Against a live `next start` on port 3997 with a synthetic session cookie minted by
+`@auth/core/jwt`'s `encode()` at the real `AUTH_SECRET` — the technique F02, F04 and F05 all
+used:
+
+- signed out, `/m/2026-08` and `/e/aaaaaaaaaaaa` → **307** to `/?next=…`; `/s/abc` still not
+  intercepted (it 404s, since F09 has not shipped);
+- signed in, `/m/2026-08` → **200**: `Agustus 2026`, `Rp 0`, `0 catatan · 0 item`, the
+  `Belum ada catatan` empty state, `<title>Agustus 2026 · Expense Tracking</title>`, the tab bar
+  present (`data-tabbar`), the **next** chevron `aria-disabled` and the prev chevron labelled
+  "Bulan sebelumnya, Juli 2026";
+- signed in, `/m/2026-07` → the next chevron becomes a real link to Agustus 2026, so the
+  future-month wall moves with the clock rather than being hardcoded;
+- `/e/aaaaaaaaaaaa` and `/new` carry **no** `data-tabbar`, which is the R-51 / R-38 route-group
+  split observed rather than assumed;
+- the five invalid-route probes render the right not-found page with `noindex` (R-98).
+
+**NOT VERIFIED, and this is the honest part:**
+
+1. **No group has ever been rendered.** Every data-shaped assertion in this feature is over
+   emitted SQL with a probe driver. `/m/[month]` has only been seen empty and `/e/[id]` only as
+   a 404, because `expense_groups.user_id` is an FK to `users.id` and a synthetic session id has
+   no row — so a populated pass needs either a real Google sign-in in a browser or a seeded
+   scratch user in Neon. F05 recorded the same gap for `createExpense`; it is the same gap, and
+   one signed-in session closes both.
+2. **Nothing optimistic has been observed.** There is no jsdom or React testing library in this
+   repo, so `reduceItems` is tested as a pure function and the `useOptimistic` wiring around it —
+   the snap-back on failure, the undo re-insert landing in its original position, the total
+   updating before the network settles — is reasoned from the contract at the top of
+   `ExpenseEditor.tsx` and unverified. Plan QA steps 9, 13, 14 and 16 are the ones that matter.
+3. **The whole manual QA table (24 steps) is outstanding**, and the steps that need a real
+   device cannot be faked in DevTools: the native date wheel, zoom-on-focus, the sheet above the
+   keyboard, safe-area insets under the notch, and both colour schemes by eye.
+4. **R-86 (EXIF orientation) is unmet and now runs here** — see R-104.
+
+**Do not mark F07 done on the strength of 678 green tests.** They say the actions cannot write
+outside their user, that the money adds up and that the reducer puts rows back where they were.
+They say nothing about what a thumb sees.
+
+### R-109 · F07's open questions, answered
+
+| OQ | Answer |
+|---|---|
+| 1 — does F03 return `photoCount`, `firstPhotoUrl`, `shareToken`? | All three, as shipped (R-14, R-12). The "only true blocker" in the plan's list was never one. `firstPhotoUrl` turned out to be unnecessary anyway — see R-103. F07 issues no second query on either page. |
+| 2 — who owns `TabBar`? | F10, and it had already shipped a route-aware `TabBar` plus `app/(shell)/layout.tsx`. The plan's `components/nav/AppTabBar.tsx` was **not** created; F07 added no navigation chrome at all beyond `/e/[id]`'s own pushed-view header (R-89's consequence, discharged). |
+| 3 — who owns the category picker? | F10's `CategoryPicker` (R-7 / R-33). F07 publishes no `CategoryGrid` and no `CategoryChip`; `Chip`, `CategoryCode` and `CategoryPicker` already existed and F05 already used them. R-106 covers how the sheet nests it. |
+| 4 — `next/image` remote patterns | F01 added them, F06 narrowed them (R-81). F07 changed nothing and renders no `<Image>` (R-103). |
+| 5 — tab bar on `/new`? | No (R-51), and now confirmed in the served HTML: neither `/new` nor `/e/[id]` carries `data-tabbar`. |
+| 6 — `/s/[token]` freshness | Unresolved by design, and now documented at the top of `app/actions/_revalidate.ts`: an action knows a group id, not a token, so busting the share path would cost a lookup on every write. **F09 must render `/s/[token]` dynamically with no ISR** — R-22's `cache()` is per-request and does not change that — or pass the token in. |
+| 7 — test runner | `vitest`, owned by F01 (R-11). No new config, no second config file; the co-located `app/**/*.test.ts` glob already covered F07's tests. |
+| 8 — the `top-[8.5rem]` sticky offset | Gone. Day headings do not stick (R-102). |
+| 9 — a restored item gets a new id | Accepted, as the plan proposed (A7). Nothing references an item id across requests, and the alternative — a deferred-delete timer — loses the delete when the tab closes mid-window. The row's *position* is preserved, which is the part the user can see (R-16). |
+| 10 — `useLinkStatus` in `next@16.3.1` | Not used, and not needed: default prefetch plus a real `loading.tsx` gives the pending affordance the plan wanted a spinner for (R-101). The export exists (`next/link`) if a future screen wants it. |
+| 11 — multi-tab / stale optimistic state | Accepted, unchanged: last write wins. Single-user personal app (D3 notwithstanding — data is per-user, not shared), and every patch is field-scoped, so two tabs editing different fields of one group both land. |
