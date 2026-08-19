@@ -211,6 +211,12 @@ export const ParsedExpense = z.object({
 
 Bottom tab bar (3 tabs, safe-area aware): **Bulan Ini** (`/m/…`) · **Tambah** (`/new`, centre, raised) · **Statistik** (`/stats`).
 
+> **R-51** — the bar is *rendered* on `/m/[month]` and `/stats` only, via the `app/(shell)/` route
+> group. `/`, `/new`, `/e/[id]` and `/s/[token]` sit in `app/(bare)/`: a detail view is a pushed view
+> with a back chevron rather than a tab destination (design R-38), and `/new` ends in a full-width
+> Simpan exactly where the bar would be. The **Tambah** tab still links to `/new` — it is the way in,
+> not a place the bar follows you to, so a screen in `(bare)` supplies its own way back.
+
 ### 4.7 Money & date helpers (`lib/format.ts`)
 
 - `formatIdr(n: number): string` → `"Rp 38.500"` (dot thousands separator, `id-ID` locale, no decimals)

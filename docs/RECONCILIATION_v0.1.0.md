@@ -297,7 +297,14 @@ F03a shipped `lib/categories.ts`, `lib/id.ts`, `lib/format.ts` and `lib/schema/e
 R-9. Five decisions were forced that no earlier ruling covered. **F10 reads this section before
 importing anything.**
 
-### R-34 · `lib/id.ts` wraps `nanoid`. F03's D-E is overturned by F01 and F06.
+> **Renumbered R-34…R-38 → R-42…R-46 by F10.** This addendum originally reused numbers the
+> Claude Design pull had already taken (`docs/design/DESIGN_INTEGRATION.md`, committed first
+> and cited by roadmap §4.1), so there were two R-34s and two R-38s in the same arbitration
+> record. The design's numbering wins because it was there first and is referenced from the
+> roadmap; these five moved. **All rulings, from every source, now live in one sequence** —
+> DESIGN_INTEGRATION.md holds R-34…R-41 and this file holds the rest.
+
+### R-42 · `lib/id.ts` wraps `nanoid`. F03's D-E is overturned by F01 and F06.
 
 D-E hand-rolled a 64-symbol generator on the argument that `nanoid@5` "is not in the pinned stack
 table (§3)". That premise expired before F03a executed:
@@ -314,7 +321,7 @@ F09 §2.2's 72-bit figure is unaffected. Only the symbol *ordering* differs, and
 depend on it. `ID_ALPHABET` is now exported so `isValidId` and `ID_ENTROPY_BITS` are derived from the
 generator rather than asserted beside it.
 
-### R-35 · `formatJakartaLong` is an alias of `dayLabel`, not a second Intl implementation.
+### R-43 · `formatJakartaLong` is an alias of `dayLabel`, not a second Intl implementation.
 
 R-21 accepted F09's `formatJakartaLong(iso)` into `lib/format.ts`. F09's body used
 `Intl.DateTimeFormat('id-ID', …)` anchored at Jakarta midnight. Its output — `Selasa, 18 Agustus
@@ -326,7 +333,7 @@ an ICU release.
 implementation. A unit test asserts the two agree across five dates so an "optimisation" that
 un-aliases one of them fails loudly.
 
-### R-36 · `isAfterCurrentMonth` moves into `lib/format.ts`.
+### R-44 · `isAfterCurrentMonth` moves into `lib/format.ts`.
 
 R-10 deleted `lib/month.ts` and listed seven symbols F07 imports from `lib/format.ts` instead. F07
 also used `isAfterCurrentMonth(monthKey)` to disable the "next month" arrow, and that symbol was on
@@ -335,7 +342,7 @@ neither list — deleting the module would have stranded it.
 **Ruling. Added**, as `isAfterCurrentMonth(month, now?)`. The optional `now` makes it testable, which
 F07's version was not.
 
-### ⚠️ R-37 · `isValidMonthKey` has no year bound. F07's `/m/<year>` 404 behaviour changes.
+### ⚠️ R-45 · `isValidMonthKey` has no year bound. F07's `/m/<year>` 404 behaviour changes.
 
 F07's `isMonthKey` rejected years outside 2000–2100; F03's `isValidMonthKey`, which R-10 makes the
 survivor, checks shape only. **Consequence F07 must absorb:** `/m/1899-01` and `/m/9999-12` now
@@ -345,7 +352,7 @@ render an empty month instead of a 404.
 it. If F07 wants the 404 it adds the range check at the route boundary, where a routing decision
 belongs, rather than inside a shared validator three other features share.
 
-### R-38 · `NewPhotoInputSchema` lives in `lib/schema/expense.ts`, with dimensions **required**.
+### R-46 · `NewPhotoInputSchema` lives in `lib/schema/expense.ts`, with dimensions **required**.
 
 R-2 changed `createExpense` to take `photos?: NewPhotoInput[]` but left the Zod object unowned — F06
 publishes only the TypeScript type, in `lib/photos/types.ts`.
@@ -364,3 +371,164 @@ which does not see the image. The asymmetry is deliberate; do not "harmonise" it
 R-10 and now runs under Pacific/Kiritimati (UTC+14), Pacific/Midway (UTC-11), UTC and
 America/New_York; a runtime `process.env.TZ` change was confirmed to actually move Node's local-time
 getters, so that suite fails a naive implementation rather than passing vacuously.
+
+---
+
+## Addendum — rulings from F10 (landed during implementation)
+
+F10 shipped `app/globals.css`, `lib/cn.ts`, `app/fonts.ts`, `components/ui/**`,
+`components/AppShell.tsx`, the root layout, both route-group layouts, `app/manifest.ts`, the icon
+set and `scripts/palette-check.py`.
+
+It executed **after** the Claude Design pull, so its plan file was two documents out of date: the
+reconciliation rulings above supersede parts of it, and `docs/design/DESIGN_INTEGRATION.md`
+(R-34…R-41) supersedes more. Where all three disagreed the order of precedence was the one
+DESIGN_INTEGRATION states — iOS constraints, then roadmap §4, then accessibility floors, then the
+design's aesthetics, then F10's plan. **Anyone reading `docs/plans/F10-design-system.md` for the
+component contract should read its *Interfaces I publish* section, which has been rewritten to
+match what shipped; the task list above it is now a historical record of a palette that was
+replaced.**
+
+### ⚠️ R-47 · `tokens.css` declares the category colours circularly. Fixed in `globals.css`.
+
+`docs/design/tokens.css` — the normalised pull — declares the eight category values as
+`--color-cat-<key>` at `:root`, then declares the *same names* inside `@theme inline`:
+
+```css
+:root { --color-cat-food: #9c4a2a; }
+@theme inline { --color-cat-food: var(--color-cat-food); }   /* refers to itself */
+```
+
+Tailwind emits its `@theme inline` colours into its own `:root`, so the shipped property would
+have resolved to itself — invalid at computed-value time, i.e. every chip, code and category bar
+painting nothing. Verified against a real build: the emission is real, and it is what forced this.
+
+**Ruling. Split the name from the value.** `app/globals.css` holds the raw value as `--cat-<key>`
+plus an explicit `--color-cat-<key>: var(--cat-<key>)` alias at `:root`, and maps the alias through
+`@theme inline`. Both consumers work: `var(--color-cat-food)`, which is the name
+`CategoryMeta.color` publishes under R-7, and the `bg-cat-food` / `text-cat-food` utilities.
+`tokens.css` keeps the pulled values as the provenance record and is not a build input.
+
+Related build fact, recorded because it looks like a bug the first time you see it: Tailwind v4
+prunes theme variables nothing references, so `--color-paper` is absent from the CSS until
+something uses `bg-paper`. Only the `:root` aliases above are emitted unconditionally.
+
+### ⚠️ R-48 · `ink-3` failed WCAG 1.4.3 at 2.85:1. The token is amended, not waived.
+
+`scripts/palette-check.py` (new, and the tool R-28 asks for) measured the design's `--ink-3`
+`#8f8d81` at **2.85:1 on paper** and 3.19:1 on card. `ink-3` is every field label, every meta line,
+every placeholder, the inactive tab label and the ghost-button text — all of it small text the user
+reads, so 4.5:1 applies with no large-text exemption available.
+
+**Ruling. Darkened along its own hue until it passes**: `#6e6c61` light (4.51 on paper, 5.05 on
+card) and `#86857b` dark (5.01 on paper, 4.50 on card). Accessibility floors sit above the design's
+aesthetic choices in DESIGN_INTEGRATION's own precedence list, and the conflict table already
+prescribes exactly this move for a colour that misses a threshold — keep the hue, change the
+lightness, re-run the checker.
+
+The cost, stated plainly: `ink-2` and `ink-3` now sit close together in light mode (ΔE 0.057). That
+is affordable **only** because this design does not use colour for hierarchy — a label reads as a
+label because it is 10px mono uppercase at 0.2em tracking. Do not "restore" the pale grey.
+
+### R-49 · `--rule-strong` is added, because a 1.28:1 hairline cannot identify a control.
+
+The design ships two line tokens, both soft. `rule` at 1.28:1 on paper is right for a card edge or
+a row separator: decorative, and backed up by layout and by the card's own fill. But WCAG 1.4.11
+wants 3:1 for the boundary that *identifies a user-interface component*, and an input's fill
+differs from the page by only 1.09:1 — so on a text field the border is doing that job alone, and
+failing it.
+
+**Ruling. A third line token, used by controls only**: `#8d887b` light / `#696962` dark, 3.02:1 and
+3.36:1 respectively. Applied to `Input`, `TextArea`, `MoneyInput`, `Button variant="secondary"` and
+the `CategoryPicker` cell. Container edges, row separators and the sheet's grabber keep the soft
+`rule`. This restores the distinction F10's own palette had as `--app-border` /
+`--app-border-strong` and the pull collapsed away.
+
+This is the most visible aesthetic change F10 made to the design, and it is a one-line revert:
+point `--rule-strong` at `var(--rule)` and re-run `scripts/palette-check.py` to see the cost.
+
+### R-50 · Categorical separation is below the 0.10 floor, with a waiver that can expire.
+
+The eight hues sit as close as **ΔE 0.065 (light) / 0.042 (dark)** in Oklab — worse than the
+numbers that condemned the donut in R-3. This is nonetheless accepted, because in this design
+colour never identifies a category on its own: `Chip`, `CategoryCode` and `CategoryPicker` have no
+colour-only mode, every row carries the two-letter code, the 12-month chart has no categorical
+series at all (`accent` for the current month, `rule` for the rest), and the breakdown is a labelled
+bar list rather than a ring of eight competing wedges.
+
+**Ruling. Waived and recorded in the checker's own output**, so the number cannot be rediscovered as
+a surprise. `scripts/palette-check.py` prints the waiver and its expiry condition on every run and
+excludes the figure from its exit code. **The waiver expires the moment any view keys a category by
+colour alone** — a legend without codes, a pie, a stacked bar, a colour-only sparkline. F08 reads
+this before adding any mark that is not the bar list.
+
+All contrast checks pass otherwise, in both themes, including the one R-28 flagged: every category
+colour clears **4.5:1 as text** on both surfaces (light 4.53–7.10, dark 5.78–8.63). The design's
+claim was true; it is now measured rather than inherited.
+
+### R-51 · The `(shell)` group holds two routes, not four.
+
+R-25 put the TabBar in a route group with `/s/[token]` and `/new` outside it; design R-38 then moved
+`/e/[id]` out too. Composing both leaves `app/(shell)/` owning only `/m/[month]` and `/stats`, with
+`/`, `/new`, `/e/[id]` and `/s/[token]` in `app/(bare)/`.
+
+**Noted, because the design prototype disagrees with the rulings and someone will spot it.** `03 App
+Prototype` renders the tab bar on its Tambah screen (`showTabBar: ['month','add','stats']`). The
+rulings win: they were written after that prototype, they say it twice independently, and `/new`
+ends in a full-width Simpan exactly where the bar would sit.
+
+**Consequence F05 must absorb:** `/new` has no tab bar, so it needs its own way back — the design's
+header pattern of back chevron · mono label · optional action, as on the Detail screen. F10 does not
+ship that header, because what flanks the label differs per route and F10 does not own screens.
+
+`app/page.tsx` also moved to `app/(bare)/page.tsx` so the landing gets the centred column. The route
+is unchanged — a route group never appears in a URL — and R-6 still gives it to F02, which must
+render into that file rather than create a second `/`.
+
+### R-52 · Deltas to F10's published component contract
+
+Every one of these is a widening or a default change, not a removal, so nothing typed against the
+old signatures fails to compile. Listed because a silently different default is worse than a
+renamed one.
+
+| # | Was | Is | Why |
+|---|---|---|---|
+| a | `Button size` default `md` (44px) | default **`lg`** (52px) | 52px is the design's normal button; 44px is its small variant (R-41). |
+| b | `Spinner` | `LoadingDots`, with `Spinner` as an alias | The loading state is three pulsing dots. Nothing in this system spins. |
+| c | `Card padded?: boolean` | `boolean \| 'rows'` | `'rows'` is the 16/6/2 inset a list of rows wants, so separators span the text column and a 44px delete target sits flush right. Used by F05, F07, F09. |
+| d | `Sheet showCloseButton` default `true` | default **`false`** | The design has no close button; the scrim and Escape dismiss. Pass `showCloseButton` where a sheet is an editor rather than a picker. |
+| e | `MoneyInput onValueChange` fires on blur | fires on **every accepted change** | The running total must not lag the field. Follows from the component being fully controlled. Handlers must be idempotent. |
+| f | `MoneyInput` shows plain digits while focused | always shows the grouped form | R-37: dots are inserted as you type, never typed. |
+| g | `CategoryDot` for dense rows | **`CategoryCode`** added; `CategoryDot` kept | The code carries colour *and* identity. Prefer it everywhere; the dot survives only for a legend that has room for nothing else. |
+| h | `max-w-app` = 480px | **416px** | The design canvas is 414px. |
+| i | `--radius-sm/md/lg/xl`, `--shadow-raise/sheet` | `rounded-chip/field/card`, no shadow tokens | R-36: zero shadows. The radius names come from the design. |
+| j | token names `surface*`, `text*`, `accent`, `danger` | `paper*`, `card`, `ink*`, `rule*`, `accent`, `red` | The design's names, already normalised into `docs/design/tokens.css`. **This is the delta most likely to bite waves 3–5** — the old names do not exist, and neither does `bg-gray-100`. |
+
+### R-53 · Next 16 emits `mobile-web-app-capable`, not the Apple-prefixed legacy tag.
+
+F10's plan expected `<meta name="apple-mobile-web-app-capable" content="yes">` in the served HTML.
+`appleWebApp.capable` in Next 16.3.1 emits the standardised `mobile-web-app-capable` instead, which
+Safari has honoured since iOS 16.4. The target device runs up to iOS 18, so this is not a defect —
+but standalone mode is the entire PWA pitch, so the legacy tag is also emitted via `metadata.other`
+as one line of insurance against an un-updated phone.
+
+Verified in the served HTML: `viewport-fit=cover`, both `theme-color` media variants, the
+`apple-touch-icon` link at 180×180, `apple-mobile-web-app-title`, `-status-bar-style`,
+`format-detection`, and `/manifest.webmanifest`.
+
+### What F10 did NOT verify, and cannot
+
+The Visual QA and Accessibility checklists in `docs/plans/F10-design-system.md` are **outstanding**.
+Everything in them that a build can prove was proven — the namespace reset, the token emission, the
+contrast figures, the production 404 on `/dev/ui`, the metadata, the utilities compiling. Everything
+that needs eyes or a touchscreen was not:
+
+- **Zoom on input focus.** The 17px floor is in the base layer where a class cannot override it, but
+  only a real iPhone proves no field slipped through.
+- **Tabular figures.** IBM Plex Mono is monospaced and `tnum` is applied, but the whole money rail
+  rests on that assumption. `/dev/ui`'s alignment card is the test.
+- **Sheet motion, scrim tap, overscroll containment, and open → Escape → open.**
+- **Safe areas on a notched device**, which is the only place `viewport-fit=cover` can be observed.
+- **Both colour schemes by eye.** `document.documentElement.dataset.theme = 'dark'` forces one.
+
+`/dev/ui` exists for exactly this pass and 404s in production.

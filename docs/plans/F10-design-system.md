@@ -10,6 +10,45 @@
 
 ---
 
+## STATUS — implemented 2026-08-19, and this plan is partly superseded
+
+**Read this before trusting anything below it.**
+
+F10 executed after the Claude Design pull, so two committed documents outrank most of this file:
+
+1. `docs/RECONCILIATION_v0.1.0.md` — the arbitration record. R-7, R-8, R-9, R-24, R-25 change what
+   F10 owns; the *Addendum — rulings from F10* (R-47…R-53) records every decision implementation
+   forced.
+2. `docs/design/DESIGN_INTEGRATION.md` — the design pull (R-34…R-41). It replaced the palette, both
+   font families, the type scale, the shadow policy and the category glyph.
+
+What survived from this plan is its **structure**: the `--color-*` / `--text-*` namespace reset, the
+iOS base layer, the money rail, the utilities, the component classes, the native-`<dialog>` sheet,
+the route-group split, the PWA metadata, and every component's props. What did not survive is every
+colour value, both typefaces, the type scale, `lib/categories.ts` and `lib/format.ts` ownership, and
+several component defaults.
+
+Concretely, in this file:
+
+| Section | Status |
+|---|---|
+| §0 Design direction | **Superseded.** The direction is warm paper + ink with a serif/mono split, not a single ink accent on grey. Read DESIGN_INTEGRATION.md's opening paragraph instead. |
+| Contract deltas D-1, D-2 | **Overturned** by R-7 and R-8. F03a owns `lib/categories.ts` and all of `lib/format.ts`; F10 imports both. |
+| Contract delta D-3 | **Accepted** — `formatIdrDigits` shipped. |
+| Contract delta D-4 | **Accepted** as R-24 and verified against a real build. |
+| Task 1 | Done. Tailwind v4 wiring confirmed CSS-first, no `tailwind.config.js`. |
+| Tasks 2–5 | **Values superseded, structure shipped.** See `app/globals.css`, whose comments carry the reasoning. |
+| Task 6 | `lib/cn.ts` shipped. `lib/categories.ts` was F03a's; F10 changed one field per design R-34. |
+| Task 7 | **Not done, correctly** — R-8 makes F03a's `lib/format.ts` canonical. |
+| Tasks 8–11, 13–15 | Shipped, restyled to the design. Prop-level deltas are in R-52. |
+| Task 12 (fonts) | **Reversed** by design R-35: two self-hosted webfonts, not the system stack. |
+| Visual QA + Accessibility checklists | **Still outstanding.** They need a device. See the end of the F10 addendum. |
+| Contrast tables under *Accessibility pass* | **Stale** — they describe the OKLCH palette. The live numbers come from `scripts/palette-check.py`. |
+| *Interfaces I publish* | **Rewritten to match what shipped.** This is the section to read. |
+| Appendix | **Replaced** by the committed `scripts/palette-check.py`. |
+
+---
+
 ## 0. Design direction — read this before writing any CSS
 
 The brief is one sentence: *"the core UI/UX tenet is simplicity. make the UI to be intuitive and simple at the same time. i am a simple guy, i love simple things."* That is not permission to be bland. It is a constraint that forces every decision to be load-bearing.
@@ -2248,6 +2287,16 @@ Run **every line twice** — once in light, once in dark. Toggling: Safari DevTo
 
 ### Contrast — measured, not estimated
 
+> **STALE.** Every figure in the tables below was computed from the OKLCH palette in Task 2, which
+> the design pull replaced. They are kept only as a record of the standard that was applied. The
+> live numbers come from `python3 scripts/palette-check.py`, which is committed, covers every pair
+> the components actually paint, and holds a category colour to 4.5:1 rather than 3:1 because the
+> two-letter code renders it as text. Two failures it found in the design's own palette were fixed
+> rather than waived — see R-48 and R-49.
+>
+> The parts of this section that are NOT stale, and still binding: the focus-visibility rules, the
+> 44×44 touch-target table, and the "Other" list at the end.
+
 Every value below was computed from the oklch definitions in Task 2, converted to sRGB (all in gamut, no browser gamut-mapping) and run through the WCAG 2.1 contrast formula. Text targets **4.5:1**; non-text graphical objects (chart fills, chips-as-swatches, borders that carry meaning) target **3:1**.
 
 **Accent and semantics — light theme, against `--app-surface-raised` (#FFFFFF):**
@@ -2410,71 +2459,133 @@ Concretely, when the incoming design says:
 
 Everything below is imported by F05, F06, F07, F08 and F09. Treat it as the contract.
 
+> **REWRITTEN AFTER IMPLEMENTATION.** This section describes what actually shipped, not what the
+> task list above proposed. F10 executed after the Claude Design pull, so the palette, both font
+> families, the type scale and several component defaults changed. Every change is recorded, with
+> its reason, in the *Addendum — rulings from F10* in `docs/RECONCILIATION_v0.1.0.md` (R-47…R-53);
+> R-52 is the table of contract deltas specifically. **The task list above is now a historical
+> record — read this section for the contract and `app/globals.css` for the tokens.**
+
 ### Token reference
 
-Remember Contract delta D-4: **stock Tailwind colour and font-size utilities do not exist in this build.** These are the only ones.
+Reconciliation R-24 still holds and is the thing most likely to bite: **stock Tailwind colour and
+font-size utilities do not exist in this build.** No `bg-red-500`, no `text-gray-700`, no `text-sm`,
+no `text-2xl`. Verified against a real build. These are the only ones.
 
-**Colours** — usable as `bg-*`, `text-*`, `border-*`, `ring-*`, `fill-*`, `stroke-*`, and with opacity modifiers (`bg-accent/10`):
+**Colours** — usable as `bg-*`, `text-*`, `border-*`, `ring-*`, `fill-*`, `stroke-*`, `divide-*`,
+and with opacity modifiers (`bg-ink/10`):
 
 ```
-surface  surface-raised  surface-sunken
-border   border-strong
-text     text-muted
-accent   accent-fg  accent-soft
-danger   danger-soft  success
+paper  paper-2  card                  three surfaces: page · well · raised
+ink  ink-2  ink-3                     three text weights: primary · secondary · label
+rule  rule-2  rule-strong             container hairline · row separator · CONTROL border
+accent  accent-soft                   the only green; the active-tab dot, the current bar
+red  red-soft                         destructive and errors
+photo-void                            true black, both schemes, lightbox only
 cat-food  cat-groceries  cat-transport  cat-bills
 cat-housing  cat-entertainment  cat-health  cat-other
-cat-food-ink  cat-groceries-ink  cat-transport-ink  cat-bills-ink
-cat-housing-ink  cat-entertainment-ink  cat-health-ink  cat-other-ink
 white  black  transparent  current
 ```
 
+`rule` vs `rule-strong` is not a style choice. `rule` is decorative — a card edge, a row separator.
+`rule-strong` is the border that *identifies a control*, and WCAG 1.4.11 requires it (R-49). Inputs,
+secondary buttons and picker cells use `rule-strong`; containers use `rule`.
+
 Raw custom properties, for `style={{}}` and for Recharts `fill`/`stroke`:
-`--app-surface`, `--app-surface-raised`, `--app-surface-sunken`, `--app-border`, `--app-border-strong`, `--app-text`, `--app-text-muted`, `--app-accent`, `--app-accent-fg`, `--app-accent-soft`, `--app-danger`, `--app-danger-soft`, `--app-success`, `--cat-<key>`, `--cat-<key>-ink`, `--app-shadow-raise`, `--app-shadow-sheet`, `--app-scrim`.
+`--paper`, `--paper-2`, `--card`, `--ink`, `--ink-2`, `--ink-3`, `--rule`, `--rule-2`,
+`--rule-strong`, `--accent`, `--accent-soft`, `--red`, `--red-soft`, `--scrim`, `--photo-void`,
+`--ease-out-soft`, and `--color-cat-<key>` (the name `CategoryMeta.color` publishes — prefer
+`categoryFill(c)` over spelling it out).
 
-**Type** — `text-micro` (11) · `text-meta` (13) · `text-label` (15) · `text-body` (17) · `text-lead` (20) · `text-title` (24) · `text-hero` (40). Line-height and tracking come with each; do not add `leading-*` unless you mean to override.
+**Type** — the name says whether a size is language or bookkeeping. Line-height and tracking come
+with each; do not add `leading-*` unless you mean to override.
 
-**Spacing** — the default 4px numeric scale (`p-4` = 16px) plus `gutter` (20px), `touch` (44px), `tab` (56px). Usable anywhere spacing is: `px-gutter`, `min-h-touch`, `size-touch`, `h-tab`.
+| Utility | px | Family | For |
+|---|---|---|---|
+| `text-label` | 10 | mono, 0.2em | section heads, field labels, sheet titles — or just use `eyebrow` |
+| `text-meta` | 11 | mono, 0.08em | dates, counts, "6 catatan · 18 item" |
+| `text-action` | 11 | mono, 0.14em | small button, tab label, toast action |
+| `text-btn` | 12 | mono, 0.16em | full-width button |
+| `text-money-sm` | 14 | mono | line-item amount |
+| `text-chip` | 14 | serif | chip label |
+| `text-body` | 15 | serif | prose, picker cell label |
+| `text-item` | 16 | serif | item name, empty-state description |
+| `text-input` | 17 | — | **every input.** Never go below it |
+| `text-money-md` | 17 | mono 500 | per-expense total |
+| `text-row` | 18 | serif | group row title |
+| `text-money-lg` | 22 | mono 500 | draft running total |
+| `text-title` | 27 | serif | screen title |
+| `text-money-xl` | 40 | mono | the month total |
+| `text-hero` | 40 | serif | the sign-in wordmark |
 
-**Container** — `max-w-app` = 480px.
+Families: `font-serif` (Source Serif 4) and `font-mono` (IBM Plex Mono). Body defaults to serif.
+**Money is always mono**, and `Money` applies it for you. There is no `font-sans`.
 
-**Radii** — `rounded-sm` (8) · `rounded-md` (12) · `rounded-lg` (18) · `rounded-xl` (22) · `rounded-full`. Nothing else.
+**Spacing** — the default 4px numeric scale (`p-4` = 16px) plus, usable anywhere spacing is
+(`px-gutter`, `min-h-touch`, `size-touch`, `h-control`, `h-btn`, `h-tab`, `min-h-row`):
 
-**Shadows** — `shadow-raise` · `shadow-sheet`. Nothing else. Cards use `border border-border`.
+`gutter` 22 · `touch` 44 · `control` 48 · `btn` 52 · `tab` 54 · `row` 52 · `row-lg` 56
+
+**Container** — `max-w-app` = 416px (the design canvas is 414).
+
+**Radii** — `rounded-chip` (2) · `rounded-field` (6) · `rounded-card` (10) · `rounded-full`. The
+stock `rounded-sm`…`rounded-3xl` still exist because that namespace is not reset, but do not use
+them.
+
+**Shadows** — none. There are no shadow tokens (R-36). Elevation is `card` on `paper` plus a
+hairline; the sheet earns its layer from the scrim, the toast from inverting to ink.
 
 **Easing** — `ease-out-soft`.
 
-**Utilities** — `tabular` · `rail` · `press` · `touch-target` · `pt-safe` · `pb-safe` · `px-safe` · `pt-safe-header` · `pb-tabbar` · `scroll-pane`.
+**Utilities** — `tabular` · `rail` · `eyebrow` · `press` · `touch-target` · `pt-safe` · `pb-safe` ·
+`px-safe` · `pt-safe-header` · `pb-tabbar` · `scroll-pane`.
 
-**Component classes** — `.chip-surface` · `.chip-dot` · `.sheet` · `.sheet-panel` · `.skeleton`.
+`eyebrow` is the mono label in one class: family, 10px, 0.2em, uppercase, `ink-3`. Its colour is a
+default — a later `text-*` overrides it (the utility is emitted before the colour utilities).
 
-### `lib/categories.ts`
+**Component classes** — `.chip` / `.chip-code` / `.chip-label` · `.cell` / `.cell-code` /
+`.cell-label` · `.sheet` / `.sheet-panel` · `.skeleton`. All are driven by the components below;
+`.chip` and `.cell` additionally read an inline `--c` from `categoryStyle()`.
+
+### `lib/categories.ts` (owned by F03a under R-7, one field changed by design R-34)
 
 ```ts
 export const CATEGORIES: readonly ["food","groceries","transport","bills","housing","entertainment","health","other"]
 export type Category = (typeof CATEGORIES)[number]
+export const DEFAULT_CATEGORY: Category                 // 'other'
 
 export interface CategoryMeta {
-  key: Category
-  label: string
-  emoji: string
-  colorVar: `--cat-${Category}`
-  inkVar: `--cat-${Category}-ink`
+  id: Category
+  label: string                                         // 'Makan & Jajan'
+  code: string                                          // 'MJ' — two chars. WAS `emoji`.
+  color: `--color-cat-${Category}`                      // a NAME, not a value
+  hint: string                                          // 'warung, resto, kopi, snack'
 }
 
-export const CATEGORY_META: Record<Category, CategoryMeta>
-export const CATEGORY_ORDER: readonly Category[]
-export function categoryStyle(c: Category): React.CSSProperties   // sets --c / --ci
-export function categoryFill(c: Category): string                 // "var(--cat-food)"
+export const CATEGORY_META: Readonly<Record<Category, CategoryMeta>>
+export const CATEGORY_LIST: readonly CategoryMeta[]     // grid order === CATEGORIES order
+export function categoryMeta(value: string): CategoryMeta   // never throws, degrades to 'other'
+export function toCategory(value: unknown): Category        // never throws
 export function isCategory(v: unknown): v is Category
+
+// added by F10, additive:
+export function categoryStyle(c: Category): CSSProperties   // sets --c for .chip / .cell
+export function categoryFill(c: Category): string           // 'var(--color-cat-food)'
 ```
 
-### `lib/format.ts` (money half — see D-2, D-3)
+There is no `CATEGORY_ORDER` and no `emoji`. `CATEGORY_LIST` is the ordered list; `CATEGORIES` is
+the order.
+
+### `lib/format.ts` (owned by F03a under R-8 — F10 imports, never redefines)
 
 ```ts
-export function formatIdrDigits(n: number): string   // 38500 → "38.500"
-export function formatIdr(n: number): string         // 38500 → "Rp 38.500"
+export function formatIdrDigits(n: number): string   // 38500 → '38.500'
+export function formatIdr(n: number): string         // 38500 → 'Rp 38.500'
+export function formatIdrCompact(n: number): string  // 266350 → 'Rp 266rb'
 export function parseIdrLoose(s: string): number | null
+// …plus the full date half: TZ, todayJakartaISO, monthKey, currentMonthKey, monthRange,
+//    addMonths, isAfterCurrentMonth, monthLabel, monthLabelShort, dateLabel, dayLabel,
+//    formatJakartaLong, MONTH_NAMES_ID, isValidDateISO, isValidMonthKey.
 ```
 
 ### `lib/cn.ts`
@@ -2488,56 +2599,59 @@ export function cn(...parts: ClassValue[]): string
 
 ```ts
 /* ---- Button ---------------------------------------------------------- */
-type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive"
-type ButtonSize = "md" | "lg"          // md = 44px min-height, lg = 52px
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
+type ButtonSize = 'md' | 'lg'          // md = 44px small variant, lg = 52px normal
 
 interface ButtonBaseProps {
-  variant?: ButtonVariant              // default "primary"
-  size?: ButtonSize                    // default "md"
+  variant?: ButtonVariant              // default 'primary'
+  size?: ButtonSize                    // default 'lg'   <-- CHANGED (R-52a)
   fullWidth?: boolean                  // default false
   leadingIcon?: React.ReactNode
 }
-interface ButtonProps extends ButtonBaseProps, Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "color"> {
-  loading?: boolean                    // default false; disables + keeps width
+interface ButtonProps extends ButtonBaseProps, Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'color'> {
+  loading?: boolean                    // default false; disables, keeps width, dots for label
 }
 function Button(props: ButtonProps): JSX.Element
-// type defaults to "button" — pass type="submit" explicitly inside a <form>
+// `type` defaults to 'button'. Pass type="submit" explicitly inside a <form>.
 
-interface ButtonLinkProps extends ButtonBaseProps, Omit<React.ComponentProps<typeof Link>, "className"> {
+interface ButtonLinkProps extends ButtonBaseProps, Omit<React.ComponentProps<typeof Link>, 'className'> {
   className?: string
 }
 function ButtonLink(props: ButtonLinkProps): JSX.Element
 
 function buttonClasses(o?: ButtonBaseProps): string
-function Spinner(p: { className?: string }): JSX.Element
+function LoadingDots(p: { className?: string }): JSX.Element
+const Spinner = LoadingDots            // alias, kept for the old name (R-52b)
 
 /* ---- Card ------------------------------------------------------------ */
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  as?: "div" | "section" | "article" | "li"   // default "div"
-  padded?: boolean                             // default true (16px)
+interface CardProps extends React.HTMLAttributes<HTMLElement> {
+  as?: 'div' | 'section' | 'article' | 'ul' | 'li'   // default 'div'
+  padded?: boolean | 'rows'                          // default true (16px); 'rows' = list inset
 }
 function Card(props: CardProps): JSX.Element
+// Rows inside a card separate with `divide-y divide-rule-2` — no border after the last child.
 
 /* ---- Money ----------------------------------------------------------- */
-type MoneySize = "hero" | "lg" | "md" | "sm"   // 40 / 24 / 20 / 17 px
-type MoneyTone = "default" | "muted" | "danger" | "success"
+type MoneySize = 'hero' | 'lg' | 'md' | 'sm'   // 40 / 22 / 17 / 14 px, all mono
+type MoneyTone = 'default' | 'muted' | 'danger' | 'success'
 
 interface MoneyProps {
-  value: number                        // whole rupiah; negative renders "−"
-  size?: MoneySize                     // default "sm"
-  tone?: MoneyTone                     // default "default"
-  showPrefix?: boolean                 // default true
-  signed?: boolean                     // default false; forces "+" on positives
+  value: number                        // whole rupiah; negative renders U+2212
+  size?: MoneySize                     // default 'sm'
+  tone?: MoneyTone                     // default 'default'
+  showPrefix?: boolean                 // default true — 'Rp ' inline, same size
+  signed?: boolean                     // default false; forces '+' on positives
   className?: string
 }
 function Money(props: MoneyProps): JSX.Element
+// Carries `tabular` and a visually-hidden plain-integer twin for screen readers.
 
 /* ---- Field / Input / TextArea ---------------------------------------- */
 interface FieldProps {
   label: string
   hideLabel?: boolean                  // default false (sr-only)
   hint?: string
-  error?: string                       // presence = error state
+  error?: string                       // presence = error state; supersedes hint
   required?: boolean                   // default false
   className?: string
   children: React.ReactNode
@@ -2545,51 +2659,56 @@ interface FieldProps {
 function Field(props: FieldProps): JSX.Element
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement>
-function Input(props: InputProps): JSX.Element      // auto-wires id/aria from Field
+function Input(props: InputProps): JSX.Element        // auto-wires id/aria from Field
 
 type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>
-function TextArea(props: TextAreaProps): JSX.Element // rows defaults to 5
+function TextArea(props: TextAreaProps): JSX.Element  // rows defaults to 6; card radius, padded
 
 function useFieldContext(): { inputId: string; describedBy?: string; invalid: boolean } | null
 const CONTROL_CLASS: string           // borrow the input chrome for a custom control
 
+// Inside a sheet or a card, where the surface is already `card`, pass className="bg-paper".
+
 /* ---- MoneyInput ------------------------------------------------------ */
 interface MoneyInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "defaultValue" | "onChange" | "type"> {
+    'value' | 'defaultValue' | 'onChange' | 'type'> {
   value: number | null
-  onValueChange: (value: number | null) => void   // fires on blur, and on clear
-  onParseError?: (rawText: string) => void        // fires on blur when unparseable
+  onValueChange: (value: number | null) => void   // EVERY accepted change (R-52e)
+  onParseError?: (rawText: string) => void        // on blur, when even parseIdrLoose failed
   className?: string
 }
 function MoneyInput(props: MoneyInputProps): JSX.Element
-// Controlled by `value`. Shows plain digits while focused, "38.500" on blur.
-// Accepts 45k / 45rb / 1,5jt / Rp 38.500 / 38500 via parseIdrLoose.
+// FULLY CONTROLLED: the text is derived from `value`, so ignoring onValueChange freezes the
+// field. inputMode="numeric"; dots inserted as you type; Rp is a static span outside the value.
+// Typed digits are reformatted; a paste of 45k / 1,5jt / Rp 38.500 goes through parseIdrLoose.
 
 /* ---- Sheet ----------------------------------------------------------- */
 interface SheetProps {
   open: boolean                        // parent owns the state; no internal toggle
-  onClose: () => void                  // Escape, backdrop tap, ✕ all route here
+  onClose: () => void                  // Escape, scrim tap, and the ✕ if shown
   title: string                        // required: it is the accessible name
   hideTitle?: boolean                  // default false
   description?: string
-  footer?: React.ReactNode             // sticky, safe-area padded
-  showCloseButton?: boolean            // default true
+  footer?: React.ReactNode             // pinned, safe-area padded
+  showCloseButton?: boolean            // default FALSE (R-52d)
   className?: string                   // applied to .sheet-panel
   children: React.ReactNode            // rendered in the scrolling body
 }
 function Sheet(props: SheetProps): JSX.Element
 
-/* ---- Chip ------------------------------------------------------------ */
+/* ---- Chip / CategoryCode --------------------------------------------- */
 interface ChipProps {
   category: Category
-  size?: "sm" | "md"                   // default "sm"
-  onClick?: () => void                 // present ⇒ renders a <button>
-  selected?: boolean                   // default false
-  labelHidden?: boolean                // default false (emoji only, label sr-only)
+  size?: 'sm' | 'md'                   // default 'sm' (32px) · md = 44px
+  onClick?: () => void                 // present ⇒ renders a <button> with touch-target
+  selected?: boolean                   // default false; fills with the category colour
+  labelHidden?: boolean                // default false (code only, label sr-only)
   className?: string
 }
 function Chip(props: ChipProps): JSX.Element
+function CategoryCode(p: { category: Category; className?: string }): JSX.Element
 function CategoryDot(p: { category: Category; className?: string }): JSX.Element
+// Prefer CategoryCode in dense rows: same colour, plus the identity (R-52g).
 
 /* ---- CategoryPicker -------------------------------------------------- */
 interface CategoryPickerProps {
@@ -2597,33 +2716,33 @@ interface CategoryPickerProps {
   onClose: () => void
   value?: Category | null              // default null
   onSelect: (category: Category) => void  // picker closes itself after this
-  title?: string                       // default "Pilih kategori"
+  title?: string                       // default 'Pilih kategori'
 }
 function CategoryPicker(props: CategoryPickerProps): JSX.Element
 
 /* ---- EmptyState ------------------------------------------------------ */
 interface EmptyStateProps {
-  icon?: React.ReactNode
-  title: string
+  icon?: React.ReactNode               // the design ships none; the dashed outline is the art
+  title: string                        // renders as the mono eyebrow
   description?: string
-  action?: React.ReactNode             // a <Button> or <ButtonLink>
+  action?: React.ReactNode
   className?: string
 }
 function EmptyState(props: EmptyStateProps): JSX.Element
 
 /* ---- TabBar ---------------------------------------------------------- */
 interface TabBarProps {
-  monthHref: string                    // e.g. "/m/2026-08", computed server-side
+  monthHref: string                    // '/m/2026-08', computed server-side from currentMonthKey()
 }
 function TabBar(props: TabBarProps): JSX.Element
-// Rendered by app/(chrome)/layout.tsx only. Features never mount it themselves.
+// Rendered by app/(shell)/layout.tsx only. Features never mount it themselves.
 
 /* ---- Toast ----------------------------------------------------------- */
 interface ToastAction { label: string; onAction: () => void }
 interface ToastOptions {
   action?: ToastAction
   duration?: number                    // ms, default 5000
-  tone?: "neutral" | "danger"          // default "neutral"
+  tone?: 'neutral' | 'danger'          // default 'neutral'
 }
 interface ToastApi {
   show: (message: string, options?: ToastOptions) => void
@@ -2631,22 +2750,43 @@ interface ToastApi {
 }
 function ToastProvider(p: { children: React.ReactNode }): JSX.Element  // root layout only
 function useToast(): ToastApi
-// F07's undo:
-//   show("Item dihapus", { action: { label: "Urungkan", onAction: restore } })
+// F07's undo:  show('Item dihapus', { action: { label: 'Urungkan', onAction: restore } })
+// One at a time: a new toast replaces the current one.
 ```
+
+### `components/AppShell.tsx`
+
+```ts
+function AppShell(p: { children: React.ReactNode; className?: string }): JSX.Element
+```
+
+Rendered by the two route-group layouts only. Full width on a phone; a 416px column centred on
+`paper-2` with hairlines down both edges on a wide viewport.
 
 ### Layout contract for feature authors
 
-- Screens under `app/(chrome)/` get the TabBar and `pb-tabbar` automatically. Do not add bottom padding for the bar yourself.
-- Screens under `app/(bare)/` get the column and nothing else. `/s/[token]` lives here.
-- Sticky headers: `sticky top-0 z-30 bg-surface/95 backdrop-blur-md pt-safe-header px-gutter`.
-- Page horizontal inset is `px-gutter`, or `px-safe` if the content must survive landscape.
+- `app/(shell)/` — `/m/[month]` and `/stats`. Gets the TabBar and `pb-tabbar` automatically; do not
+  add bottom padding for the bar yourself.
+- `app/(bare)/` — `/`, `/new`, `/e/[id]`, `/s/[token]`. Gets the column and nothing else, so the
+  screen **must supply its own way back**: the design's header of back chevron · mono label ·
+  optional action (R-51).
+- Sticky headers: `sticky top-0 z-30 bg-paper/95 backdrop-blur-md pt-safe-header px-gutter`.
+- Page horizontal inset is `px-gutter` (22px), or `px-safe` if the content must survive landscape.
 - Any independently scrolling region gets `scroll-pane`.
 - Any tappable element gets `press`; if it paints smaller than 44px, add `touch-target`.
-- Never write a raw `<input>`. Use `Input` / `TextArea` / `MoneyInput`, which carry the 17px floor.
-- Never typeset an amount by hand. Use `Money`, which carries the tabular rail.
+- Lists of rows: `<Card padded="rows">` with `divide-y divide-rule-2` on the inner list.
+- **Never write a raw `<input>`.** Use `Input` / `TextArea` / `MoneyInput`, which carry the 17px
+  floor that stops Safari zooming the page on focus.
+- **Never typeset an amount by hand.** Use `Money`, which carries the mono tabular rail.
+- Every label, meta line and section head is `eyebrow` or `text-meta` in `font-mono`. Prose and
+  names are serif. If you are unsure which, ask whether the text is language or bookkeeping.
 
----
+### Verifying a token change
+
+`scripts/palette-check.py` is the gate (R-28). Edit the two dicts to match `app/globals.css`, run
+`python3 scripts/palette-check.py`, and read the waiver it prints. Never hand-edit a contrast
+figure. `/dev/ui` renders every primitive for the visual pass and 404s in production.
+
 
 ## Open questions for the integrator
 
@@ -2672,124 +2812,24 @@ function useToast(): ToastApi
 
 ## Appendix — `scripts/palette-check.py`
 
-Zero dependencies, stdlib only. Every number in the accessibility tables above came out of this. Edit `L_T` / `D_T`, run it, and paste the output back into the tables — never hand-edit a contrast figure.
+**The script now lives in the repo at `scripts/palette-check.py`**, which answers this plan's own
+open question 9 (*"where does it live long-term?"*): beside the code, so a colour change can be
+verified rather than argued about.
 
-```python
-#!/usr/bin/env python3
-"""Verify the F10 palette: sRGB gamut, WCAG contrast, categorical separation."""
-import math, itertools
+It is not the version that was drafted here. That one solved a palette defined in OKLCH and checked
+sRGB gamut, which no longer applies — the shipped palette is hex from the design pull, always in
+gamut by construction. The committed script instead:
 
-def srgb(L, C, H):
-    h = math.radians(H); a = C * math.cos(h); b = C * math.sin(h)
-    l = (L + .3963377774*a + .2158037573*b) ** 3
-    m = (L - .1055613458*a - .0638541728*b) ** 3
-    s = (L - .0894841775*a - 1.2914855480*b) ** 3
-    r  =  4.0767416621*l - 3.3077115913*m + .2309699292*s
-    g  = -1.2684380046*l + 2.6097574011*m - .3413193965*s
-    bb = -0.0041960863*l - .7034186147*m + 1.7076147010*s
-    def f(x):
-        sg = 1 if x >= 0 else -1; x = abs(x)
-        return sg * (12.92*x if x <= .0031308 else 1.055 * x ** (1/2.4) - .055)
-    return [f(r), f(g), f(bb)]
+- measures **every pairing the components actually paint**, named after the thing that paints it
+  (`ink-3 on paper`, `paper on food fill`, `rule-strong on card`), rather than a generic grid;
+- holds a category colour to **4.5:1**, because the two-letter code renders it as text — this is the
+  check that R-28 was really asking for, and the design's ≥4.5:1 claim passes it;
+- separates the hairline that identifies a control (3:1, enforced) from the decorative ones
+  (reported, no threshold);
+- prints the categorical-separation **waiver and its expiry condition** on every run, and keeps that
+  figure out of the exit code so nobody "fixes" the hues without reading why they are close;
+- exits non-zero on a contrast failure, so it works as a gate.
 
-def in_gamut(v, eps=1e-4): return all(-eps <= c <= 1 + eps for c in srgb(*v))
-def hexs(v): return "#%02X%02X%02X" % tuple(round(min(1, max(0, c)) * 255) for c in srgb(*v))
-
-def lum(v):
-    def g(c):
-        c = min(1, max(0, c))
-        return c / 12.92 if c <= .04045 else ((c + .055) / 1.055) ** 2.4
-    r, gg, b = (g(c) for c in srgb(*v))
-    return .2126*r + .7152*gg + .0722*b
-
-def cr(a, b):
-    A, B = lum(a), lum(b)
-    if A < B: A, B = B, A
-    return (A + .05) / (B + .05)
-
-def lab(v):
-    L, C, H = v; h = math.radians(H)
-    return (L, C * math.cos(h), C * math.sin(h))
-
-CATS = ["bills", "food", "groceries", "health", "transport", "housing", "entertainment", "other"]
-
-# (L, C, H) — keep in sync with app/globals.css §1
-L_T = {
-    "surface": (0.968, 0.004, 265), "surface-raised": (1.000, 0.000, 265),
-    "surface-sunken": (0.938, 0.006, 265),
-    "border": (0.895, 0.008, 265), "border-strong": (0.810, 0.010, 265),
-    "text": (0.240, 0.014, 265), "text-muted": (0.540, 0.014, 265),
-    "accent": (0.305, 0.058, 265), "accent-fg": (0.990, 0.002, 265),
-    "accent-soft": (0.945, 0.020, 265),
-    "danger": (0.530, 0.200, 25), "danger-soft": (0.955, 0.020, 25),
-    "success": (0.505, 0.134, 150),
-    "food": (0.645, 0.131, 80), "groceries": (0.580, 0.150, 146),
-    "transport": (0.545, 0.187, 257), "bills": (0.575, 0.190, 25),
-    "housing": (0.615, 0.180, 303), "entertainment": (0.660, 0.160, 348),
-    "health": (0.622, 0.104, 200), "other": (0.600, 0.016, 265),
-    "food-ink": (0.470, 0.094, 80), "groceries-ink": (0.445, 0.131, 146),
-    "transport-ink": (0.450, 0.154, 257), "bills-ink": (0.455, 0.178, 25),
-    "housing-ink": (0.455, 0.180, 303), "entertainment-ink": (0.460, 0.160, 348),
-    "health-ink": (0.455, 0.075, 200), "other-ink": (0.450, 0.016, 265),
-}
-D_T = {
-    "surface": (0.165, 0.010, 265), "surface-raised": (0.215, 0.012, 265),
-    "surface-sunken": (0.128, 0.010, 265),
-    "border": (0.315, 0.014, 265), "border-strong": (0.410, 0.016, 265),
-    "text": (0.965, 0.004, 265), "text-muted": (0.710, 0.012, 265),
-    "accent": (0.935, 0.030, 265), "accent-fg": (0.205, 0.022, 265),
-    "accent-soft": (0.285, 0.030, 265),
-    "danger": (0.700, 0.170, 25), "danger-soft": (0.300, 0.060, 25),
-    "success": (0.760, 0.140, 150),
-    "food": (0.790, 0.150, 80), "groceries": (0.735, 0.140, 146),
-    "transport": (0.700, 0.153, 257), "bills": (0.720, 0.168, 25),
-    "housing": (0.735, 0.160, 303), "entertainment": (0.775, 0.140, 348),
-    "health": (0.800, 0.100, 200), "other": (0.700, 0.015, 265),
-    "food-ink": (0.855, 0.120, 80), "groceries-ink": (0.845, 0.112, 146),
-    "transport-ink": (0.820, 0.088, 257), "bills-ink": (0.835, 0.088, 25),
-    "housing-ink": (0.840, 0.093, 303), "entertainment-ink": (0.850, 0.096, 348),
-    "health-ink": (0.865, 0.080, 200), "other-ink": (0.830, 0.012, 265),
-}
-
-FAILS = 0
-for name, T in (("LIGHT", L_T), ("DARK", D_T)):
-    print("=" * 86); print(name)
-    out = [k for k, v in T.items() if not in_gamut(v)]
-    print("out of sRGB gamut:", out or "none")
-    if out: FAILS += len(out)
-
-    raised, page = T["surface-raised"], T["surface"]
-    print(f"{'token':20} {'oklch()':30} {'hex':9} {'vs raised':>9} {'vs page':>8}")
-    for k, v in T.items():
-        print(f"{k:20} oklch({v[0]:.3f} {v[1]:.3f} {v[2]})".ljust(51)
-              + f" {hexs(v)} {cr(v, raised):9.2f} {cr(v, page):8.2f}")
-
-    checks = [
-        ("text on raised",           cr(T["text"], raised),        4.5),
-        ("text-muted on page",       cr(T["text-muted"], page),    4.5),
-        ("accent-fg on accent",      cr(T["accent-fg"], T["accent"]), 4.5),
-        ("accent-fg on danger",      cr(T["accent-fg"], T["danger"]), 4.5),
-        ("danger on danger-soft",    cr(T["danger"], T["danger-soft"]), 4.5),
-        ("text on accent-soft",      cr(T["text"], T["accent-soft"]), 4.5),
-    ]
-    for c in CATS:
-        checks.append((f"{c} fill on page",  cr(T[c], page), 3.0))
-        checks.append((f"{c} ink on raised", cr(T[c + '-ink'], raised), 4.5))
-    for label, got, want in checks:
-        ok = got >= want
-        if not ok: FAILS += 1
-        print(f"  {'ok ' if ok else 'FAIL'} {label:28} {got:6.2f}  (need {want})")
-
-    pairs = sorted((round(math.dist(lab(T[a]), lab(T[b])), 3), a, b)
-                   for a, b in itertools.combinations(CATS, 2))
-    print("  closest categorical pairs (ΔE oklab):",
-          ", ".join(f"{a}/{b}={d}" for d, a, b in pairs[:4]))
-    if pairs[0][0] < 0.10:
-        print("  FAIL categorical separation below 0.10"); FAILS += 1
-
-print("=" * 86)
-print("FAILURES:", FAILS)
-raise SystemExit(1 if FAILS else 0)
+```bash
+python3 scripts/palette-check.py     # → CONTRAST FAILURES: 0
 ```
-
-Expected output today: `out of sRGB gamut: none` for both themes, every check `ok`, closest ΔE `0.107` light / `0.115` dark, and `FAILURES: 0`.

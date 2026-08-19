@@ -156,3 +156,44 @@ reason to nudge a hue, not to ship it.
 
 The design claims ≥4.5:1 for every category on its own surface. That is a claim to verify,
 not an assumption to inherit — the same standard I held F08 to.
+
+---
+
+## Verified by F10 (2026-08-19)
+
+**R-28 is discharged.** `scripts/palette-check.py` now measures the design's real surfaces
+(`--card` `#fbfaf5` / `#1e1e1a`, `--paper` `#f0ede4` / `#131311`) rather than the ones F08 guessed at.
+
+The design's claim of ≥4.5:1 for every category on its own surface **holds** — and it was held to the
+stricter standard on purpose, because the two-letter code renders the category colour as *text*, not
+as a chart fill:
+
+| | light, on card | light, on paper | dark, on card | dark, on paper |
+|---|---|---|---|---|
+| range across the eight | 5.08 – 7.10 | 4.53 – 6.34 | 5.78 – 7.76 | 6.43 – 8.63 |
+
+`paper` on a selected chip's fill also clears 4.5:1 in both schemes (4.53 – 6.34 light, 6.43 – 8.63
+dark), so the "text flips to paper" trick in R-34 is sound rather than lucky.
+
+**Two failures elsewhere in the palette were found and fixed, not waived:**
+
+- `--ink-3` measured **2.85:1** on paper. It is every label, meta line, placeholder and inactive tab
+  label — small text with no large-text exemption. Darkened along its hue to `#6e6c61` / `#86857b`
+  (R-48).
+- A third line token, `--rule-strong`, was added for the border that *identifies a control*, which
+  WCAG 1.4.11 holds to 3:1 and `--rule` misses at 1.28:1 (R-49).
+
+**One waiver, with an expiry.** Pairwise separation between the eight hues is ΔE 0.065 light / 0.042
+dark, below the 0.10 categorical floor. Accepted because nothing in this design keys a category by
+colour alone — the code is always present, the 12-month chart has no categorical series, and the
+breakdown is a labelled bar list. The checker prints the waiver and its expiry on every run: **it
+lapses the moment a view identifies a category by colour alone** (R-50).
+
+Also corrected: `tokens.css` declares the eight category values as `--color-cat-<key>` and then
+re-declares those same names inside `@theme inline`, which is a circular reference that computes to
+nothing. `app/globals.css` splits the raw value from the alias (R-47). The values here are unchanged
+and remain the provenance record.
+
+**On the numbering:** these rulings, R-34…R-41, are the canonical R-34…R-41. F03a's addendum in
+`RECONCILIATION_v0.1.0.md` had independently reused the same five numbers and has been renumbered to
+R-42…R-46. F10's own rulings continue at R-47.
