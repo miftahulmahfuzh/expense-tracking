@@ -98,7 +98,9 @@ export const CATEGORIES = [
 export type Category = (typeof CATEGORIES)[number]
 ```
 
-Each category has a `label` (Indonesian), an `emoji`, and a `color` CSS custom-property name. Exactly 8 — fits a 2×4 tap grid in a bottom sheet.
+Each category has a `label` (Indonesian), a two-letter `code` (`MJ`, `BH`, `TR`, `TG`, `TT`, `HB`, `KS`, `LN`), and a `color` CSS custom-property name. Exactly 8 — fits a 2×4 tap grid in a bottom sheet.
+
+> **R-34** — the code replaces the emoji originally specified here. It renders identically on every device, tints with the category colour, and sets in the mono column. See `docs/design/DESIGN_INTEGRATION.md`.
 
 ### 4.2 Database schema (`lib/db/schema.ts`)
 

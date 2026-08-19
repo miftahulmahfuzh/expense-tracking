@@ -1,0 +1,147 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Expense Tracking — design tokens
+   Pulled from Claude Design project 8c505e75-e97a-4c8e-b7c0-04aeb074bc7f
+   ("00 Foundations.dc.html") via DesignSync, then normalised:
+     · category custom properties renamed  --c-<x>  →  --color-cat-<Category>
+     · the design's `fun` key renamed to `entertainment` to match CATEGORIES
+   Everything else is the design's values, verbatim.
+
+   Direction: warm paper + ink, editorial serif for language, monospace for
+   bookkeeping. NO SHADOWS ANYWHERE — elevation is `card` sitting lighter than
+   `paper` plus a hairline rule; the sheet earns its layer from the scrim.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* surfaces */
+  --paper:        #f0ede4;
+  --paper-2:      #e8e4d9;
+  --card:         #fbfaf5;
+  /* text */
+  --ink:          #20211d;
+  --ink-2:        #5d5c52;
+  --ink-3:        #8f8d81;
+  /* lines */
+  --rule:         #d8d3c4;
+  --rule-2:       #eae6da;
+  /* semantic */
+  --accent:       #2f5d50;
+  --accent-soft:  #e0e8e2;
+  --red:          #8a3324;
+  --red-soft:     #efdfd9;
+  --scrim:        rgba(32, 33, 29, .45);
+
+  /* 8 categories — light values (deep, ≥4.5:1 on paper) */
+  --color-cat-food:          #9c4a2a;
+  --color-cat-groceries:     #63661f;
+  --color-cat-transport:     #3e5c85;
+  --color-cat-bills:         #8a651c;
+  --color-cat-housing:       #6e4f33;
+  --color-cat-entertainment: #6d4a86;
+  --color-cat-health:        #2c6b66;
+  --color-cat-other:         #6d6b60;
+
+  /* radii — four, no more */
+  --r-chip:  2px;
+  --r-field: 6px;
+  --r-card:  10px;
+  --r-pill:  999px;
+
+  /* iOS safe areas */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Dark is authored, not derived — every token redefined, never filtered.
+   The accent inverts: deep green on paper, pale green on ink. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:        #131311;
+    --paper-2:      #1a1a17;
+    --card:         #1e1e1a;
+    --ink:          #eeebe1;
+    --ink-2:        #a5a398;
+    --ink-3:        #6e6d64;
+    --rule:         #2e2e28;
+    --rule-2:       #242420;
+    --accent:       #86bba6;
+    --accent-soft:  #1e2a25;
+    --red:          #c97a62;
+    --red-soft:     #2a1d18;
+    --scrim:        rgba(0, 0, 0, .55);
+
+    --color-cat-food:          #d69a76;
+    --color-cat-groceries:     #adb063;
+    --color-cat-transport:     #92aed1;
+    --color-cat-bills:         #c9a95c;
+    --color-cat-housing:       #bb9772;
+    --color-cat-entertainment: #b195d1;
+    --color-cat-health:        #7fbcb3;
+    --color-cat-other:         #9b988c;
+  }
+}
+
+/* Explicit override wins in both directions (the design ships a theme switch). */
+:root[data-theme="dark"] {
+  --paper: #131311; --paper-2: #1a1a17; --card: #1e1e1a;
+  --ink: #eeebe1; --ink-2: #a5a398; --ink-3: #6e6d64;
+  --rule: #2e2e28; --rule-2: #242420;
+  --accent: #86bba6; --accent-soft: #1e2a25;
+  --red: #c97a62; --red-soft: #2a1d18;
+  --scrim: rgba(0, 0, 0, .55);
+  --color-cat-food: #d69a76;          --color-cat-groceries: #adb063;
+  --color-cat-transport: #92aed1;     --color-cat-bills: #c9a95c;
+  --color-cat-housing: #bb9772;       --color-cat-entertainment: #b195d1;
+  --color-cat-health: #7fbcb3;        --color-cat-other: #9b988c;
+}
+
+/* ── Tailwind v4 bridge ───────────────────────────────────────────────────
+   @theme cannot live inside a media query, so theme-reactive values are the
+   raw properties above and `@theme inline` maps them into Tailwind's namespace.
+   --color-* and --text-* are RESET (R-24): no bg-red-500, no text-sm.
+   ───────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-*: initial;
+  --text-*:  initial;
+
+  --color-paper:       var(--paper);
+  --color-paper-2:     var(--paper-2);
+  --color-card:        var(--card);
+  --color-ink:         var(--ink);
+  --color-ink-2:       var(--ink-2);
+  --color-ink-3:       var(--ink-3);
+  --color-rule:        var(--rule);
+  --color-rule-2:      var(--rule-2);
+  --color-accent:      var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-red:         var(--red);
+  --color-red-soft:    var(--red-soft);
+
+  --color-cat-food:          var(--color-cat-food);
+  --color-cat-groceries:     var(--color-cat-groceries);
+  --color-cat-transport:     var(--color-cat-transport);
+  --color-cat-bills:         var(--color-cat-bills);
+  --color-cat-housing:       var(--color-cat-housing);
+  --color-cat-entertainment: var(--color-cat-entertainment);
+  --color-cat-health:        var(--color-cat-health);
+  --color-cat-other:         var(--color-cat-other);
+
+  --radius-chip:  var(--r-chip);
+  --radius-field: var(--r-field);
+  --radius-card:  var(--r-card);
+
+  /* Type scale. Serif = language. Mono = bookkeeping. Money is always mono. */
+  --font-serif: var(--font-source-serif), Georgia, serif;
+  --font-mono:  var(--font-plex-mono), ui-monospace, monospace;
+
+  --text-money-xl: 40px;   /* month total          — mono, tabular, -0.02em */
+  --text-money-lg: 22px;   /* draft running total  — mono 500 */
+  --text-money-md: 17px;   /* expense total        — mono 500 */
+  --text-money-sm: 14px;   /* line item            — mono */
+  --text-title:    27px;   /* screen title         — serif */
+  --text-hero:     40px;   /* sign-in wordmark     — serif */
+  --text-row:      18px;   /* group row title      — serif */
+  --text-item:     16px;   /* item name            — serif */
+  --text-input:    17px;   /* EVERY input — never below 16px or Safari zooms */
+  --text-label:    10px;   /* mono, 0.2em tracking, uppercase */
+  --text-meta:     11px;   /* mono, 0.08em tracking */
+}
