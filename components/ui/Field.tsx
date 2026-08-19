@@ -103,7 +103,17 @@ export const CONTROL_CLASS =
   'w-full h-control rounded-field border border-rule-strong bg-card px-3.5 ' +
   'text-input text-ink placeholder:text-ink-3 aria-[invalid=true]:border-red'
 
-export type InputProps = React.InputHTMLAttributes<HTMLInputElement>
+/**
+ * `ref` is typed explicitly (F05 contract delta 8). React 19 passes `ref` to a function
+ * component as an ordinary prop, so it would already reach the `<input>` through the spread
+ * at runtime — but `InputHTMLAttributes` does not declare it, so the call site would not
+ * compile. F05's focus manager moves focus to a new row's name field after `+ Tambah item`
+ * and to the paste textarea on mount; widening the type is the alternative to F05 hand-
+ * rolling a bare `<input className={CONTROL_CLASS}>` and losing this file's label wiring.
+ */
+export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
+  ref?: React.Ref<HTMLInputElement>
+}
 
 export function Input({ className, id, ...rest }: InputProps) {
   const field = useFieldContext()
@@ -118,7 +128,10 @@ export function Input({ className, id, ...rest }: InputProps) {
   )
 }
 
-export type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>
+/** Same reasoning as `InputProps.ref` above. */
+export type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  ref?: React.Ref<HTMLTextAreaElement>
+}
 
 /**
  * Card-radius rather than field-radius, and padded rather than line-height-centred: a
