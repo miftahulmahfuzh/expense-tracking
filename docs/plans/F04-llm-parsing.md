@@ -7,6 +7,14 @@
 
 This is the heart of the product. If the parser is wrong, every downstream feature is polishing a broken table. The single highest-value artifact in this document is **the system prompt in Task 7** — read it before writing any code.
 
+> **EXECUTED 2026-08-19.** Corrected in place where it was wrong about the codebase, per the
+> convention F02 and F03 followed. Rulings R-67…R-76 in `docs/RECONCILIATION_v0.1.0.md` are the
+> arbitration record and win over anything below. Load-bearing corrections: the client is
+> **injected**, not imported at module scope (R-67); the route uses `requireUserIdApi` (R-68);
+> `ParseRequest`'s cap moved to 8.000 (R-69); z.ai caches prompts by itself, so `usage` reports
+> `cachedInputTokens` too (R-70). The system prompt in Task 7 shipped **verbatim and needed no
+> tuning** — all twelve fixtures passed live on the first run.
+
 ---
 
 ## 0. Non-negotiable technical facts
@@ -106,8 +114,13 @@ export interface ParseResult {
   source: ParseSource
   /** true when source !== 'llm' — F05 should warn the user to double-check. */
   degraded: boolean
-  /** Rough token usage of the primary + repair calls, for logging. null on fallback-only. */
-  usage: { inputTokens: number; outputTokens: number } | null
+  /**
+   * Token usage of the primary + repair calls, for logging. null when no LLM call
+   * contributed. R-70: `cachedInputTokens` is separate because z.ai caches the prompt
+   * automatically and reports `input_tokens` as the uncached remainder only — a measured
+   * parse is 36 + 4288, so reading `inputTokens` alone understates it ~50x.
+   */
+  usage: { inputTokens: number; cachedInputTokens: number; outputTokens: number } | null
 }
 
 /** The one function F05 needs. Never returns an invalid ParsedExpense. */
@@ -115,6 +128,18 @@ export function parseExpense(input: ParseInput): Promise<ParsedExpense>
 
 /** Same work, but tells you whether the LLM actually succeeded. Used by the route. */
 export function parseExpenseWithMeta(input: ParseInput): Promise<ParseResult>
+
+/**
+ * The testable core (R-67). The client is a PARAMETER because `lib/llm/client.ts` opens
+ * with `import 'server-only'`, which throws outside an RSC graph — Vitest is not one. The
+ * two wrappers above resolve the singleton through a lazy `await import('./client')`.
+ * `model` is required: a silent default turns a typo in .env.local into a mystery 404.
+ */
+export function parseExpenseWith(
+  client: LlmClientLike,
+  input: ParseInput,
+  options: { model: string },
+): Promise<ParseResult>
 ```
 
 ### Error types F05 must handle
@@ -181,6 +206,13 @@ Every task is: write the test → watch it fail → write the code → watch it 
 ---
 
 ### Task 0 — Branch, dependencies, directory skeleton
+
+> **R-73 — almost all of this is already done.** `vitest`, `@vitest/coverage-v8`,
+> `@anthropic-ai/sdk`, `server-only`, the three npm scripts and `vitest.config.ts` (whose
+> `include` already unions `tests/**`, `lib/**` and `app/**`) all shipped with F01, which owns
+> the runner per R-11. `tests/setup.ts` already seeds dummy `LLM_*` values. Install nothing;
+> create no second config file. Only the `mkdir` line below is live. Work also stayed on
+> `main`, matching how F01/F02/F03/F10 were committed in this repo.
 
 ```bash
 cd /home/miftah/expense-tracking
@@ -645,6 +677,12 @@ describe('parseIdrLoose — F04 relies on exactly this behaviour', () => {
 pnpm vitest run lib/llm/__tests__/parseIdrLoose.contract.test.ts
 ```
 
+> **R-73 — outcome recorded: 25/25 passed against F03's `lib/format.ts` as shipped**, including
+> `1.5jt → 1500000`, the one behaviour OQ-2 left open. What shipped is a trimmed version of the
+> table below: `tests/format.money.test.ts` is the canonical 46-case suite, and F04's gate pins
+> only what the regex fallback is structurally built on. Duplicating the whole table would be
+> the R-7/R-8 anti-pattern applied to tests.
+
 **Two possible outcomes:**
 
 - **All pass** → F03 shipped `parseIdrLoose` correctly. Commit and move on.
@@ -1063,6 +1101,14 @@ export const MAX_RAW_TEXT_CHARS = 8000
 pnpm vitest run lib/llm/__tests__/fallbackParse.test.ts
 ```
 
+> **R-74 — the guard below is NOT conditional. It is required, and as written it is not
+> enough.** `belanja bulanan 18 Agustus 2026` ends in `2026`, which `TAIL_AMOUNT_RE` reads as an
+> amount, so without a guard the header becomes a Rp 2.026 item and the title is lost. And for a
+> line that is *only* a date (`18/8/2026` alone) the guard below evaluates false, so the date
+> line itself becomes a Rp 2.026 item. What shipped strips the date from line 0 first and then
+> branches three ways: empty ⇒ bare date, skip it and synthesise a title; unpriced ⇒ it is the
+> header; still priced ⇒ no header, line 0 is an item. See the comment in `fallbackParse.ts`.
+
 Expected: all green. If the `TAIL_AMOUNT_RE` grabs a trailing year (`… 2026`) as an amount on a header line, that is *correct* behaviour to fix — a header like `belanja 18 Agustus 2026` must not parse as an item. It doesn't, because `extractLine` on the header returns non-null (`2026`), which means `bodyStart` stays 0 and the header becomes an item. **Verify this specific case:**
 
 ```bash
@@ -1173,6 +1219,17 @@ git add -A && git commit -m "F04: Zod contract tests for ParsedExpense/ParsedIte
 ---
 
 ### Task 6 — `lib/llm/client.ts`
+
+> **Measured on execution:** the smoke call below returns `end_turn` with `OK`, and the endpoint
+> **echoes `"model": "glm-5.3"`** for a request sent as `glm-5.2` — it aliases upward (R-72).
+> The usage envelope also carries `cache_read_input_tokens`, which turned out to be populated
+> without us asking (R-70). `messages.countTokens` works here too, and is how `lib/llm/COST.md`
+> got real input figures.
+>
+> The `declare global { var __llmClient }` block below was replaced by F03's idiom
+> (`globalThis as unknown as { __llmClient?: Anthropic }`), which needs no `eslint-disable`, and
+> the cache is kept in production as well as dev — the constructor does no I/O, so this is only
+> about not rebuilding the object graph on every module evaluation.
 
 Create `lib/llm/client.ts`:
 
@@ -1601,6 +1658,11 @@ git add -A && git commit -m "F04: record_expense tool schema + full Indonesian s
 ---
 
 ### Task 8 — `parseExpense` — tests first (no network)
+
+> **R-67 — every `parseExpenseWith(client, input)` call below takes a third argument as
+> shipped:** `parseExpenseWith(client, input, { model })`. The tests pass `{ model: 'glm-5.2' }`.
+> Three cases were added beyond the list here: cache-read tokens are counted as input, the
+> repair gets a shorter timeout than the primary call, and the paste never reaches a log line.
 
 `lib/llm/__tests__/parseExpense.test.ts`:
 
@@ -2043,7 +2105,38 @@ export function parseExpenseWithMeta(input: ParseInput): Promise<ParseResult> {
 }
 ```
 
-> **Note on `import 'server-only'`:** `parseExpense.ts` imports `./client`, which imports `server-only`. Under Vitest (`environment: 'node'`) that resolves fine. The tests only ever exercise `parseExpenseWith` with an injected fake, so no real client is ever constructed and `env.LLM_API_KEY` is never read at test time — module-level `const llm = ...` *does* run on import though. If `lib/env.ts` throws on missing vars in the test process, add a `.env.test` with dummy values and `test: { env: { LLM_API_KEY: 'test', LLM_BASE_URL: 'https://example.invalid', LLM_MODEL: 'test' } }` to `vitest.config.ts`. That is the expected, correct fix — do not weaken `lib/env.ts`.
+> **⚠️ R-67 — the note that used to sit here was wrong, and the code above with it.**
+>
+> It claimed `import 'server-only'` "resolves fine" under Vitest. It does not: `server-only`'s
+> package exports map sends everything but the `react-server` condition to a module whose only
+> statement is a `throw`, and Vitest resolves the default condition. `await import('@/lib/env')`
+> under Vitest fails with *"This module cannot be imported from a Client Component module."*
+> F03 documented the same wall in `lib/db/index.ts` (R-55). `.env.test` does not help — the
+> marker throws before any variable is read.
+>
+> **What shipped instead:**
+>
+> ```ts
+> // parseExpense.ts — no top-level import of ./client
+> async function productionClient(): Promise<{ client: LlmClientLike; model: string }> {
+>   const { llm, LLM_MODEL } = await import('./client')
+>   return { client: llm, model: LLM_MODEL }
+> }
+>
+> export async function parseExpense(input: ParseInput): Promise<ParsedExpense> {
+>   const { client, model } = await productionClient()
+>   const { expense } = await parseExpenseWith(client, input, { model })
+>   return expense
+> }
+> ```
+>
+> `import type { LlmClientLike } from './client'` stays — a type-only import is erased under
+> `verbatimModuleSyntax`. Both guarantees survive: an accidental client-component import of the
+> LLM client is still a build error, and the parser is unit-testable with an injected fake. It
+> is also what lets the route test stub `parseExpenseWithMeta` on top of the real module.
+>
+> `baseBody(model, system, messages)` therefore takes the model, and `COPY` moved to
+> `lib/llm/types.ts` as `PARSE_ERROR_COPY` so the route and the parser cannot drift apart.
 
 ```bash
 pnpm vitest run lib/llm/__tests__/parseExpense.test.ts
@@ -2219,6 +2312,27 @@ Expected: 14 passing tests plus a `[live] usage in=… out=…` line.
 
 Run `pnpm test:live` three times in a row before declaring victory — GLM is not deterministic, and a prompt that passes once in three is not shipped.
 
+> **Outcome: 15/15, three consecutive runs, and the prompt needed no tuning at all.** Every
+> fixture parsed exactly on the very first live run — all four 1000× traps, the DD/MM/YYYY and
+> Indonesian-month dates, the `total 44000` line, and the `2x nasi goreng 60k` quantity line.
+> The table above went unused.
+>
+> Two additions to the file as shipped:
+>
+> 1. It loads `.env.local` itself when `LLM_LIVE_TEST=1`, because `tests/setup.ts` has already
+>    seeded dummy `LLM_*` values by the time it runs — so `npm run test:live` works on its own,
+>    without the `set -a && source .env.local` prefix the plan requires.
+> 2. A fifth suite answers **OQ-7** empirically (R-71): it takes a real first response and
+>    stringifies its `amount_idr` values in flight, so the `tool_use_id` in the repair turn is
+>    one the server actually issued. z.ai accepts the `tool_result` + `is_error: true` shape and
+>    recovers with exact amounts. The plan's plain-text-turn fallback is not needed.
+>
+> And one concession, R-72: `liveParse` retries **once**, and only when the first attempt came
+> back `source: 'fallback'` — meaning the model never answered. z.ai exceeded the 25s client
+> timeout twice in ~90 development calls, and a 15-call sequential corpus hits that often enough
+> to make a green suite look red. No accuracy assertion is retried, so "fix the prompt, never the
+> assertion" is intact: a transport timeout is simply not a prompt failure.
+
 ```bash
 git add -A && git commit -m "F04: gated live integration test against GLM-5.2 over the full corpus"
 ```
@@ -2226,6 +2340,17 @@ git add -A && git commit -m "F04: gated live integration test against GLM-5.2 ov
 ---
 
 ### Task 11 — `POST /api/parse` — tests first
+
+> **R-68 — `@/lib/auth` does not exist.** F02 ships `lib/auth/requireUserId.ts`. The test as
+> shipped mocks **`@/auth`** instead and lets the route run through F02's real
+> `requireUserIdApi`, so a null session produces a real `UnauthorizedError` — a stronger test
+> than stubbing the boundary. `parseExpenseWithMeta` is stubbed over the real module with
+> `importActual`, which only works because of R-67's lazy client import.
+>
+> Also: the burst limiter's `Map` lives on `globalThis`, so it survives between tests. Without
+> `(globalThis as {__parseHits?: Map<string, number[]>}).__parseHits?.clear()` in `beforeEach`,
+> the plan's own suite breaks — by the time the 413 case runs, the eleven earlier POSTs have
+> already exhausted the allowance and it answers 429 instead.
 
 `app/api/parse/__tests__/route.test.ts`:
 
@@ -2397,9 +2522,22 @@ git add -A && git commit -m "F04: failing tests for POST /api/parse"
 
 ### Task 12 — `app/api/parse/route.ts`
 
+> **Three corrections in the code below (R-68, R-75, R-69).**
+>
+> 1. `import { UnauthorizedError, requireUserIdApi } from '@/lib/auth/requireUserId'`. There is
+>    no `@/lib/auth` barrel, and `requireUserId()` is forbidden in a Route Handler by its own
+>    docblock — it signals via `redirect()`, and a 307 to an HTML page is a terrible answer to
+>    `fetch()`. The 401 still uses F04's envelope rather than F02's `unauthorizedJson()`, so all
+>    seven statuses on this route share one shape; see R-68 for the trade.
+> 2. No `export const dynamic = 'force-dynamic'`. Next 16 dropped `dynamic` from the
+>    route-segment-config table, and a POST handler is never prerendered anyway. `runtime` and
+>    `maxDuration` stay.
+> 3. `MAX_RAW_TEXT_CHARS` is now also the cap in `ParseRequest` (`lib/schema/expense.ts`), which
+>    was 20.000 — the schema F05 validates with must not accept what this route rejects.
+
 ```ts
 import { z } from 'zod'
-import { requireUserId } from '@/lib/auth'
+import { UnauthorizedError, requireUserIdApi } from '@/lib/auth/requireUserId'
 import { parseExpenseWithMeta } from '@/lib/llm/parseExpense'
 import { isParseError, MAX_RAW_TEXT_CHARS } from '@/lib/llm/types'
 
@@ -2541,6 +2679,14 @@ git add -A && git commit -m "F04: POST /api/parse — auth, Zod body, input cap,
 
 ### Task 13 — Cost & latency notes
 
+> **Shipped with measured numbers, and the headline is not what this task expected (R-70).**
+> `messages.countTokens` reports **4,302 input tokens** for the canonical request, but a warm
+> response reports `input_tokens: 36` with `cache_read_input_tokens: 4288` — z.ai caches the
+> prompt **automatically**, with no `cache_control` from us. So OQ-6 needs no experiment, and the
+> prompt's length is not the cost lever it looked like: do not trim it to save tokens. Measured
+> latency is 5.3s for the canonical paste (~4–5s per parse across the corpus). The real file is
+> `lib/llm/COST.md`; the skeleton below is superseded by it.
+
 Create `lib/llm/COST.md` (a doc, not code — F05 and future-you will want it):
 
 ```markdown
@@ -2673,21 +2819,39 @@ git push -u origin f04-llm-parsing
 
 ## Definition of done
 
-- [ ] `pnpm test` green; `pnpm lint` clean; `pnpm build` succeeds
-- [ ] `pnpm test:live` green **three consecutive runs**
-- [ ] Every fixture's amounts and `occurred_on` are exact against real GLM-5.2
-- [ ] Canonical fixture totals exactly `266350`
-- [ ] With a bogus API key, `/api/parse` still returns 200 with `degraded: true` and six items
-- [ ] No forbidden parameter is ever sent (asserted in `parseExpense.test.ts`)
-- [ ] `parseExpense` and `ParseError` exported exactly as documented in *Interfaces I publish*
-- [ ] `lib/llm/COST.md` has real measured token counts, not the placeholders
-- [ ] `rawText` never appears in any log line
+All met on 2026-08-19. Evidence in `docs/RECONCILIATION_v0.1.0.md` § *Verification: what F04
+actually proved*.
+
+- [x] `npm test` green (418/418, 112 new); `npm run lint` clean; `npm run build` succeeds and
+      lists `/api/parse` as ƒ dynamic
+- [x] `npm run test:live` green **three consecutive runs** (15/15 each, no retry triggered)
+- [x] Every fixture's amounts and `occurred_on` are exact against real GLM-5.2
+- [x] Canonical fixture totals exactly `266350` — confirmed over HTTP through the route as well
+- [x] With a bogus API key the parser returns `degraded: true` with six items totalling 266350
+      (verified at the parser boundary against the real endpoint's 401; the route path itself
+      needs a session, and was verified separately with a synthetic session cookie)
+- [x] No forbidden parameter is ever sent (asserted in `parseExpense.test.ts`)
+- [x] `parseExpense` and `ParseError` exported exactly as documented in *Interfaces I publish*,
+      with `parseExpenseWith` gaining an options argument (R-67) and `usage` a field (R-70)
+- [x] `lib/llm/COST.md` has real measured token counts, not the placeholders
+- [x] `rawText` never appears in any log line — asserted, not assumed
 
 ---
 
 ## Open questions for the integrator
 
-**OQ-1 — What is `perumahan laddaland`?**
+> **Status after execution.** Answered: OQ-2 (R-73), OQ-6 (R-70), OQ-7 (R-71), OQ-8 (R-72),
+> OQ-10 (R-73), OQ-3 (the convention held on every live fixture). Still open and genuinely
+> needing a human: **OQ-1** — one question for the user. Deferred by decision: **OQ-4**
+> (published rates; also, no 429 was ever provoked, so z.ai's 429 body shape is still untested —
+> its 401 is `{"error":{"message":"token expired or incorrect","type":"401"}}`), **OQ-5**
+> (durable rate limiting — R-30 defers it), **OQ-9** (F05's call).
+
+**OQ-1 — What is `perumahan laddaland`? — STILL OPEN, and the only thing F04 needs from a human.**
+Live GLM returns `housing` more often than `entertainment`. The fixture accepts
+`entertainment | housing | other`. One answer closes it: if that 49k was a cinema ticket,
+tighten `FIXTURES[0].expect.categories[2]` to `['entertainment']` and add the term to the
+entertainment examples in the system prompt; if it was rent, tighten it to `['housing']`.
 In the canonical roadmap example, `perumahan laddaland 49k` sits directly beside `kungfu soccer 49k` at an identical, cinema-ticket-shaped price. That strongly suggests both are film titles (Laddaland is a 2011 Thai horror film), which would make it `entertainment`. But the literal Indonesian word *perumahan* means "housing", which is a category slug. I have written the fixture to accept `entertainment | housing | other` rather than encode a guess into an assertion. **Ask the user what they actually spent that 49k on**, then tighten `FIXTURES[0].expect.categories[2]` to a single value and, if it is `entertainment`, add the term to the entertainment examples in the system prompt.
 
 **OQ-2 — `lib/format.ts` ownership — RESOLVED, but verify the exact `parseIdrLoose` behaviour.**
@@ -2695,7 +2859,12 @@ ROADMAP §4.7 specifies the file but §5 assigns it to no feature. Checking `doc
 
 Related: F03's `lib/format.ts` also exports `addMonths` / `monthRange` beyond the §4.7 list. Harmless to F04, but confirms F03 is the live owner.
 
-**OQ-3 — Quantity semantics: `2x nasi goreng 30k`.**
+**OQ-3 — Quantity semantics: `2x nasi goreng 30k`. — held on every live fixture.**
+GLM read `2x nasi goreng 60k` as 60000 and `sate ayam @25k x2 50000` as 50000, so the decision
+below is what ships. Still reversible in one prompt paragraph plus one fixture if the user's own
+notes use the other convention. Original note follows.
+
+
 I decided the trailing number is the **total already paid**, not a unit price — so 30000, not 60000. Rationale: in real Indonesian expense notes the writer records what left their wallet, and inventing a multiplication risks silently doubling a real number, which is worse than under-reading a rare one. The `@` marker is the escape hatch for the unit-price case. **This is reversible in one prompt paragraph plus one fixture** — flag it if the user's actual notes use the other convention.
 
 **OQ-4 — GLM-5.2 pricing and rate limits on z.ai.**
@@ -2704,17 +2873,37 @@ Needed to fill in `lib/llm/COST.md` and to size the burst limiter. Also: does z.
 **OQ-5 — Durable rate limiting.**
 The in-memory burst limiter in `route.ts` does not survive across serverless instances. The real fix is a per-user daily counter. Options: (a) a `parse_usage` table — clean, but a **contract delta to §4.2**; (b) Vercel KV / Upstash — a new dependency and a free-tier consideration; (c) accept the risk for v0.1.0 and monitor the z.ai bill. I recommend **(c) for v0.1.0**, because the schema in §4.2 is intentionally minimal and the input cap already bounds per-call cost. **Get a decision before launch**, because D3 (any Google account) makes this a real exposure the moment the domain is public.
 
-**OQ-6 — Prompt caching.**
+**OQ-6 — Prompt caching. — ANSWERED (R-70): already happening, nothing to do.**
+z.ai caches the prompt with no `cache_control` from us. A warm request reports
+`input_tokens: 36` alongside `cache_read_input_tokens: 4288`, against a `countTokens`
+measurement of 4,302 for the same request. `ParseResult.usage` reports both numbers, because
+`inputTokens` alone understates the request ~50x. The experiment below is unnecessary — and the
+corollary is that the prompt's length costs almost nothing, so nobody should shorten it. Original
+note follows.
+
+
 The system prompt is ~1,700 tokens and byte-identical across requests except for the TODAY line. `cache_control: { type: 'ephemeral' }` on a system text block is standard Anthropic Messages API, but it is outside the portable surface I committed to in §0.1 and may be ignored or rejected by z.ai. **Deliberately not implemented.** If cost becomes a concern, run one experiment: put the constant part of the prompt in a cached block with TODAY moved into the user turn, and check whether `usage.cache_read_input_tokens` is populated. If the field is absent, revert immediately — a silently-ignored `cache_control` is harmless but a rejected one breaks every parse.
 
-**OQ-7 — Repair via `tool_result` with `is_error: true`.**
+**OQ-7 — Repair via `tool_result` with `is_error: true`. — ANSWERED (R-71): accepted.**
+Verified live by corrupting a real response in flight so the `tool_use_id` is server-issued.
+The plain-user-text fallback below is not needed. Original note follows.
+
+
 This is the standard Messages API shape for feeding a tool failure back. Most Anthropic-compatible servers implement it, but it is the least-exercised corner of the wire protocol on non-Claude backends. If the repair round-trip 400s in Task 10, the fallback is a plain user text turn: `{ role: 'user', content: REPAIR_PREAMBLE + issues }` with the assistant tool_use turn dropped. That loses the tool-call linkage but works everywhere. **Verify empirically in Task 10** (force it by hardcoding a bad first response) and record which shape z.ai accepts.
 
-**OQ-8 — Does GLM-5.2 honour forced `tool_choice` reliably?**
+**OQ-8 — Does GLM-5.2 honour forced `tool_choice` reliably? — ANSWERED (R-72): yes.**
+No prose response in ~90 live calls. The only observed failure was the primary call exceeding
+the 25s timeout twice, which the fallback absorbed exactly as designed. Original note follows.
+
+
 `tool_choice: { type: 'tool', name: 'record_expense' }` is the whole structured-output strategy. Task 10's `source === 'llm'` assertion is the check: if the model ever replies with prose despite the forced choice, `parseExpenseWith` degrades to the fallback and the live test fails loudly. If that turns out to be frequent rather than rare, the mitigation is to keep the forced tool **and** add `Now call record_expense.` as the last line of the user turn as well as the system prompt.
 
 **OQ-9 — Should `degraded: true` block saving?**
 Currently no: F05 gets a warning banner and the user can save whatever the fallback produced (all `other` categories). The alternative is to force a category choice before enabling Save. I lean toward **not blocking** — D1 says the user can retag with one tap, and a saved-but-mistagged expense is recoverable while a lost paste is not. **F05's call.**
 
-**OQ-10 — Test runner — RESOLVED, but the install may be a duplicate.**
+**OQ-10 — Test runner — CONFIRMED a duplicate (R-73): nothing was installed.**
+F01 owns the runner (R-11) and its `include` already covers `lib/**` and `app/**`. Original note
+follows.
+
+
 `docs/plans/F03-data-layer.md` also chooses Vitest, so the runner choice is consistent across features. That means Contract Delta #1 above is likely to be introduced by **whichever of F03/F04 lands first**, not by F04 specifically. Before running Task 0, check whether `vitest` is already in `package.json` and whether `vitest.config.ts` already exists; if so, skip the install and only verify that the `include` glob covers `lib/**/*.test.ts` **and** `app/**/*.test.ts` (F04 adds the `app/` half for the route test). Do not create a second config file.

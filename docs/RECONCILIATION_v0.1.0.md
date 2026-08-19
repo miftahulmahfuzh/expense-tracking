@@ -797,3 +797,195 @@ accepts, and the `user`/`account` rows the adapter writes on first sign-in are a
 Plan §8 steps 7, 8, 12 and 13 remain outstanding and need a human with a browser. The
 credentials in `.env.local` are real and the console walkthrough in the plan was already
 completed, so this is one manual pass, not a blocked task.
+
+---
+
+## Group I — F04 (LLM parsing engine), recorded during execution
+
+Wave 3. Rulings R-67…R-76. The plan is `docs/plans/F04-llm-parsing.md`; where it is wrong
+about the codebase it has been corrected in place, for the same reason F03's §5.8 was —
+copying the original text forward ships the bug a second time.
+
+### ⚠️ R-67 · `parseExpense.ts` cannot import `./client` at module scope.
+
+The plan's Task 9 has `parseExpense.ts` do `import { llm, LLM_MODEL } from './client'`, and its
+Task 8 tests then `import { parseExpenseWith } from '../parseExpense'`. That combination cannot
+work. `client.ts` opens with `import 'server-only'` (F04 Contract delta #2, and the whole point
+of the module being separate) and imports `lib/env.ts`, which does the same. Both throw outside
+a React Server Components graph, and **Vitest is not one** — F03 hit this exact wall in
+`lib/db/index.ts` and R-55 records it. The plan anticipated only a missing-env-var failure and
+proposed `.env.test`, which does not address the marker at all.
+
+**Ruling. The client is injected, and the production wrappers resolve it lazily.**
+
+- `parseExpenseWith(client, input, { model })` is the testable core; `client` is a parameter,
+  typed as the three-method-deep `LlmClientLike`.
+- `parseExpense()` / `parseExpenseWithMeta()` reach the singleton through
+  `await import('./client')` inside the function body. Node caches the module, so only the
+  first call pays anything, and Next still sees a server-only edge at build time.
+- `model` is a required option rather than a module-level constant read from the environment.
+  A silent default is how a typo in `.env.local` becomes a mystery 404 (§4.8).
+
+This is what makes the route test possible too: it stubs `parseExpenseWithMeta` on top of the
+**real** module via `importActual`, which would be unloadable under the plan's arrangement.
+
+### R-68 · The route's auth import and its 401 body both differ from the plan.
+
+Plan Task 12 imports `requireUserId` from `@/lib/auth`. Two problems: there is no `@/lib/auth`
+barrel (F02 ships `lib/auth/requireUserId.ts`), and `requireUserId()` signals by calling
+`redirect()`, which its own docblock forbids in a Route Handler — a 307 to an HTML page is a
+terrible answer to `fetch()`. F02 published `requireUserIdApi()` + `UnauthorizedError` for
+precisely these two routes.
+
+**Ruling. `requireUserIdApi()`, and F04's error envelope for the 401.** F02 also publishes
+`unauthorizedJson()`, whose body is `{ error: 'Unauthorized' }`; `/api/parse` does **not** use
+it. F05 branches on `body.error.code` and renders `body.error.message`, and the other six
+statuses on this route all answer `{ ok: false, error: { code, message } }`. Answering 401 in a
+second shape would force every caller to special-case the one path it exercises least in
+development. The status code is identical either way, so this is a two-line reversal if strict
+cross-route consistency with F06's upload handler is preferred later — but then F05 must handle
+both shapes, which is the trade being made.
+
+### R-69 · `ParseRequest`'s cap contradicted the route's cap.
+
+`lib/schema/expense.ts` (F03a) capped `ParseRequest.rawText` at 20.000 characters; F04's
+published contract and `MAX_RAW_TEXT_CHARS` say 8.000. `ParseRequest` is the schema F05's
+client validates with before spending a round trip, so a paste of 9.000 characters would have
+passed locally and come back 413.
+
+**Ruling. F04's 8.000 wins and F03a's schema is amended** (the smaller change, and the number
+is load-bearing: it is what bounds the cost of a single LLM call). The literal is repeated
+rather than imported, because `lib/schema/expense.ts` is a pure wave-1 module and must not gain
+an edge into F04's tree. `app/api/parse/__tests__/route.test.ts` ties the two caps together so
+a future divergence fails a test.
+
+### R-70 · OQ-6 answered, unexpectedly: z.ai caches the prompt on its own.
+
+We send no `cache_control` — it is outside the portable surface §0.1 commits to — yet a warm
+request reports `input_tokens: 36` with `cache_read_input_tokens: 4288`, against a
+`countTokens` measurement of 4,302 for the same request. The endpoint is caching the ~4,300-token
+system prompt + tool schema automatically.
+
+**Ruling. Nothing to implement, and `usage` must report both numbers.** `ParseResult.usage`
+gains `cachedInputTokens` (additive; `/api/parse` strips `usage` from the response either way),
+because logging `inputTokens` alone understates the request by ~50×. The corollary matters more
+than the field: the prompt's length is **not** the cost lever it appeared to be, so nobody
+should trim the prompt to save tokens — its length is exactly what keeps the 1000× money bug
+away. Measured figures live in `lib/llm/COST.md`.
+
+### R-71 · OQ-7 answered: z.ai accepts the standard repair shape.
+
+An assistant `tool_use` turn followed by a user `tool_result` with `is_error: true` is the
+least-exercised corner of the wire protocol on a non-Claude backend, and the whole recovery
+path depends on it. It works. The live suite proves it by taking a **real** first response and
+stringifying its `amount_idr` values in flight, so the `tool_use_id` the repair turn references
+is one the server actually issued; the second call returns exact amounts and
+`source: 'llm_repair'`. The plan's fallback shape (a plain user text turn) is not needed.
+
+### R-72 · OQ-8 answered, and the 25 s timeout genuinely fires.
+
+Forced `tool_choice` was honoured on every one of ~90 live calls — no run ever came back as
+prose. What did happen twice, on different fixtures (`rp-prefixed` at 25.014 s, and
+`single-line` in an earlier run), is the primary call exceeding the 25 s client timeout and
+degrading to the regex fallback. That is the p99 the fallback exists for, and it is the only
+failure mode observed in development.
+
+**Ruling. The timeouts stand, and the live suite retries once — on degradation only.**
+`liveParse` re-parses when and only when the first attempt returned `source: 'fallback'`, i.e.
+the model never answered. No accuracy assertion is retried: amounts, dates, counts and titles
+still get exactly one shot at a real response, so the plan's "fix the prompt, never the
+assertion" rule is intact. Failing the *prompt* over a transport timeout would be reading the
+wrong signal.
+
+Also recorded: we send `glm-5.2` and the endpoint echoes `"model": "glm-5.3"`. It aliases
+upward, which means a future GLM release can change parser behaviour with no change on our
+side. `npm run test:live` is the check to run against any unexplained parsing complaint.
+
+### R-73 · Plan Tasks 0 and 2 are largely no-ops, as OQ-10 suspected.
+
+`vitest`, `@vitest/coverage-v8`, `@anthropic-ai/sdk`, `server-only` and the three npm scripts
+were already in `package.json`, and `vitest.config.ts` already unions the `tests/**`,
+`lib/**` and `app/**` globs (R-11: F01 owns the runner). `tests/setup.ts` already seeds dummy
+`LLM_*` values. Nothing was installed and no second config file was created.
+
+Task 2's `parseIdrLoose` gate passed **25/25 against F03's implementation as shipped**,
+including `1.5jt → 1500000`, which OQ-2 left open. The gate file is kept but deliberately
+trimmed: `tests/format.money.test.ts` stays the canonical 46-case table, and F04's copy pins
+only the behaviours the regex fallback is structurally built on. Duplicating the full table
+would be the R-7/R-8 anti-pattern applied to tests.
+
+### R-74 · The header-detection guard is mandatory, and needed a third branch.
+
+Plan Task 4 offers a guard "if the Indonesian-month test fails". It always fails without it:
+`belanja bulanan 18 Agustus 2026` ends in `2026`, which `TAIL_AMOUNT_RE` reads as an amount, so
+the header becomes a Rp 2.026 item and the title is lost. The plan's proposed guard is also
+insufficient — for a line that is *only* a date (`18/8/2026` on its own) it evaluates false and
+the date line itself becomes a Rp 2.026 item.
+
+**Ruling. Strip the date from line 0 first, then branch three ways** — empty ⇒ the line was a
+bare date, skip it and synthesise a title; unpriced ⇒ it is the header; still priced ⇒ there is
+no header and line 0 is an item. `fallbackParse.ts` carries this as a comment, because it is
+the single least obvious thing in the module.
+
+### R-75 · No `dynamic = 'force-dynamic'` on `/api/parse`.
+
+Plan Task 12 exports it, copying `app/api/health/route.ts`. Next 16 dropped `dynamic` from the
+route-segment-config table (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/02-route-segment-config/index.md`
+lists only `dynamicParams`, `runtime`, `preferredRegion`, `maxDuration`), and a POST handler is
+never prerendered regardless. `runtime = 'nodejs'` is kept, explicitly and redundantly, for the
+same reason the health route keeps it: to document that this route must never be flipped to
+Edge. `maxDuration = 60` is kept — it is the Hobby ceiling and Vercel reads it from the build
+output.
+
+### R-76 · OQ-1 is still open, and it is a question for the user.
+
+`perumahan laddaland 49k` sits beside `kungfu soccer 49k` at an identical cinema-ticket price,
+which reads as two film titles (Laddaland is a 2011 Thai horror film) — but *perumahan*
+literally means housing, which is also a category slug. The fixture accepts
+`entertainment | housing | other` rather than encoding a guess. Live GLM returns `housing`
+more often than not.
+
+**Not a ruling — a question.** If that 49k was a cinema ticket, tighten
+`FIXTURES[0].expect.categories[2]` to `['entertainment']` and add the term to the
+entertainment examples in the system prompt. If it was rent, tighten it to `['housing']`. Until
+someone who was there answers, the allow-list is the honest encoding.
+
+Still open, unchanged: **OQ-4** (published GLM-5.2 rates, and whether z.ai's 429 body matches
+the Anthropic error envelope — no 429 was ever provoked, so `Anthropic.RateLimitError` vs a
+generic `APIError` is untested; its 401 body is `{"error":{"message":…,"type":"401"}}`),
+**OQ-5** (durable rate limiting — R-30 defers it to post-launch monitoring), **OQ-9** (whether
+`degraded: true` should block saving — F05's call).
+
+### Verification: what F04 actually proved
+
+Green: `npm test` **418/418** (112 new — 4 fixtures, 25 `parseIdrLoose` gate, 28
+`fallbackParse`, 10 Zod contract, 10 prompt, 18 `parseExpense`, 18 route), `tsc --noEmit`,
+`eslint`, `prettier --check`, `next build` (lists `/api/parse` as ƒ dynamic).
+
+`npm run test:live` — **15/15, three consecutive runs**, no retry ever triggered. The prompt
+needed **no tuning**: every fixture parsed exactly on the first live run, including all four
+1000× traps (`38.500`→38500, `1.250.000`→1250000, `4,5jt`→4500000, `58.850`→58850), the
+DD/MM/YYYY dates, the Indonesian month names, the `total 44000` line that must not become an
+item, and the `2x nasi goreng 60k` quantity line that must not become 120000.
+
+Against a live `next dev` on port 3999, using a synthetic session cookie minted with
+`@auth/core/jwt`'s `encode()` — the same technique F02's verification used:
+
+- signed out, `POST /api/parse` → **401** `{"ok":false,"error":{"code":"unauthorized","message":"Sesi kamu habis. Login lagi ya."}}`, no `location` header;
+- signed out with a malformed body → still 401, so auth precedes body parsing;
+- `GET /api/parse` → 405 (Next supplies it);
+- signed in, the roadmap §1 canonical paste → **200**, `source: "llm"`, `degraded: false`, six
+  items, amounts `38500, 45000, 49000, 49000, 58850, 26000`, total **266350** = `Rp 266.350`,
+  `occurred_on: "2026-08-18"`, `title: "bakar duit tuesday"` — byte-identical to the plan's
+  expected payload except that `perumahan laddaland` came back `housing` (see R-76);
+- eleven oversized bodies in a row → 413 nine times, then **429** with `retry-after: 60` (ten
+  per user per minute, and the earlier successful parse had already spent one hit). Oversized
+  bodies never reach the model, so this cost nothing to verify.
+
+The never-hard-blocked promise, against the real endpoint with a bogus key: z.ai answers
+`401 token expired or incorrect`, and `parseExpense` returns `source: 'fallback'`,
+`degraded: true`, **six items totalling 266350**, correct title and date, every category
+`other`. `usage` is `null`, because no tokens were spent and reporting zeros would be a lie.
+
+**Not verified:** nothing in F04 is blocked on a browser. The one thing no test covers is F05's
+handling of these responses, which does not exist yet.
