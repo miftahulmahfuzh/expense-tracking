@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <!--
+    The Open Graph card, 1200x630 — the thumbnail WhatsApp renders beside a shared link.
+
+    ONE STATIC IMAGE FOR EVERY SHARE LINK, on purpose (F09 §2.7). A per-link
+    opengraph-image.tsx would burn the expense title and total into a bitmap that Meta then
+    caches on its own CDN for days, where revoking the link cannot reach it. Content that
+    leaves our origin cannot be revoked, so nothing about a specific expense is drawn here.
+
+    NO TEXT, and that is not a design shortcut: this is rasterised by librsvg via sharp
+    (scripts/generate-icons.mjs), which would need the brand fonts installed on whatever
+    machine runs the script to render a <text> element the same way twice.
+
+    The art is the money rail from public/brand/mark.svg — three right-aligned bars of
+    decreasing length, a column of numbers — scaled and centred on the ink ground. Same two
+    colours as the icon: paper #f0ede4 on the ink #20211d that the app's raised controls use.
+  -->
+  <rect width="1200" height="630" fill="#20211d"/>
+  <g fill="#f0ede4">
+    <rect x="360" y="243" width="480" height="68" rx="8"/>
+    <rect x="495" y="352" width="345" height="68" rx="8"/>
+    <rect x="600" y="461" width="240" height="68" rx="8"/>
+  </g>
+</svg>

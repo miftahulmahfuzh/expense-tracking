@@ -20,63 +20,13 @@
  *  hashed chunks and a 30-second test.
  * ════════════════════════════════════════════════════════════════════════════
  */
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { describe, expect, it } from 'vitest'
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-
 /**
- * Every module reachable from `entry`, following relative and @/ imports.
- *
- * Traversal STOPS at a `'use server'` module, which is where the real bundler stops too: a
- * 'use server' file is a boundary, replaced in the client graph by a stub that posts an
- * action id. Its own imports — Drizzle, the blob SDK, lib/env — never travel into the
- * browser. The module itself is still recorded, because whether a client component
- * references an action at all is precisely what R-26 is about.
+ * The walker moved to tests/support/importGraph.ts when F09 needed the same traversal for
+ * `/s/[token]` (see tests/share.bundle.test.ts). One copy, imported by both — R-77.
  */
-function importGraph(entry: string): Set<string> {
-  const seen = new Set<string>()
-  const queue = [entry]
-
-  while (queue.length > 0) {
-    const file = queue.shift()!
-    if (seen.has(file)) continue
-    seen.add(file)
-
-    const source = readFileSync(resolve(repoRoot, file), 'utf8')
-    if (source.trimStart().startsWith("'use server'")) continue
-    // Covers `import x from '…'`, `import '…'`, `export … from '…'` and dynamic import('…').
-    const specifiers = [...source.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map(
-      (m) => m[1]!,
-    )
-
-    for (const specifier of specifiers) {
-      const path = specifier.startsWith('@/')
-        ? specifier.slice(2)
-        : specifier.startsWith('.')
-          ? resolve(dirname(file), specifier).slice(repoRoot.length + 1)
-          : null
-      if (!path) continue // a bare package name: not ours to walk
-
-      const candidate = ['', '.ts', '.tsx', '/index.ts', '/index.tsx']
-        .map((ext) => `${path}${ext}`)
-        .find((p) => {
-          try {
-            readFileSync(resolve(repoRoot, p), 'utf8')
-            return true
-          } catch {
-            return false
-          }
-        })
-      if (candidate) queue.push(candidate)
-    }
-  }
-
-  return seen
-}
+import { importGraph, isClientModule } from './support/importGraph'
 
 const ACTIONS = 'app/actions/photos.ts'
 
@@ -103,9 +53,6 @@ describe('R-26 — module-level split of the gallery', () => {
 })
 
 describe('client/server boundary', () => {
-  const isClient = (file: string) =>
-    readFileSync(resolve(repoRoot, file), 'utf8').trimStart().startsWith("'use client'")
-
   it("every client module in the photo graph is marked 'use client'", () => {
     for (const file of [
       'components/photos/PhotoGallery.tsx',
@@ -116,7 +63,7 @@ describe('client/server boundary', () => {
       'components/photos/usePhotoUploads.ts',
       'lib/photos/compress.ts',
     ]) {
-      expect(isClient(file), file).toBe(true)
+      expect(isClientModule(file), file).toBe(true)
     }
   })
 

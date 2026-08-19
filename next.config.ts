@@ -37,6 +37,47 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  /**
+   * Response headers for the one public route, `/s/[token]` (F09 §2.8, Task 16).
+   *
+   * The page already exports `dynamic = 'force-dynamic'`; this is the belt to that pair of
+   * braces, and it is not redundant. The segment config governs what NEXT does, while a
+   * header is what a CDN, a proxy and a browser disk cache actually read — and the failure
+   * mode here is invisible, because a stale copy of a revoked share page looks exactly like
+   * a working one.
+   */
+  async headers() {
+    return [
+      {
+        source: '/s/:token',
+        headers: [
+          {
+            // `private` keeps it out of every shared cache, `no-store` out of disk, and
+            // `must-revalidate` closes the stale-while-error door. Revoke has to be
+            // immediate: the whole point of a DELETE with no soft-delete column is that the
+            // URL stops working within seconds.
+            key: 'Cache-Control',
+            value: 'private, no-store, max-age=0, must-revalidate',
+          },
+          {
+            // An unguessable URL that gets indexed is no longer unguessable. This covers
+            // what the <meta name="robots"> tag cannot: intermediaries, non-HTML responses,
+            // and `noarchive` — a search-engine cached copy would outlive a revoke.
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow, noarchive',
+          },
+          {
+            // Photos load from *.public.blob.vercel-storage.com. Modern browsers already
+            // default to this, so the cross-origin request sends only our origin and not the
+            // token-bearing path — but state it rather than inherit it.
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ]
+  },
+
   // No `eslint` key: `next build` no longer runs the linter in Next 16, and the option
   // was removed. Linting runs via `npm run lint` and in CI/pre-push only.
   // No `webpack` key: Turbopack is the default bundler in Next 16 and a webpack config
