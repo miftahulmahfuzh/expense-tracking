@@ -240,7 +240,7 @@ rather than incidental.
 ## Testing
 
 ```bash
-npm test          # 773 tests across 44 files, ~2 s, no network and no database
+npm test          # ~770 tests across 44 files, ~2 s, no network and no database
 ```
 
 The unit suite is hermetic by design and covers the parts where a silent bug is most
