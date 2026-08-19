@@ -23,8 +23,30 @@ const integration = process.env.VITEST_INTEGRATION === '1'
 
 export default defineConfig({
   resolve: {
-    // Mirrors tsconfig.json "paths": { "@/*": ["./*"] }.
-    alias: { '@': fileURLToPath(new URL('./', import.meta.url)) },
+    alias: {
+      // Mirrors tsconfig.json "paths": { "@/*": ["./*"] }.
+      '@': fileURLToPath(new URL('./', import.meta.url)),
+
+      /*
+       * F06: `server-only` is a poison pill, not a module. Its default export condition
+       * THROWS on import, and only a bundler that selects the `react-server` condition —
+       * which Vitest does not — gets the harmless branch. So any module opening with
+       * `import 'server-only'` is untestable as shipped: lib/db/photos.ts, lib/blob/delete.ts.
+       *
+       * The alternatives were worse. Dropping the pragma from those files removes the
+       * build-time guard that keeps the Drizzle client and BLOB_READ_WRITE_TOKEN out of a
+       * client bundle — the exact leak it exists to prevent. Setting `conditions:
+       * ['react-server']` globally changes how every dependency resolves, including React
+       * and next/navigation, to fix one import. Repeating `vi.mock('server-only')` in each
+       * test file works but has to be remembered by F07 and F09 too, and forgetting it
+       * looks like a failing test rather than a missing incantation.
+       *
+       * Aliasing it to an empty stub costs nothing in production (Next still resolves the
+       * real package and still enforces the boundary) and makes the ownership SQL in
+       * lib/db/photos.ts testable, which is where this app's core security property lives.
+       */
+      'server-only': fileURLToPath(new URL('./tests/support/serverOnlyStub.ts', import.meta.url)),
+    },
   },
   test: {
     environment: 'node',
