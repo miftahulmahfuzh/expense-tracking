@@ -660,7 +660,21 @@
     padding: 0;
     border: 0;
     background: transparent;
-    overflow: hidden;
+    /* CLIP, NOT HIDDEN, and the difference is a bug not a preference. `hidden` makes this box a
+       SCROLL CONTAINER; `clip` clips without one. During the entry transition the panel sits at
+       `translateY(100%)` — one panel-height BELOW this box — and a transformed child still
+       counts toward scrollable overflow, so with `hidden` the dialog gains exactly one
+       panel-height of scroll range for the length of the animation. `showModal()`'s own focusing
+       steps then scroll the focused panel into view and take it, so every frame of the entry
+       paints one panel-height too HIGH. Measured in WebKit at 414x896: scrollTop 317,
+       scrollHeight 1213 = 896 + 317, the picker's panel painting at 263..580 instead of
+       579..896. Desktop WebKit re-clamps the offset when the transform reaches 0 and the
+       overflow disappears; iOS WebKit does not — the sheet stays a whole panel-height high until
+       something forces a re-layout, and a long-press on a chip is enough to do it. That is the
+       "tap Kategori and no picker appears, hold it and the editor jumps to the bottom" report.
+       `clip` means nothing can ever scroll this box: not the dialog's focusing steps, not a
+       keyboard raised by an input inside the panel, not a stray scrollIntoView. */
+    overflow: clip;
     align-items: flex-end;
     justify-content: center;
     transition-property: display, overlay;

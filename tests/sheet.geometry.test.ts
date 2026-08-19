@@ -49,6 +49,22 @@ describe('.sheet geometry', () => {
   it('does not reintroduce a max-height that would re-constrain it', () => {
     expect(block('.sheet')).toMatch(/max-height:\s*none\s*;/)
   })
+
+  /*
+   * `overflow: hidden` here is a bug, not a style choice — it makes the dialog a SCROLL
+   * CONTAINER. The panel spends the entry transition at `translateY(100%)`, one panel-height
+   * below this box, and transformed children count toward scrollable overflow: the dialog
+   * therefore has exactly one panel-height of scroll range for the length of the animation, and
+   * `showModal()`'s focusing steps scroll the panel into view and take it. Measured in WebKit at
+   * 414x896: scrollTop 317 of scrollHeight 1213, panel painting at 263..580 instead of 579..896.
+   * Desktop WebKit re-clamps when the overflow goes away; iOS does not, which is the whole "the
+   * category picker never appears" report. `clip` clips without a scroll container, so there is
+   * nothing to displace.
+   */
+  it('clips instead of scrolling, so the entry transform cannot displace the panel', () => {
+    expect(block('.sheet')).toMatch(/overflow:\s*clip\s*;/)
+    expect(block('.sheet')).not.toMatch(/overflow:\s*(hidden|auto|scroll)\s*;/)
+  })
 })
 
 /**
