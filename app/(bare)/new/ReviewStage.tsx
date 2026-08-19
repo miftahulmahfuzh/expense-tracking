@@ -6,6 +6,7 @@ import { PhotoPicker } from '@/components/photos'
 import { Button, CategoryPicker, Card, Field, Input, Money, TextArea } from '@/components/ui'
 import type { Category } from '@/lib/categories'
 import type { StagedPhoto } from '@/lib/photos/types'
+import { revealAboveBar } from '@/lib/scroll/revealAboveBar'
 
 import {
   ADD_ITEM_CTA,
@@ -65,6 +66,18 @@ export type ReviewStageProps = {
   onSave: () => void
 }
 
+/**
+ * The unit worth revealing: the whole `<li>`, never just the focused field.
+ *
+ * An ItemRow is two lines — name + ✕ above, category chip + amount below — so scrolling the
+ * name input into view and stopping there leaves half the row the user was sent to fix behind
+ * the bar. Fields outside the list (Judul, Tanggal, Catatan, the Tambah Item button) have no
+ * row, and are their own.
+ */
+function rowOf(element: HTMLElement): HTMLElement {
+  return element.closest('li') ?? element
+}
+
 export function ReviewStage(props: ReviewStageProps) {
   const { draft, errors, focus, save, parseFailure, degraded, reparsing, photosBusy } = props
   const { onFocusHandled } = props
@@ -72,6 +85,7 @@ export function ReviewStage(props: ReviewStageProps) {
   const nameRefs = useRef(new Map<string, HTMLInputElement | null>())
   const deleteRefs = useRef(new Map<string, HTMLButtonElement | null>())
   const addRef = useRef<HTMLButtonElement>(null)
+  const barRef = useRef<HTMLDivElement>(null)
 
   const [sheetKey, setSheetKey] = useState<string | null>(null)
   const [showRaw, setShowRaw] = useState(false)
@@ -98,12 +112,41 @@ export function ReviewStage(props: ReviewStageProps) {
     else if (focus.target === 'add-item') element = addRef.current
     else element = document.getElementById(focus.id)
 
-    // preventScroll then an explicit scrollIntoView: focus() alone jumps the element to the
-    // nearest edge, which on a keyboard-shrunk viewport can be under the sticky bar.
+    // preventScroll, then reveal deliberately: focus() alone jumps the element to the nearest
+    // edge, and the nearest edge is frequently under the sticky bar.
     element?.focus({ preventScroll: true })
-    element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    if (element) revealAboveBar(rowOf(element), barRef.current)
     onFocusHandled()
   }, [focus, onFocusHandled])
+
+  /*
+   * Re-establish the bar clearance whenever the viewport resizes.
+   *
+   * THIS IS THE OTHER HALF OF THE FIX, and without it the effect above is useless for the case
+   * that reported the bug. "Tambah Item" focuses the new row while the keyboard is still
+   * CLOSED, so the reveal runs against a full-height pane in which the row is already clear —
+   * it correctly does nothing. The keyboard then opens, --app-h takes ~390px off the pane, and
+   * the bar rides up over the row that was just revealed. Nothing recomputed the scroll, so the
+   * new item's name field, its error message and its amount field ended up behind Simpan.
+   *
+   * The keyboard's arrival IS a visualViewport resize, so that is where the correction belongs
+   * — not on a timer guessing when the animation has finished.
+   */
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const correct = () => {
+      const active = document.activeElement
+      if (!(active instanceof HTMLElement)) return
+      // Blur puts <body> here, and a CategoryPicker is a modal <dialog> that scrolls itself.
+      if (active === document.body || active.closest('dialog')) return
+      revealAboveBar(rowOf(active), barRef.current, 'auto')
+    }
+
+    viewport.addEventListener('resize', correct)
+    return () => viewport.removeEventListener('resize', correct)
+  }, [])
 
   // Keep the map free of rows that have been deleted, or it grows for the tab's lifetime.
   const registerName = useCallback((key: string, element: HTMLInputElement | null) => {
@@ -305,7 +348,7 @@ export function ReviewStage(props: ReviewStageProps) {
         <div className="h-8" />
       </div>
 
-      <StickyBar>
+      <StickyBar ref={barRef}>
         <div className="mb-2.5 flex items-baseline justify-between">
           <span className="eyebrow">Total</span>
           {/*

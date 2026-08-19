@@ -220,10 +220,41 @@ export function AddExpenseClient({
      * inset below it, and the document would scroll by exactly that inset — a ~34px wobble on
      * a notched device. Subtracting the same value it is padded by is exact rather than a
      * guess, whatever env() resolves to.
+     *
+     * min(), not a bare calc(), because that subtraction is only correct while the keyboard is
+     * CLOSED. Once it opens, --app-h is the visual viewport and already ends at the keyboard's
+     * top edge — there is no home indicator left to clear, the `pb-safe` below is off-screen
+     * behind the keys, and subtracting 34px again just parks Simpan 34px above the keyboard
+     * with a dead band of page background under it. 100dvh tracks the LAYOUT viewport, which
+     * the keyboard does not shrink, so the second term is the keyboard-closed ceiling and the
+     * first wins whenever the keyboard is up.
+     *
+     * `relative` + `top: var(--vv-top)` is the other half of the same problem. --app-h says how
+     * TALL the visible band is; --vv-top says WHERE it is. iOS reveals a focused field by
+     * sliding the visual viewport down the layout viewport — the layout one never shrinks for
+     * the keyboard — so an app-h-tall column anchored at layout y=0 is off by that slide: its
+     * header hangs off the top of the screen and an equal band of bare page background appears
+     * under the Simpan bar. 46px of it, measured on an XS Max. Offsetting by the same number
+     * puts the column back on the band the user is looking at, and the two properties together
+     * describe the visual viewport exactly — so a bigger slide moves the column with it rather
+     * than pushing the bar behind the keys.
+     *
+     * `relative`, NOT `transform: translateY` and NOT `margin-top`. A transform makes its
+     * element the containing block for every `position: fixed` DESCENDANT, and this subtree has
+     * real ones: F06's Lightbox is `fixed inset-0` and is reachable from the PhotoPicker on this
+     * very screen, so it would shrink from full-screen to this column. A margin would collapse
+     * straight out through the `pb-safe` wrapper and the shell's two `min-h-dvh` ancestors. A
+     * relative offset shifts only what this element paints — it leaves document height alone,
+     * does not disturb the `sticky` bar inside it, and every absolutely-positioned descendant in
+     * here (Button's spinner, the photo tiles, `touch-target`) already carries its own
+     * `relative`, so nothing re-anchors to it.
      */
     <div
-      className="flex flex-col"
-      style={{ height: 'calc(var(--app-h, 100dvh) - env(safe-area-inset-bottom))' }}
+      className="relative flex flex-col"
+      style={{
+        height: 'min(var(--app-h, 100dvh), calc(100dvh - env(safe-area-inset-bottom)))',
+        top: 'var(--vv-top, 0px)',
+      }}
     >
       <NewHeader backHref={backHref} />
 

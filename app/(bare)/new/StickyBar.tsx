@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { Ref, ReactNode } from 'react'
 
 import { cn } from '@/lib/cn'
 
@@ -16,10 +16,24 @@ import { cn } from '@/lib/cn'
  *
  * `bg-card/95 backdrop-blur` rather than an opaque fill: content scrolling under the bar
  * should be legible-but-receding, which is what tells you there is more list below.
+ *
+ * `ref` is forwarded because "receding" also means OCCLUDING, and the only component that can
+ * report how much of the pane this bar is covering is this one. `lib/scroll/revealAboveBar`
+ * reads its live rect rather than assuming a height, because the bar grows a line whenever a
+ * validation summary appears.
  */
-export function StickyBar({ children, className }: { children: ReactNode; className?: string }) {
+export function StickyBar({
+  children,
+  className,
+  ref,
+}: {
+  children: ReactNode
+  className?: string
+  ref?: Ref<HTMLDivElement>
+}) {
   return (
     <div
+      ref={ref}
       className={cn(
         'sticky bottom-0 z-20 mt-auto border-t border-rule bg-card/95 px-gutter pt-3 pb-3 backdrop-blur',
         className,
