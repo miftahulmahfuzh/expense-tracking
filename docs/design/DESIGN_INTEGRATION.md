@@ -9,6 +9,12 @@ Two pulls so far. **The 2026-08-21 pull is the current system.** The 2026-08-19 
 further down is kept because most of its non-visual rulings still stand, but every colour,
 both fonts and the whole type scale in it are superseded.
 
+Read the current section in two halves. **R-42 through R-49 record the integration** — what
+the design said and where the app had to differ to ship it. **R-131 onward are amendments
+taken after the pull**, once the design was running on a real phone, and three of them
+overrule the canvas outright. If a ruling in the first half and one in the second disagree,
+the second wins; the first half is not edited to match, only annotated.
+
 ---
 
 # 2026-08-21 — "flat, loud, graphic" (CURRENT)
@@ -70,6 +76,9 @@ Names that genuinely died, because their meaning did: `--accent`, `--accent-2`,
 hand rather than aliased, because "the green one" no longer means anything here.
 
 ## R-43 · Weight and tracking belong in the type scale, not at the call site.
+
+> **The mechanism stands; the values below are superseded by R-131.** `text-label` is now
+> 11px at 0.005em, and nothing in the app is capsed.
 
 With one family, `text-label` has to carry 10px **and 800 and 0.14em** or every call site
 re-specifies them and they drift. **Ruling: every `--text-*` entry declares its own
@@ -147,6 +156,9 @@ that never scrolls — i.e. stop sticking, silently.
 
 ## R-48 · ⚠️ The five PNGs are not in this repo yet.
 
+> **DISCHARGED — see R-136.** The art shipped on 2026-08-21. Everything below is the
+> historical record of the gap, not a live instruction.
+
 `get_file` truncates at 256 KiB and each `*-cut.png` is larger, so the art could not be
 pulled with the rest of the design. `components/CutoutArt.tsx` is complete and wired; it
 currently resolves five 404s and paints nothing, which is exactly the degradation R-47 was
@@ -160,6 +172,10 @@ budgets for elsewhere. No code change is needed once they are there.
 
 ## R-49 · Measurements to build to (supersedes R-41)
 
+> **The vertical measurements here are superseded by R-132's 8px edge rule** — headers,
+> footers and anything else touching a screen edge. Every horizontal measurement still
+> stands, and R-134 adds the icon-glyph spec.
+
 Screen gutter **22px**; 4pt spacing base. Buttons **54px**, small variant **44px**. Inputs
 **50px** at **17px** text. Item rows **min 52px**, group rows **min 60px**. The category
 disc is **28px** (26 inside a chip), its mark 9px/900. Delete target a full **44×44**.
@@ -167,6 +183,195 @@ Photo thumbnails 3-up; the draft strip uses **74×74** tiles. Sheet: grabber **4
 `--rule-strong`, 16px top corners, no border, no close button — tapping the scrim dismisses.
 Tab bar **54px** of solid `#0d0d0d` with a **56px** red crown breaking its top edge.
 Lightbox goes true black **in both schemes**, with a yellow counter pill.
+
+---
+
+## Amendments taken AFTER the pull
+
+R-42 through R-49 record the integration itself. Everything below was decided once the
+design was already running in the app, and three of them (R-131, R-134, R-135) **overrule
+the canvas** rather than transcribe it.
+
+`05 Shipped State` on the design project is the canvas-side mirror of this block. It is
+regenerated from `app/globals.css` and the components and pushed with `DesignSync`, which
+makes it **downstream of this file and never a source for it** — the pull direction stays
+`04` → repo, and the push direction is repo → `05`.
+
+### Why the numbering jumps R-49 → R-131
+
+This file's rulings and `docs/RECONCILIATION_v0.1.0.md`'s were meant to be one sequence —
+this file opens at R-34 because that is where the reconciliation stood when it was started.
+They then grew independently and **collided**: R-42, R-43, R-44, R-46, R-48 and R-49 each
+name a different ruling in each file, which is why the code cites this one as
+`design R-nn` (see `components/photos/UploadTile.tsx`, `app/(bare)/page.tsx`).
+
+Renumbering either file would invalidate ~40 citations in shipped comments, so the collision
+stays. New rulings here start at **R-131, one past the highest number used anywhere in the
+repo**, so nothing minted from here on needs the `design` prefix to be unambiguous. Keep
+that rule: before minting, take the max across both files.
+
+## R-131 · No caps anywhere. Casing is what a string IS, not how big it is.
+
+The design capses every label under 12px: `eyebrow`, `sticker`, `sticker-lg` and the tab
+bar all carried `text-transform: uppercase`, and twelve call sites added it by hand.
+**Ruling: the treatment is retired outright. No `text-transform` remains in
+`app/globals.css` and no `uppercase` class remains in a component.** Recorded as THE CASING
+RULE in the base layer, next to THE 17px RULE.
+
+Two things this is *not*. It is not a copy rewrite — no string was ever authored in caps,
+every one was already Title or sentence case, so the caps lived entirely in the stylesheet.
+And it is not a typeface change: Archivo is variable with a full lowercase set, so there was
+no font limitation to work around.
+
+What was real is that casing was a function of SIZE — capsed at 10–11px, Title or sentence
+case at 14 and up. `Button.tsx` had already argued the case for dropping caps at the large
+tier ("authority from weight and size instead"); this finishes the same migration at the
+small one, so what a string looks like now depends on what it is:
+
+| what it is | casing | example |
+|---|---|---|
+| labels, headings, nav | Title Case | `Judul` · `Item` · `Tautan Publik` · `Bulan Ini` |
+| sentences and prose | sentence | `Gagal menyimpan. Coba lagi ya.` |
+| data phrases | lowercase | `6 catatan · 17 item · ⧉ 2 foto` |
+
+Indonesian Title Case leaves function words lowercase — `dari`, `di`, `ke`, `dan`, `atau`,
+`yang`, `untuk` — hence **`Ulangi dari Teks`**, never `Ulangi Dari Teks`. Two exceptions
+keep their caps because they are not text: the two-letter category glyphs (R-34) and
+`expensetracking.online`, which is a domain.
+
+**Supersedes the values in R-43, not its mechanism.** Tracking was tuned for caps, so it
+collapses to ~**0.005em**, and each small tier gains a step — `label` 10→11, `action`
+11→12, `sticker-lg` 12→13 — because caps carry more optical presence than the words
+replacing them, and dropping them without the step makes a label read quieter than it is.
+The weight and the tracking still live in the scale entry, which is all R-43 ever claimed.
+
+Verified headless at 320px and 390px: **zero elements with `text-transform: uppercase`** on
+every route — the direct assertion rather than an inference from grep — no horizontal
+overflow, and the tab bar's three labels unclipped at both widths. The 11→12px step on
+`--text-action` was the one change with a real chance of breaking that bar.
+
+Plan: `docs/plans/F11-title-case.md`.
+
+## R-132 · The 8px edge rule. The bottom safe-area inset is not padding.
+
+Every screen puts its first and last rows the same **8px** past whatever boundary the system
+hands it: the status bar at the top, the physical screen edge at the bottom. With a 44px
+notch inset and a control's own ~14px of internal slack that lands the type **~22px off each
+edge**, which is the number to check a screenshot against.
+
+**The asymmetry is not an oversight.** The notch is hardware and the status bar is drawn
+over the page, so the top has to clear `env(safe-area-inset-top)` or the clock sits on the
+title. The home indicator is a hint drawn *on top of* a screen the app fully owns, so the
+bottom measures from the real edge and the last row rides level with the pill rather than
+stacked above the 34px reserved for it.
+
+**Ruling: do not add `env(safe-area-inset-bottom)` to anything that sits at the bottom of
+the screen.** Padding by the full inset is what this replaced, and it left every footer
+floating ~26px too high — a symptom that only shows on real hardware, which is how it
+survived four features. The `pb-safe` utility was **deleted** rather than deprecated, so the
+old instinct has nothing to reach for.
+
+| surface | its own bottom pad | why that number |
+|---|---|---|
+| tab bar | 16px | A full-bleed bar. Its own pad IS the home-indicator clearance now. |
+| `/new` sticky footer | 8px | Paints to the edge; the 54px button's slack pays the rest. |
+| docked sheet footer | 8px | Owns the bottom edge exactly like `/new`'s footer. |
+| lightbox footer | 8px | Its 44px buttons carry the rest of the 22px. |
+| toast | 22px | A floating capsule, so the rule applies to its own bottom edge and it pays in full. With a tab bar: `54 + 16 + 24`. |
+| `/s/[token]` footer | 22px | A bare text link, with no tap target to borrow slack from. |
+| `pb-tabbar` | 102px | `54 + 16 + 32`. No inset — the bar already reserved it once. |
+
+`pt-safe-header` becomes `max(1.25rem, env(safe-area-inset-top) + 0.5rem)` — **52px on an
+XS Max, down from 72**. The floor is for a flat phone and the desktop column, where `env()`
+resolves to 0 and 8px from the window edge reads as broken.
+
+`/new`'s column lost the `100dvh − env(safe-area-inset-bottom)` subtraction it used to need
+to cancel the layout's `pb-safe`. With nothing padding it, the footer paints to the edge and
+there is nothing left to subtract.
+
+**Supersedes the vertical half of R-49.** Every horizontal measurement there still stands.
+
+## R-133 · Fullscreen mode. The wallpaper needed somewhere to be seen.
+
+No counterpart in the design. Five cut-out creatures scatter behind every screen (R-47), and
+on `/m/[month]` almost all of that sits behind an opaque white header and a column of opaque
+white cards. **Ruling: `/m/[month]` gets a fullscreen mode that retracts the app chrome and
+leaves the art, the day stickers and the cards.** State is a cookie (`lib/fullscreen.ts`)
+read in the `(shell)` layout, so the first paint is already correct rather than flipping
+after hydration.
+
+Three mechanics worth not breaking:
+
+- The header **closes rather than slides**: `grid-rows-[1fr]` → `[0fr]` under
+  `overflow-clip`, with its border going transparent and its background going to `paper`.
+- **It keeps `pt-safe` while collapsed.** The inset half of the padding has to live on an
+  element the collapse cannot take with it, or the first card lands under the clock. That is
+  what `pt-header-air` — `max(0.5rem, 1.25rem − env(safe-area-inset-top))` — is for: it
+  carries the decorative half only, and the two halves sum to `pt-safe-header` exactly at
+  every inset. That is why neither is a plain constant.
+- **`pb-tabbar` is NOT reduced in fullscreen.** The 102px band it reserves is what the
+  floating toggle then sits in, so the last row clears whichever of the two is on screen.
+
+The toggle is a 44px circle: `ink` on `paper` while the bar is up, `yellow` on `tab-bg` once
+active. Inactive it is raised by `--spacing-tab + 1rem` — the bar's links *plus* its own
+`pb-4` — or the chip sits 6px off the bar's top edge instead of the intended 22px.
+
+## R-134 · `/e/[id]` opens with a 30px screen title and two icon actions.
+
+Reverses two earlier decisions on the same header.
+
+**The chrome label is now `text-title`.** It was an 11px eyebrow on the reasoning that "the
+expense's own title is the 30px thing on this screen" — but it is not: that title is an
+editable `Input` at `--text-input`. There was never a second large heading to fight, only a
+chrome label two type steps below every other screen's. `/new` and `/e/[id]` are the two
+`(bare)` screens and both open with chevron · title · actions; they now typeset that title
+identically. The band's height is unchanged either way — the 44px icon boxes set it.
+
+**The full-width `Hapus pengeluaran` button at the foot of the screen is gone.** Delete is a
+trash glyph beside the share glyph. This **mints the icon vocabulary**: 22px (`size-5.5`),
+`stroke-width: 2.5`, `stroke-linecap: square`, `stroke-linejoin: miter`, `currentColor`, and
+paths drawn by hand rather than pulled from an icon set — a square-capped 2.5 stroke is the
+line weight this design already draws everything else at. `gap-0.5` between the two boxes,
+and `-mr-2.5` on the group so each 44px box overhangs the gutter by the same 10px the
+chevron does, which puts both outermost glyphs optically flush with the column while their
+targets stay full size.
+
+`Bagikan` survives unchanged as the **`aria-label`**. The icon changed nothing about the
+accessible name: same canonical string from `copy.ts`, still what voice control matches on.
+
+Three smaller corrections on the same screen: the body gained `pt-gutter` so `Judul` is not
+stuck to the header hairline; the share-link panel moved **above** the note; and an empty
+note renders as a `+ Tambah Catatan` row instead of an empty box — same 48px height, same
+12px/800, same ink as `+ Tambah Item`, because two different-looking "add a thing" rows on
+one screen is how a design starts drifting.
+
+`app/(bare)/e/[id]/loading.tsx` tracks this header exactly. **If it grows or loses a
+control, that file is the second place to change.**
+
+## R-135 · A day total prints only when the day holds more than one expense.
+
+`/m/[month]`'s day heading carries that day's total on the right. On a day with a single
+expense it is the group row's own total, printed twice, 8px apart. **Ruling: render it only
+when `bucket.rows.length > 1`.** The design has no day total at all, so this trims an
+addition rather than overruling a design value.
+
+## R-136 · R-48 is discharged. The art is in the repo.
+
+The five cut-outs are in `public/art/` as `dragon.png`, `sheep.png`, `mountain.png`,
+`octopus.png` and `snake.png`, installed by `scripts/install-art.mjs`. `CutoutArt` resolves
+them and paints. R-48's warning and its "to finish it" instructions are now history.
+
+The scatter shipped **re-placed and scaled 1.35×**, not transcribed. The canvas composed its
+arrangement against a mock holding one screenful of content; these positions are the same
+five creatures placed against the real app. Mountain is dead centre, so the one
+landscape-shaped creature anchors the composition; snake and sheep trade places; and the
+snake sits lower, so its head clears the month header's white band instead of being cut in
+half by it. Growth is applied about each creature's own centre, so the scatter keeps its
+shape and only the creatures get bigger.
+
+The sign-in layer stays at **the design's own scale**, on purpose. The page layer is
+wallpaper and can be as loud as it likes behind opaque cards; the sign-in layer is a
+composition that frames the wordmark and clears the copy under the button.
 
 ---
 
