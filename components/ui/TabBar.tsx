@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useFullscreen } from '@/components/fullscreen'
 import { cn } from '@/lib/cn'
 
 export interface TabBarProps {
@@ -34,6 +35,9 @@ export interface TabBarProps {
  */
 export function TabBar({ monthHref }: TabBarProps) {
   const pathname = usePathname()
+  // The month screen's fullscreen mode slides the whole bar off the bottom. Gated on the
+  // route inside the provider, so `/stats` can never end up here without its navigation.
+  const { active: hidden } = useFullscreen()
   const onMonth = pathname.startsWith('/m')
   const onStats = pathname.startsWith('/stats')
   const onNew = pathname.startsWith('/new')
@@ -45,8 +49,27 @@ export function TabBar({ monthHref }: TabBarProps) {
       // Fixed to the viewport, but the contents are constrained to the same max-w-app
       // column as the page so the bar lines up on a wide viewport instead of stretching
       // across it. Opaque, so scrolled content passes cleanly behind.
-      className="fixed inset-x-0 bottom-0 z-40 bg-tab-bg"
+      className={cn(
+        'fixed inset-x-0 bottom-0 z-40 bg-tab-bg',
+        'transition-transform duration-280 ease-out-soft motion-reduce:transition-none',
+        /*
+         * NOT `translate-y-full`, and the difference is visible: `100%` is this nav's own
+         * height, but the raised Tambah crown below is `-top-6.5` — it PUNCHES 26px THROUGH
+         * the bar's top edge and is not part of the height being translated. At `100%` the
+         * bar leaves and a red half-disc stays parked on the bottom edge of the month list.
+         * `2rem` clears the crown's 1.625rem with a little slack for subpixel rounding.
+         */
+        hidden && 'translate-y-[calc(100%+2rem)]',
+      )}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      /*
+       * `inert`, not just off-screen. A translated element is still in the layout and its
+       * three links are still focusable and still announced — a keyboard or screen-reader
+       * user would tab into a navigation they cannot see. `inert` takes the whole subtree out
+       * of the tab order and out of the accessibility tree in one attribute, which is exactly
+       * the truth of it: while the bar is out, it is not there.
+       */
+      inert={hidden}
     >
       <div className="mx-auto grid max-w-app grid-cols-3 px-1">
         <Link

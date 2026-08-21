@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
+import { FullscreenToggle } from '@/components/fullscreen'
 import { Card, EmptyState, INK_STICKER, Money } from '@/components/ui'
 import { requireUserId } from '@/lib/auth/requireUserId'
 import { getMonthGroups } from '@/lib/db/queries'
@@ -46,6 +47,15 @@ export default async function MonthPage({ params }: PageProps<'/m/[month]'>) {
   return (
     <main>
       <MonthHeader month={month} summary={summary} />
+
+      {/*
+       * Rendered HERE and on no other screen, deliberately. The toggle is the only way back
+       * out of fullscreen mode — the tab bar is off the bottom of the screen while it is on —
+       * so it has to live on exactly the route that can turn it on. Putting it in the group
+       * layout instead would need a pathname check to stay off `/stats`, and getting that
+       * check wrong strands the user on a screen with no navigation and no way to restore it.
+       */}
+      <FullscreenToggle />
 
       {days.length === 0 ? (
         <div className="pt-9 px-safe">

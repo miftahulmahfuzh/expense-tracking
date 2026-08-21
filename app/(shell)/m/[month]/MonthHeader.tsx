@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn'
 import { addMonths, isAfterCurrentMonth, monthLabel, type MonthKey } from '@/lib/format'
 
 import type { MonthSummary } from './buckets'
+import { MonthHeaderShell } from './MonthHeaderShell'
 
 /**
  * The sticky month header: chevron · month · chevron, then THE number.
@@ -44,7 +45,14 @@ export function MonthHeader({ month, summary }: { month: MonthKey; summary: Mont
   const nextBlocked = isAfterCurrentMonth(next)
 
   return (
-    <header className="sticky top-0 z-30 border-b border-rule bg-card pt-safe-header px-safe pb-4">
+    /*
+     * The `<header>` element, its stickiness and its padding all live in `MonthHeaderShell`,
+     * which is a client component so it can collapse them for fullscreen mode. Read its
+     * docstring before moving anything back up here — the collapse only works because the
+     * header is a direct child of `<main>`, and a wrapper around it breaks the sticky
+     * behaviour with nothing failing anywhere.
+     */
+    <MonthHeaderShell>
       <div className="flex items-center justify-between">
         <Link
           href={`/m/${prev}`}
@@ -86,6 +94,6 @@ export function MonthHeader({ month, summary }: { month: MonthKey; summary: Mont
       <p className="mt-2 tabular text-meta text-ink-3 uppercase">
         {summary.groupCount} catatan · {summary.itemCount} item
       </p>
-    </header>
+    </MonthHeaderShell>
   )
 }
