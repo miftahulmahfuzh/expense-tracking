@@ -14,10 +14,12 @@ import { MonthHeaderShell } from './MonthHeaderShell'
  * component would ship `Money`, `cn` and the whole month-arithmetic module to the browser to
  * render two links.
  *
- * The header is a WHITE BLOCK, not the page: it is the only card-coloured band on this
- * screen and it is what the grey list scrolls under. Opaque rather than
- * translucent-with-blur — rows scrolling behind a blurred money column read as smudged
- * digits, and this design has no glass in it anywhere.
+ * The header is a FROSTED BAND, not the page: it is the one band on this screen that is not
+ * the page colour, and it is what the list scrolls under. It was opaque until R-137, on the
+ * stated grounds that rows scrolling behind a blurred money column read as smudged digits;
+ * the canvas now draws it frosted and R-137 takes that trade knowingly. The 44px month total
+ * on it is 900-weight `ink`, which is the heaviest type in the app and measures 11:1 against
+ * the worst backdrop the wallpaper can put under it.
  */
 
 function Chevron({ dir }: { dir: 'prev' | 'next' }) {

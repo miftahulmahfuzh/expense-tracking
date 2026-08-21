@@ -255,7 +255,7 @@ export function ReviewStage(props: ReviewStageProps) {
           good parse nobody wants to see it again; kept because after a BAD parse it is the
           fastest fix — edit one line, re-run.
         */}
-        <details className="mt-5 rounded-card bg-card px-3 py-2" open={showRaw}>
+        <details className="glass mt-5 rounded-card px-3 py-2" open={showRaw}>
           <summary
             className="flex min-h-touch cursor-pointer list-none items-center text-action text-ink-2"
             onClick={(event) => {

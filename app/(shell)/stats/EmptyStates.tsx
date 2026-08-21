@@ -26,7 +26,7 @@ export function NoDataState() {
  */
 export function SingleMonthState({ month, totalIdr }: { month: MonthKey; totalIdr: number }) {
   return (
-    <section className="rounded-card bg-card p-4">
+    <section className="glass rounded-card p-4">
       <h2 className="sticker" style={INK_STICKER}>
         Tren Bulanan
       </h2>

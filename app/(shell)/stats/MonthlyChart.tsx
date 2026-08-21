@@ -75,7 +75,7 @@ export default function MonthlyChart({ series, selectedMonth }: Props) {
   if (!point) return null
 
   return (
-    <section className="rounded-card bg-card p-4" aria-labelledby="stats-chart-title">
+    <section className="glass rounded-card p-4" aria-labelledby="stats-chart-title">
       <h2 className="sticker" style={INK_STICKER} id="stats-chart-title">
         {series.length} bulan terakhir
       </h2>

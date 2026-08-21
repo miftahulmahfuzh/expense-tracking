@@ -233,7 +233,7 @@ export function ExpenseEditor({
           the two `(bare)` screens and both open with chevron · title · (actions); they now
           typeset that title identically. Height is unchanged either way — the 44px icon
           buttons set this band's height and 32px of line box fits inside them. */}
-      <header className="flex items-center gap-1 border-b border-rule bg-card pt-safe-header px-safe pb-2">
+      <header className="glass flex items-center gap-1 border-b border-rule pt-safe-header px-safe pb-2">
         <Link
           href={backHref}
           aria-label={BACK_LABEL}
@@ -365,7 +365,7 @@ export function ExpenseEditor({
           {ADD_ITEM_CTA}
         </button>
 
-        <div className="mt-3.5 flex items-baseline justify-between rounded-card bg-card px-4 py-3">
+        <div className="glass mt-3.5 flex items-baseline justify-between rounded-card px-4 py-3">
           <span className="eyebrow">{TOTAL_LABEL}</span>
           {/*
            * Announced politely and atomically so a screen reader reads the whole new amount

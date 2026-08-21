@@ -74,11 +74,23 @@ export function MonthHeaderShell({ children }: { children: React.ReactNode }) {
              * OPAQUE while collapsed, and it has to be. This band stays `sticky top-0`, so a
              * transparent one would fix the resting position and nothing else — list rows would
              * scroll straight up through it and back under the clock. `paper` rather than the
-             * open state's `card`: at this height it is not a header any more, it is the page
-             * continuing beneath the status bar, and the white would read as a leftover stub.
+             * open state's frost: at this height it is not a header any more, it is the page
+             * continuing beneath the status bar, and a lit band would read as a leftover stub.
+             *
+             * IT KEEPS `glass` AND OVERRIDES ONLY THE COLOUR, rather than dropping the class.
+             * Dropping it would take `backdrop-filter` away on the frame the class list changes,
+             * while `background-color` is still 280ms into its transition — so the band would
+             * spend that transition translucent with NO blur, flashing the wallpaper at full
+             * sharpness under the clock. Keeping the class leaves the filter mounted throughout
+             * and `bg-paper` animates the tint to opaque like any other colour, because a
+             * utility outranks the component-layer rule it is overriding. The filter then runs
+             * behind an opaque band: one composite on one element, for a transition with no
+             * flash in it. Written as a utility rather than as a `--glass-tint` override so the
+             * colour is also right in a browser with no `backdrop-filter`, where the shared rule
+             * falls back to `card` and would otherwise leave a white stub under the clock.
              */
-            'grid-rows-[0fr] border-transparent bg-paper'
-          : 'grid-rows-[1fr] border-rule bg-card',
+            'glass grid-rows-[0fr] border-transparent bg-paper'
+          : 'glass grid-rows-[1fr] border-rule',
       )}
     >
       {/*

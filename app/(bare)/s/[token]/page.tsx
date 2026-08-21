@@ -174,7 +174,7 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
           Expense Tracking
         </p>
         <h1 className="mt-4 text-title text-pretty">{group.title}</h1>
-        <p className="mt-2 inline-block rounded-chip bg-card px-2 py-1 text-chip text-ink-2">
+        <p className="glass mt-2 inline-block rounded-chip px-2 py-1 text-chip text-ink-2">
           {dayLabel(group.occurredOn)}
         </p>
         {SHARE_SHOWS_OWNER_NAME && group.ownerName && (
@@ -215,7 +215,7 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
         ))}
       </Card>
 
-      <div className="mt-3.5 flex items-baseline justify-between rounded-card bg-card px-4 py-3">
+      <div className="glass mt-3.5 flex items-baseline justify-between rounded-card px-4 py-3">
         <span className="eyebrow">{TOTAL_LABEL}</span>
         <Money value={group.totalIdr} size="lg" />
       </div>

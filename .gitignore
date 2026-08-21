@@ -57,3 +57,6 @@ next-env.d.ts
 # git worktrees created for isolated feature work (see using-git-worktrees skill).
 # Nested checkouts of this same repo — tracking them would commit the repo into itself.
 /.worktrees/
+
+# Python bytecode from scripts/ (palette-check, glass-backdrop)
+__pycache__/

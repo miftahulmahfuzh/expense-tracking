@@ -73,7 +73,7 @@ export function PasteStage({
         <p className="mb-3 text-body text-ink-2">{SUBHEADING}</p>
 
         {restoredNotice ? (
-          <div className="mb-3 flex items-center gap-3 rounded-card bg-card px-3 py-2">
+          <div className="glass mb-3 flex items-center gap-3 rounded-card px-3 py-2">
             {/* A one-line notice rather than a silent restore: quietly refilling a screen
                 with a stale draft is more confusing than saying so. */}
             <span className="flex-1 text-body">{RESTORED_NOTICE}</span>

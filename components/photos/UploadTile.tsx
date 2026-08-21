@@ -48,7 +48,7 @@ export function UploadTile({
         // 74px is the design's draft-strip tile. size-[74px] rather than a spacing token
         // because this measurement belongs to one strip, not to the scale.
         'relative size-[74px] shrink-0 overflow-hidden rounded-field border bg-paper-2',
-        failed ? 'border-red' : 'border-transparent',
+        failed ? 'border-red-ink' : 'border-transparent',
       )}
     >
       {/*

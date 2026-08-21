@@ -29,7 +29,7 @@ export default function CategoryBreakdown({
   totalIdr: number
 }) {
   return (
-    <section className="rounded-card bg-card p-4" aria-labelledby="stats-cat-title">
+    <section className="glass rounded-card p-4" aria-labelledby="stats-cat-title">
       <h2 className="sticker" style={INK_STICKER} id="stats-cat-title">
         Rincian Kategori
       </h2>

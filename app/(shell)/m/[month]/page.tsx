@@ -106,7 +106,7 @@ export default async function MonthPage({ params }: PageProps<'/m/[month]'>) {
                 {dayLabel(bucket.day)}
               </h2>
               {bucket.rows.length > 1 && (
-                <span className="rounded-chip bg-card px-2 py-1">
+                <span className="glass rounded-chip px-2 py-1">
                   <Money value={bucket.totalIdr} size="sm" tone="muted" />
                 </span>
               )}

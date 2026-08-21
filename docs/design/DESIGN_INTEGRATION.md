@@ -373,6 +373,131 @@ The sign-in layer stays at **the design's own scale**, on purpose. The page laye
 wallpaper and can be as loud as it likes behind opaque cards; the sign-in layer is a
 composition that frames the wordmark and clears the copy under the button.
 
+## R-137 · Every white box is frosted glass. The wallpaper shows through the app.
+
+**Pulled from `05 Shipped State`, which inverts this file's own stated pull direction** — the
+note at the top of this section says `05` is downstream of the repo and never a source for it.
+It was a source this once, deliberately: the canvas was edited to replace every `--card`
+surface with a translucent tint over a blur, and that edit is a design decision, so it is
+upstream regardless of which artboard it arrived on. The direction rule is not repealed. `05`
+is a mirror again as of this ruling, because the change it carried is now in the repo.
+
+**Ruling: every surface that was `bg-card` is now `glass` — a tint over a 14px backdrop
+blur.** That is 32 call sites plus `.chip` and `.sheet-panel`, and it is the whole of the
+change: no geometry moves, no type moves, no radius moves.
+
+**Why it is worth doing, and it is not decoration.** R-47 put five cut-out creatures behind
+every screen in both route groups and R-133 then noted the problem in as many words: on
+`/m/[month]` almost all of that sits behind an opaque white header and a column of opaque
+white cards. R-133's answer was a whole fullscreen mode to retract the chrome and *let you go
+look at it*. This is the other answer — the art is visible while you use the app, not only
+when you hide the app. Fullscreen mode stays; it now reveals a wallpaper you were already
+half-seeing rather than one you had never seen.
+
+**What is NOT glass, on the canvas's own authority:** the tab bar (a solid chassis, not a
+surface), the stickers, the category discs, the picker cells, the primary red button, the
+skeletons and the lightbox. Every one of those is a block of colour, and a block of colour is
+opaque by definition. The picker cell in particular stays `paper` *inside* the frosted sheet,
+which keeps the design's "a field is always the surface its container is not" rule intact.
+
+### The alphas are AMENDED UP, and this is the substantive change to what the canvas drew
+
+The canvas draws `rgba(255,255,255,.55)` / `rgba(28,28,28,.5)`. Its artboards paint the glass
+over flat grey, where alpha costs nothing. Over the real wallpaper, at the real 1.35× render
+scale, with the 14px blur modelled:
+
+| token | canvas .55 / .50 | shipped .72 / .80 |
+| --- | --- | --- |
+| `ink` | 7.49 / **4.25** | 11.19 / 10.02 |
+| `ink-2` | **3.26** / **2.39** | 4.86 / 5.63 |
+| `ink-3` | **2.21** / **1.15** | 4.86 / 5.63 (collapsed, below) |
+
+**Dark mode at .50 cannot reach 4.5:1 with pure white type — 4.25 is the ceiling.** That is
+structural, not a tuning miss, and it is why this is an amendment rather than a preference.
+`.72 / .80` is the lowest pair at which the whole set clears. Two things worth keeping about
+those numbers: 28% (light) and 20% (dark) of the blurred art still comes through, so the frost
+is unmistakably frost; and **the dark tint over bare black composites to exactly `#161616`**,
+which is what `--card` was in dark mode, so a dark screen with no art behind it is unchanged.
+
+`--glass-panel` is a second, thicker tint for the sheet, and the reason is geometry: a
+`<dialog>` paints over its own `::backdrop` scrim, so at .72 the panel composites to `#bfbebc`
+— a mid-grey sheet with `ink-2` on it at 4.55, a twentieth clear. At .85 it lands at `#dddcdb`
+and 6.17. Dark needs no second value; the scrim over black is still black.
+
+### THE INK-3 COLLAPSE: on glass, `ink-3` takes `ink-2`'s value
+
+One line in the `.glass` rule — `--ink-3: var(--ink-2)` — and because `@theme inline` compiles
+`text-ink-3` to `color: var(--ink-3)`, it re-points every `text-ink-3`, every `eyebrow` and
+every `::placeholder` inside a frosted box with **no call-site edits at all**. Over the worst
+pixel of the wallpaper that is the difference between 3.30 / 2.72 and 4.86 / 5.63.
+
+Losing a grey tier costs less here than it would elsewhere: this design already carries
+hierarchy in **weight and size**, baked into every type-scale entry (`--text-label` is 800,
+`--text-meta` 700, `--text-body` 500), so a label and the prose under it still read as
+different things at the same grey. `--tab-ink-3` is a separate token on a separate chassis and
+does not move.
+
+### Three consequences that are not colour
+
+- **The error border moves from `red` to `red-ink`.** The brand red measures 2.69 against
+  light glass over the art — below 1.4.11's 3:1 for the boundary identifying a control, and
+  the one hard failure the frost introduced. `red-ink` is already the token for red as *type*
+  rather than as a fill, and a 1px line is nearer to type than to a fill, so this applies an
+  existing distinction rather than inventing a colour. Dark is unaffected: the two are the
+  same value there. Changed in `Field`, `MoneyInput` and `UploadTile`; the alert plates in
+  `PasteStage` and `ReviewStage` keep `border-red`, because they sit on opaque pink.
+- **It reverses two shipped rulings, and both reversals are recorded in place.** `StickyBar`
+  and `MonthHeader` each carried an explicit "this design has no glass anywhere" and a reason:
+  a bar that content recedes under puts a blurred column of rupiah behind the total, which
+  reads as smudged digits. That objection is real and still applies — both are sticky inside
+  the scrolling pane, so their backdrop genuinely includes the rows sliding under them. R-137
+  overrules it rather than pretending otherwise. If the smudge wins the argument back, the fix
+  is `glass` → `bg-card` on those two elements and nothing else moves.
+- **The collapsing month header keeps `glass` and overrides only the colour.** Dropping the
+  class would remove `backdrop-filter` on the frame the class list changes while
+  `background-color` is still 280ms into its transition, so the band would spend the collapse
+  translucent and *unblurred*, flashing the wallpaper under the clock. `glass bg-paper` keeps
+  the filter mounted and animates the tint to opaque.
+
+### It degrades to the design that shipped last week
+
+The frost is layered **on top of** an opaque base inside an `@supports` guard, rather than the
+flat card being patched in as a `@supports not` fallback. Getting that backwards fails badly:
+a tint with no blur is a 72%-alpha sheet with a dragon at full sharpness behind 11px type.
+Firefox on Android has no `backdrop-filter`, and neither does any WebView old enough to still
+be in the wild — both get `--card` and their third grey tier back, as does anyone who has set
+`prefers-reduced-transparency: reduce`, which is the OS setting for exactly the difficulty
+this ruling introduces.
+
+**Do not hand-write the `-webkit-` twin.** Lightning CSS treats the prefixed and unprefixed
+properties as one logical property and emits whichever set its targets call for; given both,
+it resolved them to `-webkit-` *alone*. Chrome aliases that and Firefox does not, so the
+hand-written prefix produced a Firefox that passed the `@supports` test and then painted the
+tint with no blur — the precise failure the guard exists to prevent. Verified by grepping
+`.next/static/chunks/*.css`, which is the only way to catch it.
+
+### How the numbers are checked
+
+`scripts/palette-check.py` gained a fourth axis. It composites the tint, its alpha and the
+worst pixel the art can supply into a flat colour and holds the result to the same thresholds
+as any other surface — three surfaces per scheme (`glass on art`, `glass on glass`, `sheet
+panel`), twelve new gated pairings. The worst pixel itself comes from
+`scripts/glass-backdrop.py`, which is **not** part of the gate: it needs a PNG decoder and a
+Gaussian blur, and the gate is stdlib-only and fast on purpose. That script documents when to
+re-run it — a replaced PNG, a moved `SCALE`, a changed blur radius.
+
+The dark-mode extreme is `#e8d8b8`, **the sheep's wool**, which is the same cream `CutoutArt`
+already warns about ("cream type on cream wool"). It is why dark rather than light is the
+binding constraint on the tint.
+
+`red-ink` and `green-ink` on glass over art land at 3.98 / 3.01 and 3.91 / 5.38 and are
+**waived**, with the reasoning in `GLASS_WAIVER`. There is no tint that fixes them and leaves
+a frost: at .94 `red-ink` is still 4.48 in dark, and .94 is 6% of a creature showing through.
+Neither token is ever the only channel — a field error draws a red border and states the
+message in words, the destructive button says "Hapus", the delta tile prints the figure and
+the direction — and the two places `red-ink` sits over art are both inside a sheet, where it
+measures 5.05 / 4.54.
+
 ---
 
 # 2026-08-19 — warm paper and two serifs (SUPERSEDED)
