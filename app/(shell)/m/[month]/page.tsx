@@ -71,13 +71,24 @@ export default async function MonthPage({ params }: PageProps<'/m/[month]'>) {
              * or no stickiness. The month total is what has to stay on screen while scrolling,
              * and it does.
              */}
-            {/* The day heading is an INK sticker — the design's black-on-page label, the
-                only place the page inverts. It reads as a printed tab on the day's card. */}
+            {/*
+             * The day heading is an INK sticker — the design's black-on-page label, the only
+             * place the page inverts. It reads as a printed tab on the day's card.
+             *
+             * BOTH of these sit on the bare page, which since the cutout-art layer landed
+             * means both sit on top of a creature. The heading already had a plate; the day
+             * total needed one, and got the design's own card-coloured tag (the same one the
+             * date wears on `/e/[id]` and `/s/[token]`). The design's month screen has no
+             * per-day total at all, so it never had to answer this — but it answers it
+             * everywhere else the same way: small type over art gets a plate.
+             */}
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="sticker" style={INK_STICKER}>
                 {dayLabel(bucket.day)}
               </h2>
-              <Money value={bucket.totalIdr} size="sm" tone="muted" />
+              <span className="rounded-chip bg-card px-2 py-1">
+                <Money value={bucket.totalIdr} size="sm" tone="muted" />
+              </span>
             </div>
 
             <Card as="ul" padded={false} className="mt-2 overflow-hidden px-4">

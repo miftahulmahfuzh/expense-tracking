@@ -27,7 +27,23 @@
  * scatter, so a creature landing 40px lower on a taller phone is not a layout bug, it is the
  * same scatter. Several are placed partly outside the column on purpose and the parent
  * clips them — a creature cropped by the page edge is the point of the composition.
+ *
+ * SCALE is the one knob. It grows every creature ABOUT ITS OWN CENTRE, so the scatter keeps
+ * its shape and only the creatures get bigger — scaling the offsets too would drift the
+ * whole composition down and to the right. The installed PNGs are 1000px on the long edge,
+ * which is past 2x even at the largest size here, so turning this up costs no sharpness.
+ *
+ * IT IS PER VARIANT, and the sign-in one stays at the design's own size on purpose. The page
+ * layer is wallpaper — it lives behind opaque cards and can be as loud as it likes. The
+ * sign-in layer is a COMPOSITION: the design put the snake and the sheep exactly where they
+ * frame the wordmark and clear the two lines of copy under the button, and scaling it up
+ * walks the sheep's wool straight under "expensetracking.online", which is cream type on
+ * cream wool. Loud wallpaper, composed sign-in.
  */
+const SCALE: Record<CutoutVariant, number> = {
+  page: 1.35,
+  signin: 1,
+}
 
 export type CutoutVariant = 'page' | 'signin'
 
@@ -50,14 +66,24 @@ const PAGE: Cutout[] = [
   { name: 'snake', left: -84, top: 648, width: 220, rotate: 10 },
 ]
 
-/** The two on the pink sign-in plate, which covers the page layer. */
+/**
+ * The two on the pink sign-in plate, which covers the page layer.
+ *
+ * The sheep is 76px BELOW where the canvas puts it (630), and that is a deliberate
+ * correction rather than a transcription error. The design's sign-in ends at
+ * "expensetracking.online"; this screen carries one more line under it — "Datamu privat.
+ * Cuma kamu yang lihat." — which the app had before the revamp and which is worth keeping.
+ * At the canvas position the sheep's face and the rose sit directly behind that line, cream
+ * and red under grey type. One more line of copy needs one more line of clearance.
+ */
 const SIGNIN: Cutout[] = [
   { name: 'snake', left: 246, top: 70, width: 250, rotate: 16 },
-  { name: 'sheep', left: -76, top: 630, width: 240, rotate: -12 },
+  { name: 'sheep', left: -76, top: 706, width: 240, rotate: -12 },
 ]
 
 export function CutoutArt({ variant = 'page' }: { variant?: CutoutVariant }) {
   const art = variant === 'signin' ? SIGNIN : PAGE
+  const scale = SCALE[variant]
 
   return (
     <div
@@ -68,24 +94,29 @@ export function CutoutArt({ variant = 'page' }: { variant?: CutoutVariant }) {
       // creatures that hang off the edges.
       className="pointer-events-none absolute inset-0 overflow-hidden select-none"
     >
-      {art.map((c, i) => (
-        <span
-          // Two `sheep` can appear in one variant's list in principle, so the index is part
-          // of the key rather than the name alone.
-          key={`${c.name}-${i}`}
-          className="absolute bg-contain bg-no-repeat"
-          style={{
-            left: c.left,
-            top: c.top,
-            width: c.width,
-            // Square boxes: every source file is square, and `contain` letterboxes inside
-            // whatever we give it, so height must track width or the art floats in its box.
-            height: c.width,
-            transform: `rotate(${c.rotate}deg)`,
-            backgroundImage: `url(/art/${c.name}.png)`,
-          }}
-        />
-      ))}
+      {art.map((c, i) => {
+        const size = Math.round(c.width * scale)
+        // Half the growth, taken off the origin, keeps the centre where the design put it.
+        const shift = Math.round((size - c.width) / 2)
+        return (
+          <span
+            // Two `sheep` can appear in one variant's list in principle, so the index is part
+            // of the key rather than the name alone.
+            key={`${c.name}-${i}`}
+            className="absolute bg-contain bg-no-repeat"
+            style={{
+              left: c.left - shift,
+              top: c.top - shift,
+              width: size,
+              // Square boxes: every source file is square, and `contain` letterboxes inside
+              // whatever we give it, so height must track width or the art floats in its box.
+              height: size,
+              transform: `rotate(${c.rotate}deg)`,
+              backgroundImage: `url(/art/${c.name}.png)`,
+            }}
+          />
+        )
+      })}
     </div>
   )
 }
