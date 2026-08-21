@@ -497,3 +497,148 @@ being cached across users.
 3. **Insight tone and length.** The three paragraphs are unseen until the first live call.
    Expect one prompt iteration after reading real output — and note that a `prompt.ts` edit
    costs exactly one full-price uncached request, then goes free again (COST.md).
+
+---
+
+## 13. Reconciliation — what changed while building it
+
+Written after the fact, in the manner of `docs/RECONCILIATION_v0.1.0.md`: the plan above is
+left as it was proposed, and every departure is recorded here with the reason. Eleven items.
+
+### R12-1 · The icon set is CLOSED, not an adapter
+
+§1.2 proposed `<Icon as={Download} />`. Shipped: `Icon.tsx` exports **finished components**
+(`DownloadIcon`, `TrashIcon`, …) and nothing else.
+
+The adapter form has a hole. Call sites still have to import the glyph from `lucide-react` to
+pass it, so `lucide-react` is legal at every call site — and once it is, `<Trash2
+className="size-5" />` is *less* typing than the sanctioned path, renders fine, and is a
+hairline. The contract would have been bypassed by writing less code. A closed set means the
+stroke contract is not a rule anyone has to obey; there is no other glyph to render, and the
+eslint rule can ban the whole module rather than four of its names.
+
+### R12-2 · Twelve glyphs, not eight — and five sites the plan missed
+
+§1.3 listed the retirements. `tests/icon.contract.test.ts` then found five more, every one a
+typed character standing in for a picture:
+
+| Site | Was |
+| ---- | --- |
+| `ExpenseEditor` item row | `×` U+00D7 at 20px/700 |
+| `ExpenseEditor` header back | `‹` U+2039 at 22px/800 |
+| `BiggestExpenseTile` | `›` U+203A at 22px/800 |
+| `Sheet` close | `×` U+00D7 at 22px/800 |
+| `KitchenSink` "ganti ›" | `›` U+203A inline |
+
+So the app had **four independent copies** of a typed guillemet chevron, at three weights.
+That is the strongest argument for the dependency the plan did not know it had, and it is why
+the test asserts the property from outside the module rather than trusting the retirement list.
+
+The test matches by SHAPE — a glyph as an element's sole child, or alone on a line — not by
+codepoint, because `44×44` in `KitchenSink`'s prose wants a real multiplication sign. Forbidding
+the character outright would have made the rule wrong rather than strict.
+
+### R12-3 · `dismissible` collapsed into the absence of `onClose`
+
+§4.5 proposed `dismissible?: boolean`. Shipped: no such prop — omitting `onClose` is what makes
+the viewer undismissable.
+
+Two props that must agree are two props that can disagree, and there was a harder reason:
+`/f/[token]` is a **server** component, and React refuses to serialise a function prop across
+the client boundary. `onClose={() => {}}` would have been a runtime crash on every visit
+("Functions cannot be passed directly to Client Components") on the one page with no test that
+renders it. Asserted now by a `share.bundle` case that forbids any inline function prop there.
+
+### R12-4 · `ViewablePhoto`, so the privacy projection did not have to grow
+
+The Lightbox took `PhotoDTO[]`, which requires `blobPathname`, `sizeBytes` and `sortOrder` —
+none of which `SharedPhoto` carries, by design. Rather than fabricate three fields to satisfy a
+type (which is how a projection quietly grows back the columns it excluded), the viewer now
+takes a four-field `ViewablePhoto` that `PhotoDTO` satisfies structurally.
+
+`downloadNameFor` was rewritten to derive the filename from `blobUrl` instead of
+`blobPathname`, which is what removed the last reason to need the wider type. A Vercel Blob URL
+ends in exactly that pathname, so nothing was lost.
+
+### R12-5 · Photo mutations do NOT bump the watermark
+
+§6.1 said "`addItem`, `updateItem`, `deleteItem` and the two photo actions". Wrong on the photo
+actions, and reading `app/actions/photos.ts` is what showed it: an insight is written from
+**item rows only**, so attaching or deleting a receipt would invalidate a perfectly good summary
+and pay for a model call that produces identical text. Only the three item actions touch.
+
+### R12-6 · `max(updated_at)` alone is not a sufficient key
+
+§6.1's watermark had a hole: **deleting a group whose `updated_at` sits below the maximum leaves
+the maximum untouched.** The data changed, the key would not, and the summary would keep quoting
+a deleted expense forever.
+
+So the timestamp column became a text `dataKey` of `<max epoch ms>:<group count>`, and
+`getInsightWatermark` returns both. The residual — deleting the newest group and creating another
+inside the same microsecond — is documented at `insightDataKey` and costs one stale paragraph.
+
+### R12-7 · The ISO week formula was wrong, and a test caught it
+
+`jakartaWeekKey` was written as `1 + Math.round((thursday - jan1) / 7 days)`. That is only
+correct when 1 January happens to be a Thursday. With jan1 on a Friday, ISO week 1's Thursday is
+six days later, `round(6/7)` is 1, and **every week that year is reported one too high** — which
+would make two different weeks share a `scopeKey` and silently overwrite each other's summary.
+
+`Math.ceil((dayOffset + 1) / 7)` is the standard form. The failing case was `2027-01-04`.
+
+### R12-8 · The Lightbox got its own status slot instead of the Toast
+
+The plan assumed a toast for "Tautan disalin". `ToastProvider` does render after `{children}`,
+so it paints above the overlay — but `--toast-bottom` puts it 22px off the bottom edge, centred,
+and the new icon cluster occupies 8–52px, right-aligned. On a 414px screen they overlap between
+x≈236 and x≈277.
+
+So the viewer carries one status slot of its own, above the cluster, with three states: copied,
+manual-copy (a selected read-only input when both clipboard paths fail), and error. No z-index
+to win, no `paper` colours dragged over a black surround.
+
+### R12-9 · Two React anti-patterns, fixed rather than suppressed
+
+`react-hooks/set-state-in-effect` rejected two effects the plan implied:
+
+- **status/confirming reset on photo change.** Now KEYED to a photo id and derived during
+  render. Better as well as legal: the effect version rendered the stale pill for one frame, so
+  swiping away from "Tautan disalin" flashed it onto the next photo.
+- **post-delete reposition.** Now scrolls the element and lets `handleScroll` pick the new
+  position up, rather than writing state. Gated on the count *shrinking* via a ref, because
+  running it on `trackPos` would re-scroll during momentum — the exact thing §3.4 forbids.
+
+### R12-10 · Preset chips cost ~44px, not ~52px
+
+§5.1 assumed 44px-tall chips. `globals.css` already has `touch-target`, which expands a
+visually-small control to the 44px floor without changing its painted size — its docblock names
+this case. So the chips are 36px painted like `Chip size="sm"`, and the row costs ~44px with its
+gap. The Judul field above dropped `mb-4` → `mb-2` to pay for it.
+
+### R12-11 · One pre-existing lint breakage, fixed to make the gate readable
+
+`npm run lint` reported **20,892 problems** before any of this work — confirmed by stashing.
+A stale `.worktrees/fix-item-sheet-footer/` from an already-merged branch put minified Turbopack
+chunks through eslint, because `globalIgnores(['.next/**'])` is a path pattern and does not match
+a nested worktree. `'.worktrees/**'` added, for the same reason `public/vendor/**` is there:
+real findings buried under vendor noise.
+
+---
+
+## 14. Verification, as run
+
+```
+npm run lint       ✓ clean
+npm run typecheck  ✓ clean
+npm test           ✓ 879 passed, 17 skipped (2 live suites skipped without LLM_LIVE_TEST=1)
+npm run build      ✓ /f/[token] ƒ · /stats ƒ · /s/[token] ƒ
+```
+
+`next build` lists both public routes and `/stats` as **`ƒ`**, which is the specific thing §11
+asked for: an `○` on `/stats` would mean the `requireUserId()` call had been lost.
+
+**NOT run:** `npm run db:migrate` (needs the live Neon credentials) and `npm run test:live`
+(spends real tokens against z.ai). The migration is generated and reviewed —
+`drizzle/0001_tricky_young_avengers.sql`, two `CREATE TABLE`s, two cascading foreign keys, one
+unique index, no destructive statement. §12.3 stands: the summaries' tone and length are unseen
+until the first live call.

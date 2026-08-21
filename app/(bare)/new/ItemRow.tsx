@@ -2,7 +2,7 @@
 
 import type { Ref } from 'react'
 
-import { Chip, Field, Input, MoneyInput } from '@/components/ui'
+import { Chip, CloseIcon, Field, Input, MoneyInput } from '@/components/ui'
 
 import type { DraftItem } from './draft'
 
@@ -85,9 +85,9 @@ export function ItemRow({
           className="flex size-touch shrink-0 press items-center justify-center rounded-field text-ink-3"
           aria-label={`Hapus ${label}`}
         >
-          <span aria-hidden="true" className="text-[20px] leading-none font-bold">
-            ×
-          </span>
+          {/* F12: was a `×` at 20px/700 — U+00D7, the multiplication sign, standing in for a
+              close mark because the repo had no icon set. */}
+          <CloseIcon />
         </button>
       </div>
 

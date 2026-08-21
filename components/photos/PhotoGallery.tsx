@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 
-import type { PhotoDTO } from '@/lib/photos/types'
+import type { PhotoDTO, ViewablePhoto } from '@/lib/photos/types'
 
 import { Lightbox } from './Lightbox'
 
@@ -24,7 +24,15 @@ export type PhotoGalleryProps = {
    * Owner view only. Omit on /s/[token] and the grid is read-only.
    * PhotoManager supplies this; page code should use PhotoManager instead of wiring it.
    */
-  onDelete?: (photo: PhotoDTO) => Promise<void>
+  onDelete?: (photo: ViewablePhoto) => Promise<void>
+  /**
+   * Owner view only, same reasoning as `onDelete` and the same wiring (F12). Mints the
+   * photo-only public link and resolves to its absolute URL; the Lightbox copies it.
+   *
+   * Absent here means the share icon is not rendered at all — which is why /s/[token] can
+   * keep using this component rather than needing a third variant.
+   */
+  onShare?: (photo: ViewablePhoto) => Promise<string>
   /** Render nothing at all when there are no photos (default true). */
   hideWhenEmpty?: boolean
   className?: string
@@ -33,6 +41,7 @@ export type PhotoGalleryProps = {
 export function PhotoGallery({
   photos,
   onDelete,
+  onShare,
   hideWhenEmpty = true,
   className,
 }: PhotoGalleryProps) {
@@ -83,6 +92,7 @@ export function PhotoGallery({
           startIndex={openAt}
           onClose={() => setOpenAt(null)}
           onDelete={onDelete}
+          onShare={onShare}
         />
       )}
     </section>

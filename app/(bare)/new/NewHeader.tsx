@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { ChevronLeftIcon } from '@/components/ui'
+
 /**
  * The way back off /new.
  *
@@ -31,9 +33,9 @@ export function NewHeader({ backHref }: { backHref: string }) {
         // gutter rather than sitting a touch-target's worth inside it.
         className="-ml-2.5 grid size-touch shrink-0 press place-items-center rounded-field text-ink"
       >
-        <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
-          ‹
-        </span>
+        {/* F12: was a `‹` at 22px/800 — a typed guillemet, lighter than Archivo's letterforms
+            and a different drawing from the month chevrons it is supposed to match. */}
+        <ChevronLeftIcon />
       </Link>
 
       {/* The route's one <h1>. */}

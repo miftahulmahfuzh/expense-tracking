@@ -1,6 +1,8 @@
 'use client'
 
 import * as React from 'react'
+
+import { CloseIcon } from './Icon'
 import { cn } from '@/lib/cn'
 
 /*
@@ -161,9 +163,9 @@ export function Sheet({
               aria-label="Tutup"
               className="-mt-3 -mr-2.5 grid size-touch shrink-0 press place-items-center text-ink-3"
             >
-              <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
-                ×
-              </span>
+              {/* F12: was a `×` at 22px/800. Sibling import rather than through the barrel —
+                  `index.ts` re-exports this file, so going through it would be a cycle. */}
+              <CloseIcon />
             </button>
           )}
         </div>

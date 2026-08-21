@@ -71,3 +71,24 @@ export type UploadItem = {
   error: string | null
   result: StagedPhoto | null
 }
+
+/**
+ * The minimum the full-screen viewer needs — F12 §4.5.
+ *
+ * `PhotoDTO` satisfies this structurally, so the owner's gallery passes its rows unchanged and
+ * nothing had to be re-typed. It exists for the other caller: `/f/[token]` resolves a share
+ * token to `SharedPhoto`, whose projection is a privacy boundary and deliberately carries no
+ * `blobPathname`, no `sizeBytes` and no `sortOrder` (lib/db/queries.ts). Requiring `PhotoDTO`
+ * there would have meant fabricating three fields to satisfy a type, which is how a projection
+ * quietly grows back the columns it was written to exclude.
+ *
+ * `id` is an IDENTITY, not necessarily the database id: it keys the React list and the
+ * per-photo download/link caches in `Lightbox`. On the public page the share token plays that
+ * role, because it is the only stable handle that page legitimately has.
+ */
+export type ViewablePhoto = {
+  id: string
+  blobUrl: string
+  width: number | null
+  height: number | null
+}

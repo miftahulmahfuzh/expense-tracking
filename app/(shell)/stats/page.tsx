@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 
 import { Money } from '@/components/ui'
 import { requireUserId } from '@/lib/auth/requireUserId'
@@ -30,6 +31,8 @@ import BiggestExpenseTile from './BiggestExpenseTile'
 import CategoryBreakdown from './CategoryBreakdown'
 import DeltaTile from './DeltaTile'
 import { NoDataState, SingleMonthState } from './EmptyStates'
+import InsightSections from './InsightSections'
+import InsightSkeleton from './InsightSkeleton'
 import MonthlyChart from './MonthlyChart'
 import MonthSwitcher from './MonthSwitcher'
 import './stats.css'
@@ -48,7 +51,16 @@ import './stats.css'
  * has been lost and the page would be cached across users.
  */
 
-export const metadata: Metadata = { title: 'Statistik' }
+/**
+ * F12 §8, card item 4a: `Statistik` → `Simpulan`. THREE STRINGS — this, the <h1> below, and the
+ * TabBar label. The PATH stays `/stats`.
+ *
+ * Renaming the route would mean a redirect and dead bookmarks for nothing anyone can see: the
+ * app runs standalone with no URL bar, `app/actions/_revalidate.ts` hard-codes
+ * `revalidatePath('/stats')`, `proxy.ts`'s matcher names it, and the test suite references it.
+ * The word on the tab is the whole of what the user was asking to change.
+ */
+export const metadata: Metadata = { title: 'Simpulan' }
 
 /** The chart window. One extra month is FETCHED — see the comment on `totals` below. */
 const MONTHS = 12
@@ -165,7 +177,7 @@ export default async function StatsPage({ searchParams }: PageProps<'/stats'>) {
       {/* The screen title band, matching /new's. A tab destination gets a title; a pushed
           view gets a chrome label. */}
       <header className="glass border-b border-rule pt-safe-header px-safe pb-3.5">
-        <h1 className="text-title">Statistik</h1>
+        <h1 className="text-title">Simpulan</h1>
       </header>
 
       <div className="flex flex-col gap-2.5 pt-3.5 px-safe">
@@ -192,6 +204,25 @@ export default async function StatsPage({ searchParams }: PageProps<'/stats'>) {
 
         <CategoryBreakdown rows={rows} totalIdr={breakdownTotal} />
         <BiggestExpenseTile item={biggest} />
+
+        {/*
+          F12 §7.5, card item 4b: the three LLM summaries, BELOW Pengeluaran Terbesar exactly as
+          the card asks.
+
+          THE ONLY SUSPENDING THING ON THIS PAGE. Everything above is the four SQL aggregates
+          from one `Promise.all` and is already painted; this boundary is what keeps an ~8s model
+          call from holding the hero figure hostage. Each `<Suspense>` is an independent streaming
+          point (Next 16 streaming guide), so nothing above waits on it.
+
+          `activeCount === 0` short-circuits it: a user with no expenses anywhere has nothing to
+          summarise, and `getInsightSections` would return null after two queries. Skipping the
+          boundary means the empty-state page makes no extra round trip at all.
+        */}
+        {activeCount > 0 && (
+          <Suspense fallback={<InsightSkeleton />}>
+            <InsightSections />
+          </Suspense>
+        )}
       </div>
     </main>
   )

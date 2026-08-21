@@ -6,7 +6,14 @@ import { toCategory, type Category } from '@/lib/categories'
 import { addMonths, monthRange, type DateISO, type MonthKey } from '@/lib/format'
 
 import { db } from './index'
-import { expenseGroups, expenseItems, expensePhotos, shareLinks, users } from './schema'
+import {
+  expenseGroups,
+  expenseItems,
+  expensePhotos,
+  photoShareLinks,
+  shareLinks,
+  users,
+} from './schema'
 
 /* ============================================================================
  * §1 · Errors
@@ -211,6 +218,34 @@ export interface SharedGroup {
   items: ItemRow[]
   photos: PhotoRow[]
   totalIdr: number
+}
+
+/**
+ * F12 §4.4 — everything `/f/[token]` is allowed to know.
+ *
+ * THIS PROJECTION IS THE PRIVACY BOUNDARY. There is no second gate behind it: whatever this
+ * shape carries is served to anyone holding the URL. It deliberately excludes the group title,
+ * the date, the items, the total, the owner's name and `blobPathname` — a receipt photo is
+ * being shared, not an expense.
+ */
+export interface SharedPhoto {
+  blobUrl: string
+  width: number | null
+  height: number | null
+}
+
+/** One item row as the insight model sees it — F12 §7.2. */
+export interface WindowItemRow {
+  occurredOn: DateISO
+  name: string
+  amountIdr: number
+  category: Category
+}
+
+/** The data half of insight freshness — F12 §6.1. */
+export interface InsightWatermark {
+  maxUpdatedAt: Date | null
+  groupCount: number
 }
 
 export interface MonthlyTotal {
@@ -656,4 +691,133 @@ export async function getMonthToDatePair(
   // An aggregate with no GROUP BY always yields one row, but a driver that returned none
   // must not surface as NaN in the delta tile.
   return { currentIdr: rows[0]?.currentIdr ?? 0, previousIdr: rows[0]?.previousIdr ?? 0 }
+}
+
+/* ============================================================================
+ * §5 · F12 — the photo share token, and the insight inputs
+ * ==========================================================================*/
+
+/* ────────────────────────────────────────────────────────────────────────────
+ *  ⚠ THE SECOND UNSCOPED READ IN THIS FILE. Everything said about
+ *  `getGroupByShareToken` applies here verbatim, so read that docblock first —
+ *  this is the same shape of hole in the same wall, one photo wide:
+ *
+ *    1. It takes NO userId, because the token IS the authorisation.
+ *    2. An unknown OR revoked token must return null and the page must 404 —
+ *       never "this link expired", which would confirm the token once existed.
+ *    3. Do not add logging that echoes the token.
+ *    4. Do not add a field to the select. See `SharedPhoto`.
+ *
+ *  Revocation here is the photo's own deletion cascading the row away
+ *  (schema.ts, F12 §4.7), so a dead token and a never-existed token are
+ *  indistinguishable for free.
+ *
+ *  Wrapped in React cache() for the same reason as its sibling: /f/[token]
+ *  calls it from both generateMetadata and the page body, and that must be one
+ *  round trip. Outside a React request scope cache() is a pass-through.
+ * ──────────────────────────────────────────────────────────────────────────── */
+export const getPhotoByShareToken = cache(async (token: string): Promise<SharedPhoto | null> => {
+  const rows = await db
+    .select({
+      blobUrl: expensePhotos.blobUrl,
+      width: expensePhotos.width,
+      height: expensePhotos.height,
+    })
+    .from(photoShareLinks)
+    .innerJoin(expensePhotos, eq(expensePhotos.id, photoShareLinks.photoId))
+    .where(eq(photoShareLinks.token, token))
+    .limit(1)
+
+  return rows[0] ?? null
+})
+
+/**
+ * Every item the insight model is shown — F12 §7.2, decision D-F.
+ *
+ * RAW ROWS, NOT AGGREGATES, and that is the feature. The card asks for observations like "how
+ * is my cordoba expenses between days in that week" and "how my bensin motor compares to last
+ * month". No SQL rollup can answer those, because the merchant lives in `expense_items.name`
+ * and grouping it away is what makes the summary generic. Sending the rows lets the model spot
+ * a pattern in a shop we never told it about — including the one the user starts eating at next
+ * week.
+ *
+ * `limit` is not politeness, it is the same instinct as the parser's 8.000-character paste cap:
+ * a bounded prompt is a bounded bill (lib/llm/COST.md). At the default 62-day window a heavy
+ * month is ~600 rows, so 1500 is headroom rather than a constraint — but it IS a silent
+ * truncation if it ever fires, which is why `insightsFor` logs when the row count hits it.
+ *
+ * Ordered oldest-first so the model reads the window as a timeline. Ownership is the `userId`
+ * filter on the parent group, as everywhere else in this file.
+ */
+export async function getItemsForWindow(
+  userId: string,
+  startISO: DateISO,
+  endInclusiveISO: DateISO,
+  limit = 1500,
+): Promise<WindowItemRow[]> {
+  const rows = await db
+    .select({
+      occurredOn: expenseGroups.occurredOn,
+      name: expenseItems.name,
+      amountIdr: expenseItems.amountIdr,
+      category: expenseItems.category,
+    })
+    .from(expenseGroups)
+    .innerJoin(expenseItems, eq(expenseItems.groupId, expenseGroups.id))
+    .where(
+      and(
+        eq(expenseGroups.userId, userId),
+        gte(expenseGroups.occurredOn, startISO),
+        // Inclusive of today, so an expense entered this morning reaches this morning's summary.
+        lt(expenseGroups.occurredOn, nextDayISO(endInclusiveISO)),
+      ),
+    )
+    .orderBy(asc(expenseGroups.occurredOn), asc(expenseItems.sortOrder), asc(expenseItems.id))
+    .limit(limit)
+
+  return rows.map((r) => ({ ...r, category: toCategory(r.category) }))
+}
+
+/**
+ * The data half of insight freshness — F12 §6.1.
+ *
+ * TWO COMPONENTS, ONE STATEMENT, and the count is not decoration: deleting a group whose
+ * `updated_at` sits below the maximum leaves the maximum untouched, so `max` alone would call a
+ * summary fresh that still quotes a deleted expense. `insightDataKey` combines them; the reason
+ * lives in that function's docblock.
+ *
+ * NOT windowed. A group edited outside the 62-day window still changed nothing the summary can
+ * see — but narrowing this to the window would mean the key stops moving when an old expense is
+ * corrected, and "the key is a superset of what matters" costs one needless regeneration where
+ * the alternative costs a wrong answer.
+ */
+export async function getInsightWatermark(userId: string): Promise<InsightWatermark> {
+  const rows = await db
+    .select({
+      maxUpdatedAt: sql<Date | null>`max(${expenseGroups.updatedAt})`,
+      groupCount: sql<number>`count(*)`.mapWith(Number),
+    })
+    .from(expenseGroups)
+    .where(eq(expenseGroups.userId, userId))
+
+  const row = rows[0]
+  return {
+    // The Neon driver hands back a string for an aggregated timestamptz, not a Date.
+    maxUpdatedAt: row?.maxUpdatedAt ? new Date(row.maxUpdatedAt) : null,
+    groupCount: row?.groupCount ?? 0,
+  }
+}
+
+/**
+ * `YYYY-MM-DD` + one day, as a string.
+ *
+ * Local to this file because it is the only place a half-open upper bound has to be built from
+ * an inclusive one. Read at UTC midnight and shifted by a whole day, so no local offset can
+ * move it across a boundary — the same discipline lib/insights/freshness.ts follows, and for
+ * the same reason.
+ */
+function nextDayISO(iso: DateISO): DateISO {
+  const d = new Date(`${iso}T00:00:00.000Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
 }

@@ -1,4 +1,4 @@
-import { Money } from '@/components/ui'
+import { Money, TrendDownIcon, TrendFlatIcon, TrendUpIcon } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { monthLabel } from '@/lib/format'
 import { formatMtdRange, monthTickLabel } from '@/lib/stats/format'
@@ -47,7 +47,18 @@ export default function DeltaTile({ delta }: { delta: Delta }) {
     )
   }
 
-  const glyph = delta.direction === 'up' ? '↑' : delta.direction === 'down' ? '↓' : '→'
+  /*
+   * F12: was '↑' / '↓' / '→'. Those are typed characters, so their weight came from whatever
+   * Archivo does with U+2191 — visibly lighter than the `font-extrabold` word beside them, and
+   * the exact mismatch `Icon.tsx` exists to prevent. `size="inline"` keeps them at 1em of the
+   * surrounding run, so the arrow still scales with the sentence it belongs to.
+   */
+  const Glyph =
+    delta.direction === 'up'
+      ? TrendUpIcon
+      : delta.direction === 'down'
+        ? TrendDownIcon
+        : TrendFlatIcon
   const word = delta.direction === 'up' ? 'Naik' : delta.direction === 'down' ? 'Turun' : 'Setara'
   const tone =
     delta.direction === 'up'
@@ -59,7 +70,8 @@ export default function DeltaTile({ delta }: { delta: Delta }) {
   return (
     <Wrap basis={basisLabel}>
       <span className={cn('tabular font-extrabold', tone)}>
-        <span aria-hidden="true">{glyph} </span>
+        <Glyph size="inline" />
+        {' '}
         {word}
         {delta.direction === 'flat'
           ? ' dengan'

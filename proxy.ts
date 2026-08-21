@@ -38,6 +38,10 @@ export const proxy = withAuth((req) => {
  *
  *   NOT matched: /s/:token*    public share pages (roadmap D4, §4.6) — MUST stay open.
  *                              INVARIANT B: never add this path here.
+ *   NOT matched: /f/:token*    public single-photo pages (F12 §4) — MUST stay open, for the
+ *                              same reason and with the same force. Adding it here would
+ *                              redirect every recipient of a shared receipt to a sign-in page
+ *                              for an account they do not have, which is the feature deleted.
  *   NOT matched: /api/auth/*   the sign-in flow itself; matching it would loop
  *   NOT matched: /api/health   the liveness probe must answer, not redirect
  *   NOT matched: /             the sign-in page

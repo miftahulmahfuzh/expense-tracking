@@ -65,3 +65,19 @@ export const SHARE_MINT_ATTEMPTS = 3
 export function shareUrl(origin: string, token: string): string {
   return `${origin}/s/${token}`
 }
+
+/**
+ * The canonical public URL for a PHOTO token — F12 §4.
+ *
+ * A sibling of `shareUrl` above, and separate rather than parameterised so the two paths cannot
+ * be swapped by passing the wrong flag: `/s/<token>` publishes a whole expense group, `/f/<token>`
+ * publishes one image and nothing else. Those are different privacy decisions, so they get
+ * different functions and the call sites read as what they are.
+ *
+ * `/f` for *foto*, and short because the URL is pasted into WhatsApp by hand.
+ *
+ * @param origin absolute, no trailing slash — from `shareOrigin()` on the server.
+ */
+export function photoShareUrl(origin: string, token: string): string {
+  return `${origin}/f/${token}`
+}

@@ -29,6 +29,16 @@ import { importGraph, isClientModule, repoRoot } from './support/importGraph'
 const PAGE = 'app/(bare)/s/[token]/page.tsx'
 const SHARE_ACTIONS = 'app/actions/share.ts'
 
+/**
+ * F12 §4 added a SECOND public route. Everything above applies to it word for word — it is the
+ * same class of page, reachable by the same kind of unguessable token, by people with no
+ * account — and it is more exposed in one respect: `/s/[token]` renders a presentational grid,
+ * while this one renders the full-screen viewer, which is a client component with a download
+ * handler in it.
+ */
+const PHOTO_PAGE = 'app/(bare)/f/[token]/page.tsx'
+const PHOTO_SHARE_ACTIONS = 'app/actions/photoShare.ts'
+
 const source = (file: string) => readFileSync(resolve(repoRoot, file), 'utf8')
 
 /** Source with comments stripped — these assertions are about code, and every one of these
@@ -95,5 +105,80 @@ describe('the public page exposes nothing about the owner', () => {
 
   it('the page itself is a server component', () => {
     expect(isClientModule(PAGE)).toBe(false)
+  })
+})
+
+describe('the public PHOTO route carries no mutation (F12)', () => {
+  it('reaches no Server Action at all', () => {
+    const actions = [...importGraph(PHOTO_PAGE)].filter((f) => f.startsWith('app/actions/'))
+    expect(actions, `/f/[token] reaches ${actions.join(', ')}`).toEqual([])
+  })
+
+  it('renders Lightbox directly and never through the photos barrel', () => {
+    /*
+     * The barrel re-exports `PhotoManager`, which imports BOTH `deletePhoto` and
+     * `createPhotoShareLink`. Importing the viewer through it would put two Server Action ids in
+     * this page's bundle and leave the property resting on the bundler tree-shaking a re-export
+     * — a real optimisation, and one whose failure is invisible on the page served to strangers.
+     */
+    const graph = [...importGraph(PHOTO_PAGE)]
+    expect(graph).toContain('components/photos/Lightbox.tsx')
+    expect(graph).not.toContain('components/photos/index.ts')
+    expect(graph).not.toContain('components/photos/PhotoManager.tsx')
+  })
+
+  it('the walker is not vacuous: the OWNER page does reach the photo share action', () => {
+    // Without this, the assertion above could pass because the traversal stopped rather than
+    // because the property holds.
+    expect([...importGraph('components/photos/PhotoManager.tsx')]).toContain(PHOTO_SHARE_ACTIONS)
+  })
+
+  it('the viewer itself imports no action, which is what makes /s and /f both safe', () => {
+    // PhotoGallery already had this property (R-80). F12 extended the Lightbox with a share
+    // button, and the whole point of taking it as a PROP was to keep this true.
+    const graph = [...importGraph('components/photos/Lightbox.tsx')]
+    expect(graph.filter((f) => f.startsWith('app/actions/'))).toEqual([])
+  })
+
+  it('does not read the session', () => {
+    const graph = [...importGraph(PHOTO_PAGE)]
+    expect(graph).not.toContain('lib/auth/requireUserId.ts')
+    expect(graph.filter((f) => f.startsWith('lib/auth/'))).toEqual([])
+  })
+
+  it('is force-dynamic, with no loading boundary and no caching', () => {
+    expect(code(PHOTO_PAGE)).toContain("export const dynamic = 'force-dynamic'")
+    // A loading.tsx would stream a 200 before notFound() ran, freezing a soft 404 (R-98).
+    expect(() => source('app/(bare)/f/[token]/loading.tsx')).toThrow()
+    expect(code(PHOTO_PAGE)).not.toMatch(/unstable_cache|'use cache'|generateStaticParams|revalidate =/)
+  })
+
+  it('is a server component, and passes NO function prop across the boundary', () => {
+    /*
+     * `onClose` is omitted rather than passed as `() => {}`. React refuses to serialise a
+     * function prop from a server component — "Functions cannot be passed directly to Client
+     * Components" — so the no-op would be a runtime crash on every visit, and this page has no
+     * test that renders it.
+     */
+    expect(isClientModule(PHOTO_PAGE)).toBe(false)
+    expect(code(PHOTO_PAGE)).not.toMatch(/on[A-Z]\w*=\{\s*\(/)
+  })
+
+  it('links only to "/" from its not-found — no route into the authenticated app', () => {
+    for (const file of [PHOTO_PAGE, 'app/(bare)/f/[token]/not-found.tsx']) {
+      const hrefs = [...code(file).matchAll(/href=(?:"([^"]*)"|\{`([^`]*)`\}|\{'([^']*)'\})/g)].map(
+        (m) => m[1] ?? m[2] ?? m[3],
+      )
+      expect(hrefs, file).toEqual(hrefs.filter((h) => h === '/'))
+    }
+  })
+
+  it('is covered by the no-store / noindex headers, like its sibling', () => {
+    // The segment config governs what Next does; the header is what a CDN reads. A revoked link
+    // served from an intermediary cache looks exactly like a working one.
+    const config = source('next.config.ts')
+    expect(config).toContain("source: '/f/:token'")
+    expect(config).toContain("value: 'private, no-store, max-age=0, must-revalidate'")
+    expect(config).toContain("value: 'noindex, nofollow, noarchive'")
   })
 })

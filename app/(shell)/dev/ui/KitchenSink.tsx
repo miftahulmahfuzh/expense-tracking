@@ -17,6 +17,8 @@ import {
   Sheet,
   TextArea,
   useToast,
+  ChevronRightIcon,
+  CloseIcon,
 } from '@/components/ui'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -169,7 +171,7 @@ export function KitchenSink() {
                   aria-label={`Hapus ${name as string}`}
                   className="grid size-touch shrink-0 press place-items-center text-ink-3"
                 >
-                  <span aria-hidden="true">×</span>
+                  <CloseIcon size="xs" />
                 </button>
               </li>
             ))}
@@ -362,7 +364,9 @@ export function KitchenSink() {
           </Field>
           <div className="flex items-center gap-2">
             <Chip category={category} selected onClick={() => setPickerOpen(true)} />
-            <span className="text-meta text-ink-3">ganti ›</span>
+            <span className="text-meta text-ink-3">
+              ganti <ChevronRightIcon size="inline" />
+            </span>
           </div>
         </div>
       </Sheet>

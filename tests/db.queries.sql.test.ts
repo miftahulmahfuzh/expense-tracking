@@ -18,9 +18,12 @@ import {
   getCategoryBreakdown,
   getGroupByShareToken,
   getGroupDetail,
+  getInsightWatermark,
+  getItemsForWindow,
   getMonthGroups,
   getMonthlyTotals,
   getMonthToDatePair,
+  getPhotoByShareToken,
 } from '@/lib/db/queries'
 
 import { calls, normalise, queueRows, reset } from './support/probeDb'
@@ -431,5 +434,123 @@ describe('getMonthToDatePair (R-15)', () => {
       await expect(getMonthToDatePair('u1', '2026-08', bad)).rejects.toBeInstanceOf(RangeError)
     }
     expect(calls).toHaveLength(0)
+  })
+})
+
+describe('getPhotoByShareToken — the SECOND unscoped read (F12)', () => {
+  it('costs one statement and filters on the token alone', async () => {
+    queueRows([])
+    await getPhotoByShareToken('tok000000002')
+
+    expect(calls).toHaveLength(1)
+    expect(flat()).toContain('"photo_share_links"."token" = $1')
+    // No user_id predicate: the token IS the authorisation. Same rule as its sibling above.
+    expect(flat()).not.toMatch(/"user_id" = \$/)
+    // The trailing 1 is the parameterised `limit 1`, as elsewhere in this file.
+    expect(calls[0]!.params).toEqual(['tok000000002', 1])
+  })
+
+  it('returns null for an unknown, revoked or deleted photo — no hint which', async () => {
+    // Revocation is the photo's deletion cascading the row away, so all three collapse into the
+    // same empty result for free. Distinguishing them would confirm a token once existed.
+    queueRows([])
+    await expect(getPhotoByShareToken('tok000000002')).resolves.toBeNull()
+  })
+
+  it('SELECTS THREE COLUMNS AND NO MORE — this is the privacy boundary', async () => {
+    /*
+     * The most load-bearing assertion in this file after the user_id ones. Whatever this
+     * projection carries is served to anyone holding the URL, with no second gate behind it. A
+     * field added to the select is a field published to the open internet, and the failure would
+     * be invisible: the page would render exactly as before, just with more in the payload.
+     */
+    queueRows([['https://x.public.blob.vercel-storage.com/photos/a-b.jpg', 1200, 1600]])
+    const shared = await getPhotoByShareToken('tok000000002')
+
+    expect(Object.keys(shared!).sort()).toEqual(['blobUrl', 'height', 'width'])
+
+    const sql = flat()
+    // The expense the photo belongs to must be unreachable from here.
+    for (const forbidden of ['"title"', '"occurred_on"', '"note"', '"raw_text"', '"amount_idr"']) {
+      expect(sql, forbidden).not.toContain(forbidden)
+    }
+    // `blob_pathname` is derivable from blob_url, so it is not a secret — but it is also not
+    // needed (Lightbox derives the filename from the URL), and an unused column in a public
+    // projection is a column someone later builds on.
+    expect(sql).not.toContain('"blob_pathname"')
+    // No join to `user`: the owner's name is not part of sharing one photo.
+    expect(sql).not.toContain('"user"')
+  })
+})
+
+describe('getItemsForWindow (F12) — the insight input', () => {
+  it('scopes to the user and brackets the window half-open, inclusive of today', async () => {
+    queueRows([])
+    await getItemsForWindow('u1', '2026-06-21', '2026-08-21')
+
+    expect(calls).toHaveLength(1)
+    expect(flat()).toContain('"expense_groups"."user_id" = $')
+    // The upper bound is TODAY + 1 DAY: an expense entered this morning has to reach this
+    // morning's summary, and a half-open range on `occurred_on` would otherwise exclude it.
+    expect(calls[0]!.params).toEqual(['u1', '2026-06-21', '2026-08-22', 1500])
+  })
+
+  it('is an INNER join, so a group with no items contributes no phantom row', async () => {
+    queueRows([])
+    await getItemsForWindow('u1', '2026-06-21', '2026-08-21')
+    expect(flat()).toContain('inner join')
+    expect(flat()).not.toContain('left join')
+  })
+
+  it('carries a row cap — a bounded prompt is a bounded bill', async () => {
+    queueRows([])
+    await getItemsForWindow('u1', '2026-06-21', '2026-08-21', 10)
+    expect(calls[0]!.params.at(-1)).toBe(10)
+  })
+
+  it('sends merchant NAMES, which is what makes the summaries specific', async () => {
+    // Decision D-F. Without expense_items.name the model can only talk about categories, and
+    // none of the card's examples (cordoba, trikayo, bensin motor) are answerable.
+    queueRows([['2026-08-18', 'Nasi Cordoba', '25000', 'food']])
+    const rows = await getItemsForWindow('u1', '2026-06-21', '2026-08-21')
+    expect(rows).toEqual([
+      { occurredOn: '2026-08-18', name: 'Nasi Cordoba', amountIdr: 25000, category: 'food' },
+    ])
+  })
+
+  it('orders oldest-first, so the model reads the window as a timeline', async () => {
+    queueRows([])
+    await getItemsForWindow('u1', '2026-06-21', '2026-08-21')
+    expect(flat()).toMatch(/order by .*"occurred_on"/)
+    expect(flat()).not.toContain('desc')
+  })
+})
+
+describe('getInsightWatermark (F12)', () => {
+  it('is ONE statement scoped to the user, returning both components', async () => {
+    queueRows([['2026-08-21T10:00:00.000Z', 12]])
+    const w = await getInsightWatermark('u1')
+
+    expect(calls).toHaveLength(1)
+    expect(flat()).toContain('"user_id" = $1')
+    expect(flat()).toContain('max(')
+    // The count is not decoration: deleting a group BELOW the max leaves the max untouched, so
+    // max alone would report a summary fresh that still quotes a deleted expense.
+    expect(flat()).toContain('count(*)')
+    expect(w.groupCount).toBe(12)
+  })
+
+  it('coerces the driver’s string timestamp into a Date', async () => {
+    // The Neon HTTP driver hands back a string for an aggregated timestamptz, not a Date. Left
+    // as a string, `insightDataKey` would call `.getTime()` on it and throw.
+    queueRows([['2026-08-21T10:00:00.000Z', 3]])
+    const w = await getInsightWatermark('u1')
+    expect(w.maxUpdatedAt).toBeInstanceOf(Date)
+    expect(w.maxUpdatedAt?.toISOString()).toBe('2026-08-21T10:00:00.000Z')
+  })
+
+  it('reports a brand-new account as (null, 0) rather than throwing', async () => {
+    queueRows([[null, 0]])
+    expect(await getInsightWatermark('u1')).toEqual({ maxUpdatedAt: null, groupCount: 0 })
   })
 })

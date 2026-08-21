@@ -1,65 +1,22 @@
 'use client'
 
+import { CollapseIcon, ExpandIcon } from '@/components/ui'
 import { cn } from '@/lib/cn'
 
 import { useFullscreen } from './FullscreenProvider'
 
-/**
- * THE FOUR CORNERS. Both glyphs are the same four brackets; only which end of each bracket
- * carries the corner changes.
+/*
+ * THE GLYPHS MOVED (F12). What used to live here was eight hand-drawn path commands plus a
+ * `GLYPH` constant carrying `viewBox`, `stroke-width: 2.5`, `stroke-linecap: square` and
+ * mitred joins — and a docblock arguing that installing lucide "for two glyphs would import a
+ * library to use 0.2% of it".
  *
- * Hand-drawn rather than installed. This repo has no icon dependency and `TabBar` explains
- * why — "an icon set would be three more drawings to keep consistent" — so adding lucide for
- * two glyphs would import a library to use 0.2% of it. Eight path commands is cheaper than
- * the dependency, and these two are the one place in the app where a word would not do: the
- * control has to be small enough to float over the list, and "LAYAR PENUH" at that size is a
- * 140px pill sitting on top of the content it is trying to reveal.
- *
- * `stroke-linecap: square` and a 2.5 stroke, not the 1.5 an icon library ships: the system is
- * Archivo at 800-900 weight and a hairline glyph next to it reads as a different app. Mitred
- * corners for the same reason — this design has no soft edges anywhere.
+ * That argument was right at two glyphs and wrong at twelve, which is where F12 landed. What
+ * did NOT change is the reason those numbers were chosen: `components/ui/Icon.tsx` now holds
+ * the same 2.5 stroke, the same square caps and the same mitred corners, enforced as props on
+ * every glyph instead of remembered in three files. Read that module's docblock before
+ * concluding the design gave anything up here.
  */
-const GLYPH = {
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2.5,
-  strokeLinecap: 'square',
-  strokeLinejoin: 'miter',
-} as const
-
-/** Corners at the OUTER extremes — the frame pushing outwards. */
-function ExpandGlyph() {
-  return (
-    <svg {...GLYPH} className="size-5.5" aria-hidden="true">
-      <path d="M9 3H3v6" />
-      <path d="M15 3h6v6" />
-      <path d="M21 15v6h-6" />
-      <path d="M3 15v6h6" />
-    </svg>
-  )
-}
-
-/**
- * The same brackets, corners pulled INWARD — the frame closing back up.
- *
- * THE 10px INNER SQUARE IS THE WHOLE DRAWING, and it took rendering the alternatives to see
- * why. The exact mirror of the glyph above — corners at 9 and 15, arms the same length 6 —
- * puts the four corners 6px apart in a 24px box, and the eight arms then radiate from a tight
- * centre: at 22px it stops reading as four brackets and reads as a PLUS SIGN. Pulling the
- * corners out to 7 and 17 and shortening the arms to 4 separates them enough that each L is
- * legible on its own, which is what carries the "closing in" reading.
- */
-function CollapseGlyph() {
-  return (
-    <svg {...GLYPH} className="size-5.5" aria-hidden="true">
-      <path d="M3 7h4V3" />
-      <path d="M21 7h-4V3" />
-      <path d="M21 17h-4v4" />
-      <path d="M3 17h4v4" />
-    </svg>
-  )
-}
 
 /**
  * The floating fullscreen toggle. Bottom-right of the month screen, above the tab bar.
@@ -146,7 +103,7 @@ export function FullscreenToggle() {
             active ? 'bg-yellow text-tab-bg' : 'bg-ink text-paper',
           )}
         >
-          {active ? <CollapseGlyph /> : <ExpandGlyph />}
+          {active ? <CollapseIcon /> : <ExpandIcon />}
         </button>
       </div>
     </div>

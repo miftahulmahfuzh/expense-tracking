@@ -38,43 +38,53 @@ const nextConfig: NextConfig = {
   },
 
   /**
-   * Response headers for the one public route, `/s/[token]` (F09 §2.8, Task 16).
+   * Response headers for the TWO public routes, `/s/[token]` and `/f/[token]` (F09 §2.8; F12 §4).
    *
    * The page already exports `dynamic = 'force-dynamic'`; this is the belt to that pair of
    * braces, and it is not redundant. The segment config governs what NEXT does, while a
    * header is what a CDN, a proxy and a browser disk cache actually read — and the failure
    * mode here is invisible, because a stale copy of a revoked share page looks exactly like
    * a working one.
+   *
+   * `/f/:token` (F12) carries the identical set, and identically rather than "similarly": it is
+   * the same class of URL — an unguessable token, revocable by deleting the thing behind it —
+   * so any divergence between these two blocks would be a bug in whichever one was forgotten.
+   * If a third such route ever appears, factor the header list; two is not yet worth the
+   * indirection.
    */
   async headers() {
-    return [
+    const publicTokenHeaders = [
       {
-        source: '/s/:token',
-        headers: [
-          {
-            // `private` keeps it out of every shared cache, `no-store` out of disk, and
-            // `must-revalidate` closes the stale-while-error door. Revoke has to be
-            // immediate: the whole point of a DELETE with no soft-delete column is that the
-            // URL stops working within seconds.
-            key: 'Cache-Control',
-            value: 'private, no-store, max-age=0, must-revalidate',
-          },
-          {
-            // An unguessable URL that gets indexed is no longer unguessable. This covers
-            // what the <meta name="robots"> tag cannot: intermediaries, non-HTML responses,
-            // and `noarchive` — a search-engine cached copy would outlive a revoke.
-            key: 'X-Robots-Tag',
-            value: 'noindex, nofollow, noarchive',
-          },
-          {
-            // Photos load from *.public.blob.vercel-storage.com. Modern browsers already
-            // default to this, so the cross-origin request sends only our origin and not the
-            // token-bearing path — but state it rather than inherit it.
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-        ],
+        // `private` keeps it out of every shared cache, `no-store` out of disk, and
+        // `must-revalidate` closes the stale-while-error door. Revoke has to be
+        // immediate: the whole point of a DELETE with no soft-delete column is that the
+        // URL stops working within seconds.
+        key: 'Cache-Control',
+        value: 'private, no-store, max-age=0, must-revalidate',
       },
+      {
+        // An unguessable URL that gets indexed is no longer unguessable. This covers
+        // what the <meta name="robots"> tag cannot: intermediaries, non-HTML responses,
+        // and `noarchive` — a search-engine cached copy would outlive a revoke.
+        key: 'X-Robots-Tag',
+        value: 'noindex, nofollow, noarchive',
+      },
+      {
+        // Photos load from *.public.blob.vercel-storage.com. Modern browsers already
+        // default to this, so the cross-origin request sends only our origin and not the
+        // token-bearing path — but state it rather than inherit it.
+        //
+        // It matters more on /f/:token than on /s/:token, because there the token-bearing URL
+        // IS the page whose only content is the image: without this, a browser that defaulted
+        // to `no-referrer-when-downgrade` would send the full share URL to the blob host.
+        key: 'Referrer-Policy',
+        value: 'strict-origin-when-cross-origin',
+      },
+    ]
+
+    return [
+      { source: '/s/:token', headers: publicTokenHeaders },
+      { source: '/f/:token', headers: publicTokenHeaders },
     ]
   },
 

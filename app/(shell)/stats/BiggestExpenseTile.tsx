@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { CategoryCode, INK_STICKER, Money } from '@/components/ui'
+import { CategoryCode, ChevronRightIcon, INK_STICKER, Money } from '@/components/ui'
 import type { BiggestExpense } from '@/lib/db/queries'
 import { formatDayShort } from '@/lib/stats/format'
 import { toIdr } from '@/lib/stats/series'
@@ -46,12 +46,9 @@ export default function BiggestExpenseTile({ item }: { item: BiggestExpense | nu
         </span>
 
         <Money value={toIdr(item.amountIdr)} size="sm" />
-        <span
-          aria-hidden="true"
-          className="shrink-0 text-[22px] leading-none font-extrabold text-ink-3"
-        >
-          ›
-        </span>
+        {/* F12: was a `›` at 22px/800 — the fourth copy of a typed guillemet in this app, each
+            at its own weight. One import now, same 22px. */}
+        <ChevronRightIcon className="shrink-0 text-ink-3" />
       </Link>
     </section>
   )

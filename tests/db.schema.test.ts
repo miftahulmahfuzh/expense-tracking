@@ -15,8 +15,10 @@ import { getTableConfig } from 'drizzle-orm/pg-core'
 import {
   accounts,
   expenseGroups,
+  expenseInsights,
   expenseItems,
   expensePhotos,
+  photoShareLinks,
   sessions,
   shareLinks,
   users,
@@ -243,5 +245,82 @@ describe('Auth.js adapter tables — canonical @auth/drizzle-adapter shape (plan
   it('session.expires and user.emailVerified are plain timestamps, as the adapter writes them', () => {
     expect(column(sessions, 'expires').getSQLType()).toBe('timestamp')
     expect(column(users, 'emailVerified').getSQLType()).toBe('timestamp')
+  })
+})
+
+describe('photo_share_links — F12 §4.2', () => {
+  it('is shaped exactly like share_links, one photo wide', () => {
+    expect(getTableConfig(photoShareLinks).name).toBe('photo_share_links')
+    expect(columnNames(photoShareLinks)).toEqual(['token', 'photo_id', 'created_at'])
+  })
+
+  it('makes the token the PRIMARY KEY, so a collision is a unique violation', () => {
+    // The action's retry loop depends on this: an untargeted onConflictDoNothing has to absorb
+    // BOTH the PK and the photo_id unique index, and it distinguishes them by re-reading.
+    expect(column(photoShareLinks, 'token').primary).toBe(true)
+  })
+
+  it('keeps ONE ACTIVE LINK PER PHOTO — the unique index is a product decision', () => {
+    // Without it, a second tap of the share icon would mint a fresh token and orphan the URL the
+    // user already sent someone, silently, with nothing anywhere to tell them.
+    const indexes = getTableConfig(photoShareLinks).indexes
+    const unq = indexes.find((i) => i.config.name === 'photo_share_links_photo_id_unq')
+    expect(unq, 'photo_share_links_photo_id_unq is missing').toBeDefined()
+    expect(unq!.config.unique).toBe(true)
+  })
+
+  it('CASCADES from the photo — deleting the photo IS the revoke (F12 §4.7)', () => {
+    // There is no revoke UI. If this ever became `no action`, a deleted photo would leave a live
+    // token behind, and the only way to kill a shared link would be gone.
+    const fk = getTableConfig(photoShareLinks).foreignKeys[0]
+    expect(fk, 'no foreign key on photo_id').toBeDefined()
+    expect(fk!.onDelete).toBe('cascade')
+  })
+})
+
+describe('expense_insights — F12 §6.2', () => {
+  it('is one row per user, keyed by the user', () => {
+    expect(getTableConfig(expenseInsights).name).toBe('expense_insights')
+    expect(column(expenseInsights, 'user_id').primary).toBe(true)
+  })
+
+  it('carries the three texts plus BOTH freshness keys', () => {
+    expect(columnNames(expenseInsights)).toEqual([
+      'user_id',
+      'week_text',
+      'month_text',
+      'two_month_text',
+      'data_key',
+      'scope_key',
+      'generated_at',
+      'model',
+    ])
+  })
+
+  it('requires both keys — neither is optional, because neither subsumes the other', () => {
+    // data_key catches an edited expense; scope_key catches Monday morning, when the data has
+    // not moved but "Simpulan Minggu Ini" is now about last week. A nullable key would let a row
+    // exist that can never be judged stale.
+    expect(column(expenseInsights, 'data_key').notNull).toBe(true)
+    expect(column(expenseInsights, 'scope_key').notNull).toBe(true)
+    expect(column(expenseInsights, 'generated_at').notNull).toBe(true)
+  })
+
+  it('leaves the three texts NULLABLE — a model may decline one section', () => {
+    expect(column(expenseInsights, 'week_text').notNull).toBe(false)
+    expect(column(expenseInsights, 'month_text').notNull).toBe(false)
+    expect(column(expenseInsights, 'two_month_text').notNull).toBe(false)
+  })
+
+  it('stores generated_at WITH a timezone — the cooldown compares it to now()', () => {
+    // A naive timestamp would make the 60s cooldown wrong by the server's offset, which on
+    // Vercel is UTC and locally is +07:00 — so the bug would only appear in production.
+    expect(column(expenseInsights, 'generated_at').getSQLType()).toBe('timestamp with time zone')
+  })
+
+  it('CASCADES from the user, so deleting an account leaves no orphan text', () => {
+    const fk = getTableConfig(expenseInsights).foreignKeys[0]
+    expect(fk, 'no foreign key on user_id').toBeDefined()
+    expect(fk!.onDelete).toBe('cascade')
   })
 })
