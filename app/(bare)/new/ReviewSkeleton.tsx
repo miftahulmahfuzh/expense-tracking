@@ -20,7 +20,7 @@ export function ReviewSkeleton({ rows }: { rows: number }) {
       <div className="skeleton mb-2 h-3 w-14" />
       <div className="skeleton mb-5 h-control w-1/2" />
 
-      <ul className="rounded-card bg-card px-3">
+      <ul className="glass rounded-card px-3">
         {Array.from({ length: rows }, (_, index) => (
           <li key={index} className="border-b border-rule py-3 last:border-b-0">
             <div className="flex gap-2">

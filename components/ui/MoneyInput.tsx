@@ -96,9 +96,9 @@ export function MoneyInput({
   return (
     <div
       className={cn(
-        'flex h-control items-center gap-2.5 rounded-field border border-transparent bg-card',
+        'glass flex h-control items-center gap-2.5 rounded-field border border-transparent',
         'pr-1.5 pl-3.5',
-        invalid && 'border-red',
+        invalid && 'border-red-ink',
         className,
       )}
     >

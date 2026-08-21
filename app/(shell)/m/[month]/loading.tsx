@@ -10,7 +10,7 @@
 export default function MonthLoading() {
   return (
     <main aria-busy="true">
-      <div className="border-b border-rule bg-card pt-safe-header px-safe pb-4">
+      <div className="glass border-b border-rule pt-safe-header px-safe pb-4">
         <div className="flex items-center justify-between">
           <span className="skeleton size-touch rounded-field" />
           <span className="skeleton h-6 w-32" />
@@ -22,7 +22,7 @@ export default function MonthLoading() {
 
       <div className="pt-6 px-safe">
         <span className="skeleton h-5 w-44" />
-        <div className="mt-2 rounded-card bg-card px-4">
+        <div className="glass mt-2 rounded-card px-4">
           {[0, 1, 2].map((row) => (
             <div key={row} className="flex min-h-row-lg items-center gap-3 py-3">
               <div className="min-w-0 flex-1">

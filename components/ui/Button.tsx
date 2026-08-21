@@ -48,17 +48,30 @@ const SIZES: Record<ButtonSize, string> = {
 }
 
 /*
- * One RED button per screen and that is the next action. Everything else is a white block
+ * One RED button per screen and that is the next action. Everything else is a frosted block
  * or nothing at all, so the page has exactly one obvious thing to tap. Elevation is
- * contrast: `secondary` and `destructive` are `card` on `paper` and need no edge;
+ * contrast: `secondary` and `destructive` are `glass` on `paper` and need no edge;
  * `destructive` differs from `secondary` only in the colour of its type, which is the
  * design's answer to "destructive should not compete with primary".
+ *
+ * `primary` STAYS A SOLID RED FILL and R-137 does not touch it. A block of colour is opaque
+ * by definition — frosting the one button that has to be unmissable would be spending the
+ * whole point of it — and the same goes for the stickers, the category discs and the tab bar.
+ *
+ * KNOWN, AND WAIVED: `destructive`'s type is `red-ink`, which measures 3.98 (light) / 3.01
+ * (dark) against the worst backdrop the wallpaper can put under glass, rather than 4.5. It
+ * clears comfortably on `paper` and on the opaque fallback, and reaching 4.5 on glass would
+ * take a tint past 0.94 — no frost left at all — or a salmon red that is no longer the
+ * brand's. The waiver holds because destructive is never signalled by that colour alone: the
+ * button carries its own verb ("Hapus"), and the two places it can sit over art are both
+ * inside a sheet, over the scrim, where it measures 5.05 / 4.54. See R-137 and `GLASS_WAIVER`
+ * in scripts/palette-check.py.
  */
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-red text-red-fg',
-  secondary: 'bg-card text-ink',
+  secondary: 'glass text-ink',
   ghost: 'bg-transparent text-ink-3',
-  destructive: 'bg-card text-red-ink',
+  destructive: 'glass text-red-ink',
 }
 
 /** Exported so a non-`<button>` element can borrow the look. Prefer `ButtonLink`. */

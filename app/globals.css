@@ -45,7 +45,47 @@
    * is how the layers read without a border (see "02 Sheet and Media").
    */
   --paper-2: #e9e9e6;
-  --card: #ffffff; /* cards, sheet panel, chips                */
+  /*
+   * `--card` is no longer painted on a surface anywhere (see R-137 — every white box is
+   * frosted glass now). It survives for the two jobs a translucent colour cannot do: it is
+   * the OPAQUE FALLBACK the `.glass` rule falls back to when `backdrop-filter` is missing or
+   * the reader has asked for reduced transparency, and it is the value the contrast checker
+   * measures a flat surface against. Do not reach for `bg-card` in new markup; reach for
+   * `glass`.
+   */
+  --card: #ffffff;
+
+  /* ---- THE FROSTED SURFACE (R-137) --------------------------------------
+     Every box that used to be a white block is now glass over the wallpaper: five cut-out
+     creatures scatter behind the whole app (R-47) and used to be almost entirely hidden by
+     the opaque cards in front of them. `--glass` is the tint, `--glass-blur` the radius, and
+     the pair is applied only through the `.glass` component rule — never as a bare colour,
+     because a tint without its blur is 28% of a dragon showing through unblurred behind
+     11px type.
+
+     THE ALPHAS ARE AMENDED UP from the canvas's .55 / .50, and this is the one number in
+     this file that is load-bearing for legibility rather than for looks. The canvas draws
+     glass over flat grey artboards, where alpha costs nothing; over the real wallpaper at
+     the real 1.35x render scale, with the 14px blur modelled, .55/.50 put `ink-2` at 3.26
+     (light) / 2.39 (dark) and `ink-3` at 2.21 / 1.15. Dark mode at .50 cannot reach 4.5:1
+     with PURE WHITE type — 4.25 is the ceiling — so this is structural, not a tuning miss.
+     At .72 / .80 every text token clears with the ink-3 collapse below. Verified over all
+     five PNGs by scripts/palette-check.py, against the extremes scripts/glass-backdrop.py
+     measures.
+
+     Two properties worth keeping: 28% (light) and 20% (dark) of the blurred art still comes
+     through, so the frost is unmistakably frost; and the dark tint over bare black
+     composites to EXACTLY #161616, which is what `--card` was in dark mode. Nothing moves
+     on a screen with no art behind it.
+
+     `--glass-panel` is the sheet's own tint, and it is higher for a reason that is geometry
+     rather than taste: a sheet paints over its own `::backdrop` scrim, so at .72 the panel
+     composites to #bfbebc — a mid-grey sheet, with `ink-2` on it at 4.55, a twentieth clear.
+     At .85 the panel lands at #dddcdb and `ink-2` at 6.17. Dark needs no second value; the
+     scrim over black is still black. */
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-panel: rgba(255, 255, 255, 0.85);
+  --glass-blur: 14px;
 
   /* -- text --------------------------------------------------------------- */
   --ink: #0d0d0d;
@@ -192,6 +232,11 @@
     --paper-2: #000000;
     --card: #161616;
 
+    /* .80 over black is #161616 — the same value `--card` carries above, which is why a dark
+       screen with no art behind it looks identical before and after R-137. */
+    --glass: rgba(28, 28, 28, 0.8);
+    --glass-panel: rgba(28, 28, 28, 0.8);
+
     --ink: #ffffff;
     --ink-2: #c2c2c2;
     /* AMENDED, though less than light's: the design's #7d7d7d measures 4.40:1
@@ -243,6 +288,9 @@
   --paper: #000000;
   --paper-2: #000000;
   --card: #161616;
+
+  --glass: rgba(28, 28, 28, 0.8);
+  --glass-panel: rgba(28, 28, 28, 0.8);
 
   --ink: #ffffff;
   --ink-2: #c2c2c2;
@@ -422,6 +470,13 @@
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
   --color-card: var(--card);
+
+  /*
+   * `--glass` is DELIBERATELY NOT BRIDGED. There must be no `bg-glass` utility: the tint is
+   * only ever correct with its blur and its ink-3 collapse, and a `bg-glass` in some future
+   * file would give you the translucency with neither. The frosted surface has exactly one
+   * spelling and it is the `glass` class — see section 6.
+   */
 
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
@@ -786,6 +841,102 @@
    ========================================================================== */
 
 @layer components {
+  /* ---- THE FROSTED SURFACE (R-137) --------------------------------------
+     Every surface that used to be `bg-card`. A component class rather than an `@utility`
+     for three reasons that all need the cascade: the `@supports` fallback and the
+     reduced-transparency override have to be able to WIN against the base rule (utilities
+     land in a later layer than components, so a `.glass` override written anywhere else
+     would lose to a `@utility glass`); the rule sets a custom property, not just paint; and
+     a caller's own `bg-*` utility should still be able to override the tint, which is the
+     same arrangement `Field` already documents.
+
+     THE INK-3 COLLAPSE is the second half of the amendment described at `--glass` above, and
+     it is one line because `@theme inline` compiles `text-ink-3` to `color: var(--ink-3)` —
+     redefining the property here re-points every `text-ink-3`, every `eyebrow`, and every
+     `::placeholder` inside a glass box at `ink-2`'s value, with no call-site edits at all.
+     Over the worst pixel of the wallpaper that moves them from 3.30 / 2.72 to 4.86 / 5.63.
+
+     Losing a grey tier costs less here than it would in most systems: this design already
+     carries hierarchy in WEIGHT and SIZE, which the type scale bakes into every entry
+     (`--text-label` is 800, `--text-meta` 700, `--text-body` 500), so a label and the prose
+     under it still read as different things at the same grey. `--tab-ink-3` is a separate
+     token on a separate chassis and is untouched.
+
+     WHAT IS NOT GLASS, on the design's own authority: the tab bar (a solid chassis, not a
+     surface), the stickers, the category discs, the picker cells and the red buttons — every
+     one of those is a block of colour, and a block of colour is opaque by definition. The
+     picker cell in particular stays `paper` INSIDE the glass sheet, which is the design's
+     "a field is always the surface its container is not" rule surviving intact. */
+  /*
+   * THE OPAQUE BASE, and it is written first ON PURPOSE. The frost is layered on top of a
+   * flat card inside an `@supports` guard rather than the flat card being patched in as a
+   * `@supports not` fallback, because the failure mode of getting that backwards is severe:
+   * a tint with no blur is a 72%-alpha white sheet with a dragon showing through it at full
+   * sharpness behind 11px type. Firefox on Android has no `backdrop-filter` and neither does
+   * any WebView old enough to still be in the wild — progressive enhancement means those get
+   * the design that shipped last week, not an unreadable one.
+   */
+  .glass,
+  .chip,
+  .sheet-panel {
+    background-color: var(--card);
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .chip,
+    .sheet-panel {
+      background-color: var(--glass-tint, var(--glass));
+      /*
+       * UNPREFIXED ONLY, and writing the `-webkit-` twin by hand here is a BUG rather than
+       * belt-and-braces. Lightning CSS treats the two as one logical property and emits
+       * whichever set its targets call for; given both, it resolved them to `-webkit-` ALONE.
+       * Chrome aliases that, but Firefox does not support it at all while it does support the
+       * standard property — so the hand-written prefix produced a Firefox that passed the
+       * @supports test above and then painted the tint with NO BLUR, which is the exact
+       * failure the guard exists to prevent. Verified by grepping the built CSS in
+       * .next/static/chunks; keep it to the standard property and let the compiler prefix.
+       */
+      backdrop-filter: blur(var(--glass-blur));
+      --ink-3: var(--ink-2);
+    }
+
+    /* The sheet paints over its own scrim, so it takes the thicker tint. See `--glass-panel`. */
+    .sheet-panel {
+      --glass-tint: var(--glass-panel);
+    }
+
+    /*
+     * A SELECTED chip is a flood of category colour — opaque, so the blur behind it is work
+     * with nothing to show for it. Switched off rather than left running: this is the one
+     * glass surface that can be sixteen-per-screen, inside the picker.
+     */
+    .chip[data-selected='true'] {
+      backdrop-filter: none;
+    }
+
+    /*
+     * Honour the OS setting. Reduced transparency is asked for by the people for whom text
+     * over a busy backdrop is precisely the problem this whole feature introduces, so they
+     * get the opaque surface AND their third grey tier back.
+     *
+     * `inherit` rather than a repeated literal: it takes the parent's computed `--ink-3`,
+     * which is the `:root` value for a glass box on the page and — because a nested glass box
+     * resolves the same way — the `:root` value again for glass inside glass. One word, no
+     * duplicated hex, correct at every depth. An unsupported media feature makes this query
+     * false, which leaves the frost on; that is why the override runs in this direction.
+     */
+    @media (prefers-reduced-transparency: reduce) {
+      .glass,
+      .chip,
+      .sheet-panel {
+        background-color: var(--card);
+        backdrop-filter: none;
+        --ink-3: inherit;
+      }
+    }
+  }
+
   /* ---- The category disc ------------------------------------------------
      The pictogram the whole category system is built on: a solid disc in the
      category colour carrying a bold BLACK two-letter mark, like an event
@@ -813,9 +964,8 @@
      the category colour and inverts the disc to ink — so the selected state is
      a block of colour, not an outline. The label goes #0d0d0d in both schemes
      because the flood colour is bright in both. */
-  .chip {
-    background-color: var(--card);
-  }
+  /* The unselected pill's surface is the shared glass rule above — `.chip` is one of its
+     three selectors, so there is no `background-color` here to drift out of step with it. */
   .chip[data-selected='true'] {
     background-color: var(--c);
   }
@@ -941,9 +1091,10 @@
     max-height: 88dvh;
     display: flex;
     flex-direction: column;
-    background-color: var(--card);
+    /* Surface comes from the shared glass rule at the top of this layer, which gives this
+       selector the thicker `--glass-panel` tint. */
     color: var(--ink);
-    /* No border. The scrim is the separation — 16px corners on a white block
+    /* No border. The scrim is the separation — 16px corners on a frosted block
        against a darkened page is the whole elevation. */
     border-top-left-radius: var(--radius-sheet);
     border-top-right-radius: var(--radius-sheet);
@@ -953,6 +1104,25 @@
        height note above), and the timing change was chasing the wrong diagnosis. */
     transition: transform 280ms var(--ease-out-soft);
     will-change: transform;
+    /* ---- THE ONE PART OF R-137 THAT IS NOT VERIFIED ON HARDWARE ----------
+       This element now carries `backdrop-filter` (from the shared glass rule) TOGETHER WITH a
+       transform, a `will-change: transform`, and top-layer stacking from `showModal()`. Each
+       of those on its own is fine and the composite is correct in the built CSS; the
+       combination is also the exact neighbourhood of the iOS painting bug documented in
+       `.sheet` above, and `backdrop-filter` inside a top-layer dialog is the least uniformly
+       implemented thing in this stylesheet. It could not be checked here — the failure, if
+       there is one, is a WebKit compositing behaviour that does not reproduce in anything you
+       can run on a laptop, which is the same sentence R-133's notch bug needed.
+
+       WHAT TO LOOK FOR on a real iPhone: open the category picker and the item sheet. If the
+       panel paints with no frost, with a frost that slides instead of staying put, or not at
+       all until you scroll, this is the cause.
+
+       THE REVERT IS ONE LINE and it is deliberately cheap: drop `.sheet-panel` from the three
+       shared-rule selector lists at the top of this layer. The panel goes back to opaque
+       `--card`, the scrim keeps doing all the separating exactly as it did before R-137, and
+       nothing else in the app is touched — the sheet is the only surface whose frost reveals
+       a scrim rather than the wallpaper, so it is also the one with the least to lose. */
   }
   .sheet[open] .sheet-panel {
     transform: translateY(0);

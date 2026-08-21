@@ -11,16 +11,16 @@
 export default function StatsLoading() {
   return (
     <main className="pb-2" aria-busy="true">
-      <div className="border-b border-rule bg-card pt-safe-header px-safe pb-3.5">
+      <div className="glass border-b border-rule pt-safe-header px-safe pb-3.5">
         <span className="skeleton h-8 w-40" />
       </div>
       <div className="flex flex-col gap-2.5 pt-3.5 px-safe">
-        <section className="rounded-card bg-card p-4">
+        <section className="glass rounded-card p-4">
           <span className="skeleton h-6 w-32" />
           <span className="skeleton mt-3 h-11 w-56" />
           <span className="skeleton mt-3 h-3.5 w-40" />
         </section>
-        <section className="rounded-card bg-card p-4">
+        <section className="glass rounded-card p-4">
           <span className="skeleton h-5 w-32" />
           <span className="skeleton mt-3 h-[196px] w-full" />
         </section>

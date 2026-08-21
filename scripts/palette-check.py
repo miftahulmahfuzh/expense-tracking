@@ -24,6 +24,13 @@ brand, yellow highlighter). Three things it checks that a generic contrast tool 
      background can still be indistinguishable from each other, which is the failure R-3
      caught in the original donut.
 
+  4. THE FROSTED SURFACES. Since R-137 no surface in the app is a flat colour: every box that
+     was white is now a translucent tint over a 14px blur of the cut-out wallpaper, so "ink on
+     card" became "ink over whatever creature is behind this card". Those pairings are
+     composited here from the tint, its alpha, and the worst pixel the art can supply —
+     measured separately by scripts/glass-backdrop.py, which is the only part of this check
+     that needs a PNG decoder and is therefore not in it.
+
 Exits non-zero on a CONTRAST failure, so it can be used as a gate. Categorical separation and
 the decorative hairlines are reported but do not fail the run — see WAIVER and checks().
 """
@@ -54,6 +61,12 @@ def contrast(a: str, b: str) -> float:
     if la < lb:
         la, lb = lb, la
     return (la + 0.05) / (lb + 0.05)
+
+
+def over(tint: str, alpha: float, backdrop: str) -> str:
+    """`tint` at `alpha` composited over `backdrop`. Per channel, in sRGB, like a browser."""
+    t, b = srgb(tint), srgb(backdrop)
+    return '#' + ''.join(f'{round(255 * (alpha * t[i] + (1 - alpha) * b[i])):02x}' for i in range(3))
 
 
 def oklab(hex_str: str) -> tuple[float, float, float]:
@@ -196,6 +209,62 @@ GRAPHIC = 3.0
 # The floor below which two categorical series stop being reliably tellable apart.
 SEPARATION = 0.10
 
+# ------------------------------------------------------------------- the frosted surface
+#
+# R-137 replaced every white box with glass over the cut-out wallpaper, which turns a fixed
+# pairing ("ink on card") into a pairing against WHATEVER THE ART PUTS THERE. These are the
+# two extremes the art can put under a frosted surface, measured over all five PNGs at their
+# real render size with the 14px blur applied: the darkest pixel in light mode, the brightest
+# in dark. Regenerate with `python3 scripts/glass-backdrop.py` — that script documents when.
+#
+# The dark extreme is the SHEEP'S WOOL, which is cream, and that is the same #e8d8b8 that
+# CutoutArt's comment already warns about ("cream type on cream wool"). It is why dark mode
+# rather than light is the binding constraint on the tint.
+GLASS_BACKDROP = {
+    'light': '#362d1d',  # darkest the wallpaper goes under glass
+    'dark': '#e8d8b8',  # brightest it goes on true black
+}
+
+# --glass / --glass-panel from globals.css §1, as (tint, alpha).
+GLASS = {
+    'light': ('#ffffff', 0.72),
+    'dark': ('#1c1c1c', 0.80),
+}
+GLASS_PANEL = {
+    'light': ('#ffffff', 0.85),
+    'dark': ('#1c1c1c', 0.80),
+}
+
+GLASS_WAIVER = '''WAIVER — `red-ink` and `green-ink` are below 4.5:1 ON GLASS, over the art only.
+
+R-137 frosted every surface that used to be a white block, so text on a card is now text over
+whatever the wallpaper (R-47) has put behind it. Four of the six text tokens clear 4.5:1
+against the worst pixel the art can supply, and two do not: `red-ink` (3.98 light / 3.01 dark)
+and `green-ink` (3.91 light, and 5.38 dark, which passes). Both clear comfortably on `paper`,
+on the opaque fallback, and on the sheet panel.
+
+THERE IS NO TINT THAT FIXES BOTH AND LEAVES A FROST. Dark mode is the binding end: at 0.94
+`red-ink` is still only 4.48, and 0.94 is 6% of a blurred creature showing through — not
+frost, just a slightly dirty tint. The alternative is moving the token, and the only dark red
+that clears at 0.80 is around #ff8a80, a salmon that is no longer the brand's red and would
+have to be mirrored in light for the pair to stay one colour.
+
+WHY IT IS SAFE, and it is the same structural argument as BAR_WAIVER:
+
+  · Neither token is ever the only channel. A field error draws a RED BORDER around the
+    control (`aria-[invalid=true]:border-red`) and the message underneath repeats it in
+    words; the destructive button says "Hapus"; the delta tile states the rupiah figure and
+    the direction as text.
+  · Both are small in extent — a one-line message, a button label, one figure in a tile —
+    and neither is body copy anyone reads at length.
+  · The two places `red-ink` sits over glass that can have art behind it are both inside a
+    SHEET, where the panel's thicker tint over its own scrim measures 5.05 light / 4.54 dark
+    — over the line in both.
+
+THIS WAIVER EXPIRES if either token becomes the sole signal — a red figure with no sign or
+label, a green total with no direction stated — or if the wallpaper gains a creature brighter
+than the sheep's wool without the tint being re-derived.'''
+
 WAIVER = '''WAIVER — categorical separation is knowingly below the 0.10 floor, in both themes.
 
 The eight hues are muted and earthy by design and sit as close as 0.042 apart in Oklab. That
@@ -217,9 +286,37 @@ anyone) adds a legend without codes, a pie, a stacked bar, or a colour-keyed spa
 adding any chart that is not the bar list.'''
 
 
-def checks(t: dict[str, str]) -> list[tuple[str, float, float]]:
+def glass_surfaces(t: dict[str, str], scheme: str) -> dict[str, str]:
+    """The three frosted surfaces, resolved to flat colours over the worst backdrop there is.
+
+    `glass on art` is a card, header, field or chip sitting directly over the wallpaper — the
+    common case and the strict one. `glass on glass` is the nesting the design leans on for a
+    field inside a card, and it comes out LIGHTER than its container, which is the separation
+    that used to come from a `bg-paper` override. `sheet panel` is the one surface whose
+    backdrop is not the page: a <dialog> paints over its own ::backdrop scrim, so the art is
+    already halved before the thicker panel tint goes over it.
+    """
+    art = GLASS_BACKDROP[scheme]
+    tint, alpha = GLASS[scheme]
+    panel_tint, panel_alpha = GLASS_PANEL[scheme]
+    scrim_alpha = 0.5 if scheme == 'light' else 0.65
+
+    on_art = over(tint, alpha, art)
+    return {
+        'glass on art': on_art,
+        'glass on glass': over(tint, alpha, on_art),
+        'sheet panel': over(panel_tint, panel_alpha, over('#000000', scrim_alpha, art)),
+    }
+
+
+def checks(t: dict[str, str], scheme: str) -> list[tuple[str, float, float]]:
     """Every pairing the components actually paint, with the threshold each is held to."""
     f = FIXED
+    g = glass_surfaces(t, scheme)
+    # THE INK-3 COLLAPSE (R-137): `.glass` redefines --ink-3 to --ink-2's value, so a label
+    # inside a frosted box is checked as ink-2. Checking it as ink-3 would be checking a
+    # colour the app cannot paint there.
+    glass_ink_3 = t['ink-2']
     out: list[tuple[str, float, float]] = [
         # body text
         ('ink on card', contrast(t['ink'], t['card']), TEXT),
@@ -268,8 +365,8 @@ def checks(t: dict[str, str]) -> list[tuple[str, float, float]]:
         # plate — are drawn in ink-3, which 1.4.11 holds to 3:1.
         ('ink-3 dash on paper', contrast(t['ink-3'], t['paper']), GRAPHIC),
         ('ink-3 dash on pink', contrast(t['ink-3'], t['pink']), GRAPHIC),
-        # The sheet grabber.
-        ('rule-strong on card', contrast(t['rule-strong'], t['card']), GRAPHIC),
+        # The sheet grabber. Held against the panel it actually sits on, not against `card`.
+        ('rule-strong on panel', contrast(t['rule-strong'], g['sheet panel']), GRAPHIC),
     ]
 
     for c in CATS:
@@ -285,6 +382,29 @@ def checks(t: dict[str, str]) -> list[tuple[str, float, float]]:
         # NOTE: the breakdown's progress bar against its own `rule` track is NOT checked
         # here. It is reported in the informational section instead — see BAR_WAIVER.
 
+    # ---- THE FROSTED SURFACES (R-137) ------------------------------------------------
+    # Every `bg-card` in the app became `glass`, so these are the pairings that used to be
+    # "on card" and are now against the worst thing the wallpaper can put behind them. This
+    # is the block that sets the tint: 0.72 / 0.80 is the lowest pair at which all of it
+    # passes, and the canvas's own 0.55 / 0.50 fails ten of these.
+    for surface, colour in g.items():
+        out.append((f'ink on {surface}', contrast(t['ink'], colour), TEXT))
+        out.append((f'ink-2 on {surface}', contrast(t['ink-2'], colour), TEXT))
+        # Labels, meta lines and placeholders, at their collapsed value. See glass_ink_3.
+        out.append((f'ink-3 on {surface}', contrast(glass_ink_3, colour), TEXT))
+        # A field's error border is the boundary that identifies the control as failed, which
+        # 1.4.11 holds to 3:1. The field's own borderless resting state stays waived (R-46).
+        #
+        # `red-ink`, NOT `red`, and R-137 is what moved it: the brand red measures 2.69 against
+        # light glass over the art, so the error border on a field over a creature was the one
+        # hard failure the frost introduced. `red-ink` is already the token for red as TYPE
+        # rather than as a fill, and a 1px line is nearer to type than to a fill — so this is
+        # the existing distinction being applied, not a new colour. Dark mode is unaffected:
+        # the two tokens are the same value there.
+        out.append((f'error border on {surface}', contrast(t['red-ink'], colour), GRAPHIC))
+        # The one hairline this design keeps — row separators inside a frosted card. It is
+        # decorative, so 1.4.11 does not reach it; reported in main() rather than gated.
+
     return out
 
 
@@ -296,7 +416,7 @@ def main() -> int:
         print(name)
         print('-' * 78)
 
-        for label, got, want in checks(t):
+        for label, got, want in checks(t, name.lower()):
             ok = got >= want
             if not ok:
                 failures += 1
@@ -304,9 +424,21 @@ def main() -> int:
 
         # Informational, deliberately not part of the exit code. See WAIVER below.
         print()
+        g = glass_surfaces(t, name.lower())
+        print('  the frosted surfaces, resolved over the worst pixel of the wallpaper:')
+        print(f'    worst backdrop     {GLASS_BACKDROP[name.lower()]}  (scripts/glass-backdrop.py)')
+        for surface, colour in g.items():
+            print(f'    {surface:<18} {colour}')
+        print(f'    over bare page     {over(*GLASS[name.lower()], t["paper"])}  (no art behind it)')
+        print()
+        print('  waived on glass, over the art only (no threshold — see GLASS_WAIVER):')
+        for tok in ('red-ink', 'green-ink'):
+            print(f'    {tok:<14} on glass   {contrast(t[tok], g["glass on art"]):.2f}')
+            print(f'    {tok:<14} on panel   {contrast(t[tok], g["sheet panel"]):.2f}')
+        print()
         print('  decorative lines (no threshold — see checks() for why):')
         print(f'    rule on paper      {contrast(t["rule"], t["paper"]):.2f}')
-        print(f'    rule-2 on card     {contrast(t["rule-2"], t["card"]):.2f}')
+        print(f'    rule-2 on glass    {contrast(t["rule-2"], g["glass on art"]):.2f}')
 
         print('  breakdown bar on its track (no threshold — see BAR_WAIVER):')
         for c in CATS:
@@ -323,6 +455,8 @@ def main() -> int:
         print()
 
     print('=' * 78)
+    print(GLASS_WAIVER)
+    print()
     print(BAR_WAIVER)
     print()
     print(WAIVER)

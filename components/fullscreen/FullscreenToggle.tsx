@@ -69,10 +69,12 @@ function CollapseGlyph() {
  * enter it. No pathname check here — the route boundary IS the check. `FullscreenProvider`
  * carries the matching gate for the chrome (see the note there about `/stats`).
  *
- * A HARD PLATE — no shadow, no ring, no blur. It floats over the list and over the wallpaper,
- * which in this system means it needs a solid block of colour behind it and nothing else;
- * elevation here is contrast. Which two colours, and why the obvious choice was wrong, is on
- * the `className` below.
+ * A HARD PLATE — no shadow, no ring, and NOT frosted, which since R-137 makes it one of the
+ * deliberate exceptions rather than the norm. It floats over the list and over the wallpaper,
+ * and the surfaces it floats over are now themselves glass; a frosted chip on a frosted card
+ * is two tints deep and reads as a smudge rather than as a control. So it keeps a solid block
+ * of colour and nothing else — elevation here is contrast. Which two colours, and why the
+ * obvious choice was wrong, is on the `className` below.
  *
  * GEOMETRY. Fixed to the viewport but constrained to the same `max-w-app` column as the page,
  * copied from `TabBar`, so on a wide viewport it tucks against the column's right edge rather

@@ -27,7 +27,7 @@ export default function BiggestExpenseTile({ item }: { item: BiggestExpense | nu
   if (!item) return null
 
   return (
-    <section className="rounded-card bg-card p-4" aria-labelledby="stats-big-title">
+    <section className="glass rounded-card p-4" aria-labelledby="stats-big-title">
       <h2 className="sticker" style={INK_STICKER} id="stats-big-title">
         Pengeluaran Terbesar
       </h2>

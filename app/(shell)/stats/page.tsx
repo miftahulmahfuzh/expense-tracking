@@ -164,13 +164,13 @@ export default async function StatsPage({ searchParams }: PageProps<'/stats'>) {
     <main className="pb-2">
       {/* The screen title band, matching /new's. A tab destination gets a title; a pushed
           view gets a chrome label. */}
-      <header className="border-b border-rule bg-card pt-safe-header px-safe pb-3.5">
+      <header className="glass border-b border-rule pt-safe-header px-safe pb-3.5">
         <h1 className="text-title">Statistik</h1>
       </header>
 
       <div className="flex flex-col gap-2.5 pt-3.5 px-safe">
         {/* Exactly ONE hero figure per view. This is it. */}
-        <section className="rounded-card bg-card p-4">
+        <section className="glass rounded-card p-4">
           <MonthSwitcher
             selectedMonth={selectedMonth}
             currentMonth={currentMonth}

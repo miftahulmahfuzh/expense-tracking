@@ -24,10 +24,16 @@ import { cn } from '@/lib/cn'
  * That does put the tap target within the indicator's band, which is deliberate — a tap is
  * not the system's edge gesture, and the alternative is the gap this replaces.
  *
- * OPAQUE `bg-card`, and the blur is gone. The previous system floated a 95%-alpha bar with
- * a backdrop-blur so content receded under it; this design has no glass anywhere, and a
- * blurred column of rupiah reads as smudged digits rather than as depth. The top hairline
- * plus a flat white block is the whole separation.
+ * FROSTED as of R-137, and that REVERSES the ruling this comment used to carry. Read the old
+ * one before changing it back: the v0.1.0 system floated a 95%-alpha bar with a
+ * backdrop-blur, and it was removed because a bar that content recedes under puts a blurred
+ * column of rupiah directly behind the total, which reads as smudged digits rather than as
+ * depth. That objection still applies here — this bar is `sticky bottom-0` inside the
+ * scrolling pane, so its backdrop genuinely does include the item rows sliding under it, not
+ * only the wallpaper. R-137 overrules the objection rather than dodging it: the canvas draws
+ * this footer frosted, and at the 0.72 tint the rows read as a soft field of colour under a
+ * number that is 800-weight `ink` at 11:1. If the smudge ever wins the argument back, the
+ * fix is `glass` → `bg-card` on this one element and nothing else moves.
  *
  * `ref` is forwarded because "receding" also means OCCLUDING, and the only component that can
  * report how much of the pane this bar is covering is this one. `lib/scroll/revealAboveBar`
@@ -47,7 +53,7 @@ export function StickyBar({
     <div
       ref={ref}
       className={cn(
-        'sticky bottom-0 z-20 mt-auto border-t border-rule bg-card px-gutter pt-3 pb-2',
+        'glass sticky bottom-0 z-20 mt-auto border-t border-rule px-gutter pt-3 pb-2',
         className,
       )}
     >

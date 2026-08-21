@@ -23,7 +23,7 @@ import Link from 'next/link'
  */
 export function NewHeader({ backHref }: { backHref: string }) {
   return (
-    <header className="flex shrink-0 items-center gap-1 border-b border-rule bg-card pt-safe-header px-safe pb-3.5">
+    <header className="glass flex shrink-0 items-center gap-1 border-b border-rule pt-safe-header px-safe pb-3.5">
       <Link
         href={backHref}
         aria-label="Kembali ke daftar bulan ini"

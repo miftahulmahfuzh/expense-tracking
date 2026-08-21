@@ -15,10 +15,15 @@ export interface CardProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 /**
- * A card is a flat BLOCK: white on the page grey, black on true black. No border and no
- * shadow — contrast alone is the elevation, exactly like print. (The previous system drew a
- * hairline around every card; the design pull removed it, and removing it is most of why
- * the app now reads as graphic rather than as a form.)
+ * A card is a FROSTED BLOCK (R-137): the `glass` tint over a 14px blur of whatever the page
+ * has behind it, which on every screen in both route groups is the cut-out wallpaper (R-47).
+ * It was a flat white block until R-137, and it is still flat — no border and no shadow,
+ * contrast alone is the elevation, exactly like print. What changed is that the elevation now
+ * has the art showing through it, which is what R-133 built a whole fullscreen mode to get.
+ *
+ * `glass` and not `bg-card`: the tint is only ever correct together with its blur and its
+ * ink-3 collapse, and `bg-card` is the opaque fallback the shared rule reaches for by itself
+ * when the browser has no `backdrop-filter` or the reader has asked for less transparency.
  *
  * Rows inside a card separate with `divide-y divide-rule`: `divide-*` puts no border after
  * the last child, so the final row never draws a line against the card's own edge — the one
@@ -31,7 +36,7 @@ export function Card({ as = 'div', padded = true, className, ...rest }: CardProp
   return (
     <Tag
       className={cn(
-        'rounded-card bg-card',
+        'glass rounded-card',
         padded === true && 'p-4',
         padded === 'rows' && 'py-0.5 pr-1.5 pl-4',
         className,
