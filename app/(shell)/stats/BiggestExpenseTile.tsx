@@ -10,8 +10,14 @@ import { toIdr } from '@/lib/stats/series'
  * Included because it is the single most actionable fact on the page.
  *
  * HERO DISCIPLINE: the dataviz rules allow exactly one hero figure per view, and on /stats
- * that is the selected month's total at the top. This amount is `size="md"` (17px), not a
+ * that is the selected month's total at the top. This amount is `size="sm"` (15px/600), not a
  * second `size="hero"`.
+ *
+ * `sm` and not `md`: this is the same amount typeface and step the `Rincian Kategori` rows
+ * below it use, and the two cards sit one under the other in the same column. At `md` (17/800)
+ * this single row read as a heavier class of number than the eight rows under it, when it is
+ * the same class of thing — one category-coloured row with a rupiah figure on the right. The
+ * row still leads the card; it does so by being alone in it, not by being typeset larger.
  *
  * The link lands on /e/[groupId]#item-[itemId]. The anchor is F07's item <li>, which this
  * feature added (one attribute) rather than dropping the fragment — landing on the group and
@@ -39,7 +45,7 @@ export default function BiggestExpenseTile({ item }: { item: BiggestExpense | nu
           </span>
         </span>
 
-        <Money value={toIdr(item.amountIdr)} size="md" />
+        <Money value={toIdr(item.amountIdr)} size="sm" />
         <span
           aria-hidden="true"
           className="shrink-0 text-[22px] leading-none font-extrabold text-ink-3"
