@@ -76,12 +76,21 @@ interface Cutout {
  */
 const PAGE: Cutout[] = [
   { name: 'dragon', left: -110, top: 140, width: 280, rotate: -16 },
-  { name: 'snake', left: 258, top: 110, width: 220, rotate: 18 },
+  // +15%: 220 -> 253, re-anchored so the extra size grows about its own centre (368, 220)
+  // rather than pushing the snake down and right off the corner.
+  { name: 'snake', left: 242, top: 94, width: 253, rotate: 18 },
   // Centred measured AFTER the 1.35x growth: the scaled box is 351px, so 77/318 puts its
   // middle on 207/448 — the middle of the 414x896 canvas.
   { name: 'mountain', left: 77, top: 318, width: 260, rotate: 7 },
-  { name: 'octopus', left: 262, top: 614, width: 230, rotate: -14 },
-  { name: 'sheep', left: -84, top: 648, width: 200, rotate: 10 },
+  // +20%: 230 -> 276, grown about its centre (377, 729).
+  { name: 'octopus', left: 239, top: 591, width: 276, rotate: -14 },
+  /*
+   * +20% (200 -> 240), +15deg clockwise (10 -> 25), and 1.5cm toward the middle of the
+   * canvas. CSS fixes 1cm at 96/2.54 px, so 1.5cm is 57px, walked along the vector from the
+   * sheep's own centre to (207, 448) — 0.537/-0.844 normalised, i.e. +31 across and -48 up.
+   * Growth is applied about the centre first, so the two moves do not compound.
+   */
+  { name: 'sheep', left: -73, top: 580, width: 240, rotate: 25 },
 ]
 
 /**
