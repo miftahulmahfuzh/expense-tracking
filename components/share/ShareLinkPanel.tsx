@@ -75,7 +75,7 @@ export function ShareLinkPanel({ groupId, token, origin }: ShareLinkPanelProps) 
             tapping it would navigate the owner out of their own page, and the way to send
             it is the Bagikan button in the header. It is here so the user can SEE which
             link is live. */}
-        <p className="mt-2 truncate font-mono text-meta text-ink-3">{shareUrl(origin, token)}</p>
+        <p className="mt-2 truncate text-meta text-ink-3">{shareUrl(origin, token)}</p>
 
         <Button
           variant="destructive"

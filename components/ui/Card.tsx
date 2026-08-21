@@ -15,12 +15,14 @@ export interface CardProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 /**
- * A card is a raised surface with a hairline border and NO shadow. Elevation in this design
- * comes from `card` sitting lighter than `paper` plus the `rule` hairline — which is the
- * only elevation that survives dark mode, where a shadow is invisible.
+ * A card is a flat BLOCK: white on the page grey, black on true black. No border and no
+ * shadow — contrast alone is the elevation, exactly like print. (The previous system drew a
+ * hairline around every card; the design pull removed it, and removing it is most of why
+ * the app now reads as graphic rather than as a form.)
  *
- * Rows inside a card separate with `divide-y divide-rule-2`: `divide-*` puts no border
- * after the last child, so the final row never draws a line against the card's own edge.
+ * Rows inside a card separate with `divide-y divide-rule`: `divide-*` puts no border after
+ * the last child, so the final row never draws a line against the card's own edge — the one
+ * hairline this design keeps.
  */
 export function Card({ as = 'div', padded = true, className, ...rest }: CardProps) {
   // Widened to ElementType so one set of handler types serves every tag in the union —
@@ -29,7 +31,7 @@ export function Card({ as = 'div', padded = true, className, ...rest }: CardProp
   return (
     <Tag
       className={cn(
-        'rounded-card border border-rule bg-card',
+        'rounded-card bg-card',
         padded === true && 'p-4',
         padded === 'rows' && 'py-0.5 pr-1.5 pl-4',
         className,

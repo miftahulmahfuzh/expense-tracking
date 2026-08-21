@@ -1,147 +1,152 @@
-/* ─────────────────────────────────────────────────────────────────────────
-   Expense Tracking — design tokens
-   Pulled from Claude Design project 8c505e75-e97a-4c8e-b7c0-04aeb074bc7f
-   ("00 Foundations.dc.html") via DesignSync, then normalised:
-     · category custom properties renamed  --c-<x>  →  --color-cat-<Category>
-     · the design's `fun` key renamed to `entertainment` to match CATEGORIES
-   Everything else is the design's values, verbatim.
+/* ==========================================================================
+   MIRROR OF THE DESIGN, AS PULLED. NOT LOADED BY THE APP.
+   ==========================================================================
+   Source: Claude Design project 8c505e75-e97a-4c8e-b7c0-04aeb074bc7f, files
+   "00 Foundations", "01 Components", "02 Sheet and Media" and
+   "04 App Prototype (Cutout Art)". Pulled 2026-08-21 via DesignSync.
 
-   Direction: warm paper + ink, editorial serif for language, monospace for
-   bookkeeping. NO SHADOWS ANYWHERE — elevation is `card` sitting lighter than
-   `paper` plus a hairline rule; the sheet earns its layer from the scrim.
-   ───────────────────────────────────────────────────────────────────────── */
+   This file is the DESIGN'S OWN VALUES, verbatim, so that a later pull can be
+   diffed against something. The values the app actually ships are in
+   app/globals.css, and they are NOT identical — every difference is an
+   amendment listed in DESIGN_INTEGRATION.md and verified by
+   scripts/palette-check.py. When you change app/globals.css, do not change
+   this file; when you pull the design again, change this file first and then
+   re-derive.
+
+   Note on "04 App Prototype (Cutout Art)": it differs from "03 App Prototype"
+   by exactly two lines — every `assets/<creature>.png` became
+   `assets/<creature>-cut.png`. Same tokens, same layout, transparent artwork
+   instead of art on a white plate. v4 is the one this repo integrates.
+   ========================================================================== */
 
 :root {
   /* surfaces */
-  --paper:        #f0ede4;
-  --paper-2:      #e8e4d9;
-  --card:         #fbfaf5;
+  --bg: #e9e9e6; /* app/globals.css calls this --paper   */
+  --card: #ffffff;
+
   /* text */
-  --ink:          #20211d;
-  --ink-2:        #5d5c52;
-  --ink-3:        #8f8d81;
+  --ink: #0d0d0d;
+  --ink-2: #4d4d4d;
+  --ink-3: #8f8f8f; /* AMENDED in the app to #666666        */
+
   /* lines */
-  --rule:         #d8d3c4;
-  --rule-2:       #eae6da;
-  /* semantic */
-  --accent:       #2f5d50;
-  --accent-soft:  #e0e8e2;
-  --red:          #8a3324;
-  --red-soft:     #efdfd9;
-  --scrim:        rgba(32, 33, 29, .45);
+  --line: #0d0d0d; /* app/globals.css calls this --rule-strong */
+  --line-2: #d7d7d3; /* app/globals.css calls this --rule        */
 
-  /* 8 categories — light values (deep, ≥4.5:1 on paper) */
-  --color-cat-food:          #9c4a2a;
-  --color-cat-groceries:     #63661f;
-  --color-cat-transport:     #3e5c85;
-  --color-cat-bills:         #8a651c;
-  --color-cat-housing:       #6e4f33;
-  --color-cat-entertainment: #6d4a86;
-  --color-cat-health:        #2c6b66;
-  --color-cat-other:         #6d6b60;
+  /* brand */
+  --red: #e0281e;
+  --pink: #f6c9cf;
+  --yellow: #ffe600;
+  --cyan: #2fd8ce;
+  --scrim: rgba(0, 0, 0, 0.5);
 
-  /* radii — four, no more */
-  --r-chip:  2px;
-  --r-field: 6px;
-  --r-card:  10px;
-  --r-pill:  999px;
+  /* the 8 categories. `fun` is `entertainment` in lib/categories.ts. */
+  --c-food: #e0281e; /* AMENDED in the app to #e22c22        */
+  --c-groceries: #1fa24a;
+  --c-transport: #1d6fe0; /* AMENDED in the app to #2273e6        */
+  --c-bills: #e8a800;
+  --c-housing: #7a44e0; /* AMENDED in the app to #8c5ae8        */
+  --c-fun: #e23da4;
+  --c-health: #0fa89a;
+  --c-other: #6e6e6e; /* AMENDED in the app to #767676        */
 
-  /* iOS safe areas */
-  --safe-top:    env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* radii — three, and that is the whole vocabulary */
+  --r-s: 2px; /* --radius-chip  : sticker corners     */
+  --r-m: 8px; /* --radius-field / --radius-card       */
+  --r-l: 16px; /* --radius-sheet : the sheet's top     */
 }
 
-/* Dark is authored, not derived — every token redefined, never filtered.
-   The accent inverts: deep green on paper, pale green on ink. */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper:        #131311;
-    --paper-2:      #1a1a17;
-    --card:         #1e1e1a;
-    --ink:          #eeebe1;
-    --ink-2:        #a5a398;
-    --ink-3:        #6e6d64;
-    --rule:         #2e2e28;
-    --rule-2:       #242420;
-    --accent:       #86bba6;
-    --accent-soft:  #1e2a25;
-    --red:          #c97a62;
-    --red-soft:     #2a1d18;
-    --scrim:        rgba(0, 0, 0, .55);
+  :root:not([data-theme='light']) {
+    --bg: #000000;
+    --card: #161616;
 
-    --color-cat-food:          #d69a76;
-    --color-cat-groceries:     #adb063;
-    --color-cat-transport:     #92aed1;
-    --color-cat-bills:         #c9a95c;
-    --color-cat-housing:       #bb9772;
-    --color-cat-entertainment: #b195d1;
-    --color-cat-health:        #7fbcb3;
-    --color-cat-other:         #9b988c;
+    --ink: #ffffff;
+    --ink-2: #c2c2c2;
+    --ink-3: #7d7d7d; /* AMENDED in the app to #858585      */
+
+    --line: #f2f2f2;
+    --line-2: #2e2e2e;
+
+    --red: #ff4a3d;
+    --pink: #2a1518;
+    --yellow: #ffe600; /* does not flip                      */
+    --cyan: #2fd8ce; /* does not flip                      */
+    --scrim: rgba(0, 0, 0, 0.65);
+
+    --c-food: #ff5a4e;
+    --c-groceries: #3ed874;
+    --c-transport: #5b9cff;
+    --c-bills: #ffd23f;
+    --c-housing: #a98bff;
+    --c-fun: #ff6fc4;
+    --c-health: #3fe0cf;
+    --c-other: #9e9e9e;
   }
 }
 
-/* Explicit override wins in both directions (the design ships a theme switch). */
-:root[data-theme="dark"] {
-  --paper: #131311; --paper-2: #1a1a17; --card: #1e1e1a;
-  --ink: #eeebe1; --ink-2: #a5a398; --ink-3: #6e6d64;
-  --rule: #2e2e28; --rule-2: #242420;
-  --accent: #86bba6; --accent-soft: #1e2a25;
-  --red: #c97a62; --red-soft: #2a1d18;
-  --scrim: rgba(0, 0, 0, .55);
-  --color-cat-food: #d69a76;          --color-cat-groceries: #adb063;
-  --color-cat-transport: #92aed1;     --color-cat-bills: #c9a95c;
-  --color-cat-housing: #bb9772;       --color-cat-entertainment: #b195d1;
-  --color-cat-health: #7fbcb3;        --color-cat-other: #9b988c;
-}
+/* --------------------------------------------------------------------------
+   TYPE. One family — Archivo, a hard grotesque — at heavy weights. There is no
+   scale in the source; these are the pairings read off the prototype, and
+   app/globals.css turns them into named `--text-*` entries that carry their
+   own weight and tracking.
 
-/* ── Tailwind v4 bridge ───────────────────────────────────────────────────
-   @theme cannot live inside a media query, so theme-reactive values are the
-   raw properties above and `@theme inline` maps them into Tailwind's namespace.
-   --color-* and --text-* are RESET (R-24): no bg-red-500, no text-sm.
-   ───────────────────────────────────────────────────────────────────────── */
-@theme inline {
-  --color-*: initial;
-  --text-*:  initial;
+     54 / 900 / -0.035em   sign-in wordmark          → --text-hero
+     44 / 900 / -0.03em    month total               → --text-money-xl
+     32 / 900 / -0.03em    screen title              → --text-title (30 in app)
+     30 / 900 / -0.03em    detail title              → --text-title
+     24 / 900              draft running total       → --text-money-lg
+     22 / 900 / -0.02em    empty-state headline      → --text-headline
+     19 / 900              stat-tile figure          → --text-stat
+     18 / 900 / -0.01em    sheet title               → --text-sheet
+     17 / 800              group total               → --text-money-md
+     17 / 800              full-width button         → --text-btn
+     17 / 700              group row title           → --text-row
+     17 / 600              input                     → --text-input
+     15 / 600              item name, item amount    → --text-item / money-sm
+     15 / 500              prose                     → --text-body
+     14 / 700              chip label                → --text-chip
+     12 / 900 / 0.12em     month pill, tagline       → .sticker-lg
+     11 / 800 / 0.10em     tab label, small caps     → --text-action
+     11 / 700 / 0.06em     row meta                  → --text-meta
+     10 / 800 / 0.14em     eyebrow, field label      → --text-label
+     10 / 900 / 0.12em     day heading, section head → .sticker
+      9 / 900              the two-letter disc mark  → .disc
 
-  --color-paper:       var(--paper);
-  --color-paper-2:     var(--paper-2);
-  --color-card:        var(--card);
-  --color-ink:         var(--ink);
-  --color-ink-2:       var(--ink-2);
-  --color-ink-3:       var(--ink-3);
-  --color-rule:        var(--rule);
-  --color-rule-2:      var(--rule-2);
-  --color-accent:      var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-red:         var(--red);
-  --color-red-soft:    var(--red-soft);
+   Money is `font-variant-numeric: tabular-nums` at every size. Archivo is
+   proportional, so that is the only thing holding a rupiah column together —
+   it is not a nicety here the way it was under the old mono family.
+   -------------------------------------------------------------------------- */
 
-  --color-cat-food:          var(--color-cat-food);
-  --color-cat-groceries:     var(--color-cat-groceries);
-  --color-cat-transport:     var(--color-cat-transport);
-  --color-cat-bills:         var(--color-cat-bills);
-  --color-cat-housing:       var(--color-cat-housing);
-  --color-cat-entertainment: var(--color-cat-entertainment);
-  --color-cat-health:        var(--color-cat-health);
-  --color-cat-other:         var(--color-cat-other);
+/* --------------------------------------------------------------------------
+   MEASUREMENTS, read off the 414x896 canvas.
 
-  --radius-chip:  var(--r-chip);
-  --radius-field: var(--r-field);
-  --radius-card:  var(--r-card);
+     414          the column. --container-app is 416.
+      22          horizontal page inset          → --spacing-gutter
+      44          tap-target floor               → --spacing-touch
+      50          input / field height           → --spacing-control
+      54          full-width button, tab bar     → --spacing-btn / --spacing-tab
+      56          the raised Tambah crown
+      52          item row minimum               → --spacing-row
+      60          group row minimum              → --spacing-row-lg
+      28          the category disc              → --spacing-disc
+      26          the disc inside a chip
+      74          photo tile in the picker strip
+      44 x 5      the sheet grabber
+   -------------------------------------------------------------------------- */
 
-  /* Type scale. Serif = language. Mono = bookkeeping. Money is always mono. */
-  --font-serif: var(--font-source-serif), Georgia, serif;
-  --font-mono:  var(--font-plex-mono), ui-monospace, monospace;
+/* --------------------------------------------------------------------------
+   THE CUTOUT ART, positioned on the 414x896 canvas. Mirrored in
+   components/CutoutArt.tsx; the PNGs themselves live in public/art/.
 
-  --text-money-xl: 40px;   /* month total          — mono, tabular, -0.02em */
-  --text-money-lg: 22px;   /* draft running total  — mono 500 */
-  --text-money-md: 17px;   /* expense total        — mono 500 */
-  --text-money-sm: 14px;   /* line item            — mono */
-  --text-title:    27px;   /* screen title         — serif */
-  --text-hero:     40px;   /* sign-in wordmark     — serif */
-  --text-row:      18px;   /* group row title      — serif */
-  --text-item:     16px;   /* item name            — serif */
-  --text-input:    17px;   /* EVERY input — never below 16px or Safari zooms */
-  --text-label:    10px;   /* mono, 0.2em tracking, uppercase */
-  --text-meta:     11px;   /* mono, 0.08em tracking */
-}
+     page layer (behind every screen)
+       dragon-cut     left -110  top 140  w 280  rotate -16deg
+       sheep-cut      left  258  top  34  w 200  rotate  18deg
+       mountain-cut   left  110  top 410  w 260  rotate   7deg
+       octopus-cut    left  262  top 614  w 230  rotate -14deg
+       snake-cut      left  -84  top 648  w 220  rotate  10deg
+
+     sign-in layer (on top of the pink plate, which covers the page layer)
+       snake-cut      left  246  top  70  w 250  rotate  16deg
+       sheep-cut      left  -76  top 630  w 240  rotate -12deg
+   -------------------------------------------------------------------------- */

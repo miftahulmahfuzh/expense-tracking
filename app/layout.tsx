@@ -53,8 +53,8 @@ export const viewport: Viewport = {
    * If text is too small, change the type scale, not the viewport.
    */
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f0ede4' },
-    { media: '(prefers-color-scheme: dark)', color: '#131311' },
+    { media: '(prefers-color-scheme: light)', color: '#e9e9e6' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 }
 

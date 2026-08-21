@@ -19,7 +19,7 @@ import { addMonths, monthLabel, type MonthKey } from '@/lib/format'
 
 function Chevron({ dir }: { dir: 'prev' | 'next' }) {
   return (
-    <span aria-hidden="true" className="text-title leading-none">
+    <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
       {dir === 'prev' ? '‹' : '›'}
     </span>
   )
@@ -55,14 +55,17 @@ export default function MonthSwitcher({
           href={`/stats?m=${prev}`}
           scroll={false}
           aria-label={`Bulan sebelumnya, ${monthLabel(prev)}`}
-          className={cn(CHEVRON_BOX, '-ml-2.5 press text-ink-2')}
+          className={cn(CHEVRON_BOX, '-ml-2.5 press text-ink')}
         >
           <Chevron dir="prev" />
         </Link>
       )}
 
-      {/* The route's one <h1>. Mono chrome label, matching /m/[month]. */}
-      <h1 className="eyebrow">{monthLabel(selectedMonth)}</h1>
+      {/* An <h2>, not an <h1>: /stats now carries a real screen title in its header band,
+          and two <h1>s on one route is a heading-structure bug that nothing visibly fails
+          on. The same yellow sticker as /m/[month], because the two month pagers are the
+          same gesture and should read as the same control. */}
+      <h2 className="sticker-lg">{monthLabel(selectedMonth)}</h2>
 
       {nextBlocked ? (
         <span aria-disabled="true" className={cn(CHEVRON_BOX, '-mr-2.5 text-rule')}>
@@ -73,7 +76,7 @@ export default function MonthSwitcher({
           href={`/stats?m=${next}`}
           scroll={false}
           aria-label={`Bulan berikutnya, ${monthLabel(next)}`}
-          className={cn(CHEVRON_BOX, '-mr-2.5 press text-ink-2')}
+          className={cn(CHEVRON_BOX, '-mr-2.5 press text-ink')}
         >
           <Chevron dir="next" />
         </Link>

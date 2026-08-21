@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
-import { Card, EmptyState, Money } from '@/components/ui'
+import { Card, EmptyState, INK_STICKER, Money } from '@/components/ui'
 import { requireUserId } from '@/lib/auth/requireUserId'
 import { getMonthGroups } from '@/lib/db/queries'
 import { dayLabel, monthLabel } from '@/lib/format'
@@ -71,12 +71,16 @@ export default async function MonthPage({ params }: PageProps<'/m/[month]'>) {
              * or no stickiness. The month total is what has to stay on screen while scrolling,
              * and it does.
              */}
+            {/* The day heading is an INK sticker — the design's black-on-page label, the
+                only place the page inverts. It reads as a printed tab on the day's card. */}
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="eyebrow">{dayLabel(bucket.day)}</h2>
+              <h2 className="sticker" style={INK_STICKER}>
+                {dayLabel(bucket.day)}
+              </h2>
               <Money value={bucket.totalIdr} size="sm" tone="muted" />
             </div>
 
-            <Card as="ul" padded={false} className="mt-2 overflow-hidden">
+            <Card as="ul" padded={false} className="mt-2 overflow-hidden px-4">
               {bucket.rows.map((group) => (
                 <GroupRow key={group.id} group={group} />
               ))}

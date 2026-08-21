@@ -10,12 +10,18 @@ import type { Delta } from '@/lib/stats/series'
  * chart would be the one-bar-bar-chart anti-pattern with an extra bar. The sparkline slot is
  * omitted because the 12-month chart directly below already is the sparkline, at full size.
  *
- * COLOUR JOB = STATUS, not categorical. Spending more is bad, so up wears `--red` and down
- * wears `--accent` — which is also exactly how F10 typed `Money`'s `danger` / `success`
- * tones ("Spending more than last month" / "Spending less"), so this tile is using the
- * design's own vocabulary rather than inventing one. And because status colour may never
- * travel alone, every state ships an arrow glyph AND the Indonesian word AND the basis in
- * words. In a greyscale screenshot nothing is lost.
+ * COLOUR JOB = STATUS, not categorical. Spending more is bad, so up wears the red and down
+ * the green — the same two `Money` types as `danger` / `success`, so this tile uses the
+ * system's vocabulary rather than inventing one. Both are the darkened `-ink` twins: this
+ * is TYPE on a white card, and the design's fill-strength red measures 3.79:1 there.
+ *
+ * The design renders this as a filled tile with black type ("03 App Prototype"); here it is
+ * a line under the hero total instead, because this screen puts the month switcher, the
+ * total and the delta in ONE card rather than in a 2-up tile row. Same reading, same two
+ * colours, and it keeps the hero figure the only large number on the page.
+ *
+ * Because status colour may never travel alone, every state ships an arrow glyph AND the
+ * Indonesian word AND the basis in words. In a greyscale screenshot nothing is lost.
  */
 export default function DeltaTile({ delta }: { delta: Delta }) {
   const basisLabel =
@@ -45,14 +51,14 @@ export default function DeltaTile({ delta }: { delta: Delta }) {
   const word = delta.direction === 'up' ? 'Naik' : delta.direction === 'down' ? 'Turun' : 'Setara'
   const tone =
     delta.direction === 'up'
-      ? 'text-red'
+      ? 'text-red-ink'
       : delta.direction === 'down'
-        ? 'text-accent'
+        ? 'text-green-ink'
         : 'text-ink-2'
 
   return (
     <Wrap basis={basisLabel}>
-      <span className={cn('font-mono tabular', tone)}>
+      <span className={cn('tabular font-extrabold', tone)}>
         <span aria-hidden="true">{glyph} </span>
         {word}
         {delta.direction === 'flat'
@@ -69,7 +75,7 @@ function Wrap({ children, basis }: { children: React.ReactNode; basis: string })
   return (
     <div className="mt-2">
       <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-body">{children}</p>
-      <p className="mt-1 font-mono text-meta text-ink-3">{basis}</p>
+      <p className="mt-1 text-meta text-ink-3">{basis}</p>
     </div>
   )
 }

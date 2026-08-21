@@ -73,14 +73,14 @@ export function PasteStage({
         <p className="mb-3 text-body text-ink-2">{SUBHEADING}</p>
 
         {restoredNotice ? (
-          <div className="mb-3 flex items-center gap-3 rounded-card border border-rule bg-paper-2 px-3 py-2">
+          <div className="mb-3 flex items-center gap-3 rounded-card bg-card px-3 py-2">
             {/* A one-line notice rather than a silent restore: quietly refilling a screen
                 with a stale draft is more confusing than saying so. */}
             <span className="flex-1 text-body">{RESTORED_NOTICE}</span>
             <button
               type="button"
               onClick={onDiscardRestored}
-              className="min-h-touch press px-2 font-mono text-action text-ink-2 uppercase"
+              className="min-h-touch press px-2 text-action text-ink-2 uppercase"
             >
               {RESTORED_DISCARD}
             </button>
@@ -111,7 +111,7 @@ export function PasteStage({
 
             {failure.code === 'input_too_long' ? (
               // A live count, because "too long" without a number is not actionable.
-              <p className="mt-1.5 font-mono tabular text-meta text-ink-2">
+              <p className="mt-1.5 tabular text-meta text-ink-2">
                 {rawText.length.toLocaleString('id-ID')} karakter
               </p>
             ) : null}
@@ -133,7 +133,7 @@ export function PasteStage({
             autoCorrect="off"
             spellCheck={false}
             // No enterKeyHint: Enter must insert a newline here, not submit.
-            className="font-mono"
+            className="font-medium"
           />
         </Field>
 
@@ -146,7 +146,7 @@ export function PasteStage({
         {loading ? (
           <div className="mt-5">
             {elapsedMs > slowAfterMs ? (
-              <p className="mb-2 font-mono text-meta text-ink-3" aria-live="polite">
+              <p className="mb-2 text-meta text-ink-3" aria-live="polite">
                 {SLOW_HINT}
               </p>
             ) : null}
@@ -165,7 +165,7 @@ export function PasteStage({
           <button
             type="button"
             onClick={onManual}
-            className="min-h-touch press px-3 font-mono text-action text-ink-3 uppercase"
+            className="min-h-touch press px-3 text-action text-ink-3 uppercase"
           >
             {MANUAL_CTA}
           </button>

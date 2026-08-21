@@ -14,8 +14,10 @@ import { cn } from '@/lib/cn'
  * indicator by construction. Adding `env(safe-area-inset-bottom)` again would double it and
  * leave a visible gap under the button on a notched device.
  *
- * `bg-card/95 backdrop-blur` rather than an opaque fill: content scrolling under the bar
- * should be legible-but-receding, which is what tells you there is more list below.
+ * OPAQUE `bg-card`, and the blur is gone. The previous system floated a 95%-alpha bar with
+ * a backdrop-blur so content receded under it; this design has no glass anywhere, and a
+ * blurred column of rupiah reads as smudged digits rather than as depth. The top hairline
+ * plus a flat white block is the whole separation.
  *
  * `ref` is forwarded because "receding" also means OCCLUDING, and the only component that can
  * report how much of the pane this bar is covering is this one. `lib/scroll/revealAboveBar`
@@ -35,7 +37,7 @@ export function StickyBar({
     <div
       ref={ref}
       className={cn(
-        'sticky bottom-0 z-20 mt-auto border-t border-rule bg-card/95 px-gutter pt-3 pb-3 backdrop-blur',
+        'sticky bottom-0 z-20 mt-auto border-t border-rule bg-card px-gutter pt-3 pb-3',
         className,
       )}
     >

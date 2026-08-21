@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useOptimistic, useTransition } from 'react'
 
-import { Money } from '@/components/ui'
+import { INK_STICKER, Money } from '@/components/ui'
 import { monthMedium } from '@/lib/stats/format'
 import type { MonthPoint } from '@/lib/stats/series'
 
@@ -75,11 +75,8 @@ export default function MonthlyChart({ series, selectedMonth }: Props) {
   if (!point) return null
 
   return (
-    <section
-      className="rounded-card border border-rule bg-card p-4"
-      aria-labelledby="stats-chart-title"
-    >
-      <h2 className="eyebrow" id="stats-chart-title">
+    <section className="rounded-card bg-card p-4" aria-labelledby="stats-chart-title">
+      <h2 className="sticker" style={INK_STICKER} id="stats-chart-title">
         {series.length} bulan terakhir
       </h2>
 
@@ -89,7 +86,7 @@ export default function MonthlyChart({ series, selectedMonth }: Props) {
        * new value to a screen reader on selection.
        */}
       <p
-        className="mt-2.5 flex min-h-5 flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-meta text-ink-3"
+        className="mt-2.5 flex min-h-5 flex-wrap items-baseline gap-x-2 gap-y-1 text-meta text-ink-3"
         aria-live="polite"
       >
         <span>{monthMedium(point.month)}</span>
@@ -104,9 +101,7 @@ export default function MonthlyChart({ series, selectedMonth }: Props) {
       </div>
 
       {hasPartial ? (
-        <p className="mt-1.5 font-mono text-meta text-ink-3">
-          • Bulan berjalan — belum penuh sebulan.
-        </p>
+        <p className="mt-1.5 text-meta text-ink-3">• Bulan berjalan — belum penuh sebulan.</p>
       ) : null}
 
       {/*
@@ -115,7 +110,7 @@ export default function MonthlyChart({ series, selectedMonth }: Props) {
        * discharges the contrast WARN on the in-progress bar's lighter step.
        */}
       <details className="group mt-2">
-        <summary className="cursor-pointer list-none py-2.5 font-mono text-meta text-ink-2 [&::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none py-2.5 text-meta text-ink-2 [&::-webkit-details-marker]:hidden">
           <span aria-hidden="true" className="group-open:hidden">
             ▸{' '}
           </span>
@@ -138,14 +133,12 @@ export default function MonthlyChart({ series, selectedMonth }: Props) {
           </thead>
           <tbody>
             {series.map((p) => (
-              <tr key={p.month} className="border-t border-rule-2">
+              <tr key={p.month} className="border-t border-rule">
                 <th scope="row" className="py-1.5 text-left text-body font-normal">
                   <Link href={`/m/${p.month}`} className="underline underline-offset-2">
                     {monthMedium(p.month)}
                   </Link>
-                  {p.isPartial ? (
-                    <span className="font-mono text-meta text-ink-3"> (berjalan)</span>
-                  ) : null}
+                  {p.isPartial ? <span className="text-meta text-ink-3"> (berjalan)</span> : null}
                 </th>
                 <td className="py-1.5 text-right">
                   <Money value={p.totalIdr} size="sm" tone="muted" />

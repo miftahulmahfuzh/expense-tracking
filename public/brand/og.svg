@@ -12,12 +12,14 @@
     machine runs the script to render a <text> element the same way twice.
 
     The art is the money rail from public/brand/mark.svg — three right-aligned bars of
-    decreasing length, a column of numbers — scaled and centred on the ink ground. Same two
-    colours as the icon: paper #f0ede4 on the ink #20211d that the app's raised controls use.
+    decreasing length, a column of numbers — scaled and centred on the black ground. Same
+    three colours as the icon, repainted for the 2026-08-21 design pull: the brand red
+    #e0281e on the lead bar, paper #e9e9e6 on the other two, over the #0d0d0d that the tab
+    bar uses.
   -->
-  <rect width="1200" height="630" fill="#20211d"/>
-  <g fill="#f0ede4">
-    <rect x="360" y="243" width="480" height="68" rx="8"/>
+  <rect width="1200" height="630" fill="#0d0d0d"/>
+  <rect x="360" y="243" width="480" height="68" rx="8" fill="#e0281e"/>
+  <g fill="#e9e9e6">
     <rect x="495" y="352" width="345" height="68" rx="8"/>
     <rect x="600" y="461" width="240" height="68" rx="8"/>
   </g>

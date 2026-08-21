@@ -137,14 +137,14 @@ export function Lightbox({
            these keep the counter and ✕ clear of the notch on an XS Max. */
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.75rem)' }}
       >
-        <span className="rounded-full bg-white/15 px-3 py-1 font-mono tabular text-meta text-white">
+        <span className="rounded-full bg-yellow px-3 py-1 tabular text-action text-[#0d0d0d]">
           {index + 1} / {photos.length}
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Tutup"
-          className="pointer-events-auto grid size-touch press place-items-center rounded-full bg-white/15 font-mono text-row text-white"
+          className="pointer-events-auto grid size-touch press place-items-center rounded-full bg-white/15 text-row text-white"
         >
           <span aria-hidden="true">✕</span>
         </button>
@@ -166,14 +166,14 @@ export function Lightbox({
                 type="button"
                 onClick={handleDelete}
                 disabled={pending}
-                className="h-touch press rounded-field bg-red px-5 font-mono text-action tracking-[0.14em] text-white uppercase disabled:opacity-60"
+                className="h-touch press rounded-field bg-red px-5 text-action tracking-[0.14em] text-white uppercase disabled:opacity-60"
               >
                 {pending ? 'Menghapus…' : 'Hapus foto ini'}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="h-touch press rounded-field bg-white/15 px-5 font-mono text-action tracking-[0.14em] text-white uppercase"
+                className="h-touch press rounded-field bg-white/15 px-5 text-action tracking-[0.14em] text-white uppercase"
               >
                 Batal
               </button>
@@ -182,7 +182,7 @@ export function Lightbox({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="h-touch press rounded-field bg-white/15 px-5 font-mono text-action tracking-[0.14em] text-white uppercase"
+              className="h-touch press rounded-field bg-white/15 px-5 text-action tracking-[0.14em] text-white uppercase"
             >
               Hapus
             </button>

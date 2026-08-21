@@ -1,5 +1,5 @@
 /* ==========================================================================
-   F08 — /stats chart chrome.
+   /stats chart chrome.
 
    Route-scoped and deliberately small. Everything on this page that CAN be a
    Tailwind utility IS one; this file holds only the two things utilities
@@ -15,17 +15,15 @@
      2. DESCENDANT SELECTORS into Recharts' own DOM (.recharts-*), which no
         utility class can reach from the outside.
 
-   NO COLOUR IS DEFINED HERE. Every value is an F10 token from
-   app/globals.css. F08 owns exactly one new token, `--accent-2`, and it is
-   declared there beside `--accent` because it has to flip with the scheme in
-   all three theme blocks.
+   NO COLOUR IS DEFINED HERE. Every value is a token from app/globals.css.
+   This route owns one, `--chart-bar`, declared there in all three theme blocks
+   because it has to flip with the scheme.
 
-   Why the accent and not a chart palette of its own: the F08 plan specified a
-   blue ramp (#2a78d6 …) measured against surfaces #fcfcfb / #1a1a19. Neither
-   the hues nor the surfaces survived — design R-39 assigns the 12-month chart
-   `--accent`, R-28 makes F10's real surfaces (#fbfaf5 / #1e1e1a) the ones that
-   count, and there is exactly one accent in this design. A second blue would
-   be a foreign body on a warm-paper page.
+   The 2026-08-21 design pull replaced the green accent this chart used to wear
+   with its own two-step: PAST MONTHS ARE GREY, THE CURRENT MONTH IS RED
+   ("03 App Prototype", the Statistik screen). That reads as one series with
+   one emphasised bar, which is exactly the encoding — the second step is data
+   COMPLETENESS, not a value ramp.
    ========================================================================== */
 
 /* ── the bars ───────────────────────────────────────────────────────────────
@@ -37,15 +35,18 @@
    validator in --ordinal mode, both schemes, and backed by two non-colour
    channels anyway: the tick is suffixed `•` and the caption says so.
 
-   Design R-39 put the completed months in `--rule`. Reversed on measurement:
-   `--rule` is 1.43:1 on card in light and 1.22:1 in dark, so eleven of twelve
-   bars would sit below every contrast floor with no relief (only the selected
-   bar carries a label). `--rule` keeps its real job below — the gridline. */
+   The design draws the completed months in its `--line-2`, which is this
+   repo's `--rule`. AMENDED on measurement, as it was under the previous
+   system: `--rule` is 1.44:1 on card in light and 1.22:1 in dark, so eleven of
+   twelve bars would sit below every contrast floor with no relief (only the
+   selected bar carries a label). `--chart-bar` is the same neutral pushed to
+   3.23:1 light / 3.48:1 dark. `--rule` keeps its real job below — the
+   gridline. The current month keeps the design's red exactly (4.66 / 5.33). */
 .chart-bar--complete {
-  fill: var(--accent);
+  fill: var(--chart-bar);
 }
 .chart-bar--partial {
-  fill: var(--accent-2);
+  fill: var(--red);
 }
 
 /* ── grid, axes, ticks ─────────────────────────────────────────────────────
@@ -66,12 +67,14 @@
 }
 
 /* SVG text takes its colour from `fill`, not `color`, so `text-ink-3` cannot
-   do this job. Mono because every number in this app is mono. */
+   do this job. One family now, so the alignment comes from `tabular-nums`
+   alone — and the weight is what makes a 10px tick legible at all. */
 .chart-axis .recharts-cartesian-axis-tick-value,
 .chart-tick,
 .chart-caplabel {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
+  font-weight: 800;
 }
 
 .chart-axis .recharts-cartesian-axis-tick-value {
@@ -85,13 +88,15 @@
 }
 
 /* Selection emphasis WITHOUT inventing a hue: the tick goes to primary ink and
-   gains a 2px accent rule. The bar fill is untouched — the entity's colour
-   never moves on selection (dataviz: the recolor-on-filter anti-pattern). */
+   gains a 2px rule in the brand red. The bar fill is untouched — the entity's
+   colour never moves on selection (dataviz: the recolor-on-filter
+   anti-pattern), which is also why the red bar means "this month is still
+   running" and never "this month is selected". */
 .chart-tick--sel {
   fill: var(--ink);
 }
 .chart-tick__rule {
-  stroke: var(--accent);
+  stroke: var(--red);
   stroke-width: 2;
   stroke-linecap: round;
 }

@@ -180,10 +180,7 @@ export function ReviewStage(props: ReviewStageProps) {
             <p className="text-body">{parseFailure.message}</p>
           </div>
         ) : degraded ? (
-          <div
-            role="status"
-            className="mb-4 rounded-card border border-rule-strong bg-paper-2 px-3 py-2.5"
-          >
+          <div role="status" className="mb-4 rounded-card bg-pink px-3 py-2.5">
             <p className="text-body">{DEGRADED_NOTICE}</p>
           </div>
         ) : null}
@@ -215,7 +212,7 @@ export function ReviewStage(props: ReviewStageProps) {
 
         <div className="mb-2 flex items-baseline justify-between">
           <h2 className="eyebrow">Item</h2>
-          <span className="font-mono tabular text-meta text-ink-3">{draft.items.length}</span>
+          <span className="tabular text-meta text-ink-3">{draft.items.length}</span>
         </div>
 
         <Card as="ul" padded="rows">
@@ -242,13 +239,13 @@ export function ReviewStage(props: ReviewStageProps) {
           ref={addRef}
           onClick={props.onAddItem}
           disabled={saving}
-          className="mt-2 min-h-touch w-full press rounded-field border border-dashed border-rule-strong font-mono text-action text-ink-2 uppercase"
+          className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2 uppercase"
         >
           {ADD_ITEM_CTA}
         </button>
 
         {errors.form ? (
-          <p role="alert" className="mt-2 font-mono text-meta text-red">
+          <p role="alert" className="mt-2 text-meta text-red-ink">
             {errors.form}
           </p>
         ) : null}
@@ -258,9 +255,9 @@ export function ReviewStage(props: ReviewStageProps) {
           good parse nobody wants to see it again; kept because after a BAD parse it is the
           fastest fix — edit one line, re-run.
         */}
-        <details className="mt-5 rounded-card border border-rule px-3 py-2" open={showRaw}>
+        <details className="mt-5 rounded-card bg-card px-3 py-2" open={showRaw}>
           <summary
-            className="flex min-h-touch cursor-pointer list-none items-center font-mono text-action text-ink-2 uppercase"
+            className="flex min-h-touch cursor-pointer list-none items-center text-action text-ink-2 uppercase"
             onClick={(event) => {
               // Controlled, so the disclosure state survives a re-render of the list above it.
               event.preventDefault()
@@ -280,7 +277,7 @@ export function ReviewStage(props: ReviewStageProps) {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              className="bg-paper font-mono"
+              className="bg-paper"
             />
           </Field>
 
@@ -363,13 +360,13 @@ export function ReviewStage(props: ReviewStageProps) {
         </div>
 
         {save.kind === 'error' ? (
-          <p role="alert" className="mb-2 font-mono text-meta text-red">
+          <p role="alert" className="mb-2 text-meta text-red-ink">
             {save.message}
           </p>
         ) : null}
 
         {errorCount > 0 ? (
-          <p role="alert" className="mb-2 font-mono text-meta text-red">
+          <p role="alert" className="mb-2 text-meta text-red-ink">
             {errorSummary(errorCount)}
           </p>
         ) : null}

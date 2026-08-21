@@ -1,26 +1,184 @@
-# Design integration — pulled 2026-08-19
+# Design integration
 
-Source: Claude Design project `8c505e75-e97a-4c8e-b7c0-04aeb074bc7f`, files
-`00 Foundations`, `01 Components`, `02 Sheet and Media`, `03 App Prototype`.
-Pulled via `DesignSync`. Normalised tokens live in `docs/design/tokens.css`.
+Source: Claude Design project `8c505e75-e97a-4c8e-b7c0-04aeb074bc7f`. Pulled via
+`DesignSync`. The design's own values are mirrored verbatim in `docs/design/tokens.css`;
+what the app actually ships is `app/globals.css`, and every difference between the two is
+an amendment recorded below and verified by `scripts/palette-check.py`.
 
-**The design wins over F10's plan wherever they disagree**, except where an iOS
-constraint from F10 §3 is at stake — and in the one place that mattered, the design
-had already got the constraint right. Rulings continue the reconciliation numbering.
+Two pulls so far. **The 2026-08-21 pull is the current system.** The 2026-08-19 section
+further down is kept because most of its non-visual rulings still stand, but every colour,
+both fonts and the whole type scale in it are superseded.
 
 ---
+
+# 2026-08-21 — "flat, loud, graphic" (CURRENT)
+
+Files: `00 Foundations`, `01 Components`, `02 Sheet and Media`,
+**`04 App Prototype (Cutout Art)`**.
+
+`04` differs from `03 App Prototype` by exactly two lines: every `assets/<creature>.png`
+became `assets/<creature>-cut.png`. Same tokens, same layout, same everything — the artwork
+just lost the white plate behind it. **v4 is the one this repo integrates**, and the
+difference matters more in the app than it did on the canvas, because the art sits on
+`paper` in light mode and on TRUE BLACK in dark, where a white square would have been a
+white square.
 
 ## The direction, in one paragraph
 
-Warm paper (`#f0ede4`) and near-black ink, not white-and-grey. **Source Serif 4** for
-anything that is *language* — expense titles, day headings, prose, empty states — and
-**IBM Plex Mono** for anything that is *bookkeeping* — every amount, date, count, label,
-button and the tab bar. Money is bookkeeping, so money is always mono, which produces the
-whole hierarchy from one rule and gives tabular figures by construction rather than by CSS
-trick. Eight muted earthy category hues, each also carrying a **two-letter code** so colour
-never carries meaning alone. **No shadows anywhere.**
+Cool grey paper (`#e9e9e6`) and near-black ink. **One typeface — Archivo**, a hard
+grotesque, at weights 500–900; the old serif/mono split is gone and **weight is the
+hierarchy** (900 hero, 800 total, 700 row title, 600 item, 500 prose). Money gets its
+column alignment from `font-variant-numeric: tabular-nums`, which is now load-bearing
+rather than a nicety, because Archivo is proportional. **Red is the brand and the one
+primary action per screen. Yellow is the highlighter** — month pill, active tab, the toast.
+Pink and cyan are big background moments, never text. Eight saturated category hues, each
+drawn as a **disc carrying a bold black two-letter mark**. Dark mode sits on true black and
+stays saturated instead of dimming. **No borders on cards and no shadows anywhere**:
+surfaces are flat blocks separated by contrast, exactly like print. Five **cut-out
+creatures** scatter behind every screen.
+
+## What changed from 2026-08-19
+
+| | was | is |
+|---|---|---|
+| page | warm paper `#f0ede4` | cool grey `#e9e9e6`, true black in dark |
+| type | Source Serif 4 + IBM Plex Mono | Archivo alone, 500–900 |
+| hierarchy | family (language vs bookkeeping) | weight |
+| money | mono, tabular by construction | Archivo + `tabular-nums` |
+| card | hairline border + lighter fill | fill only, no border |
+| category mark | tinted 2-letter code on the page | black 2-letter code on a colour disc |
+| selected chip | category fill, `paper` text | category fill, black text, inverted disc |
+| accent | one deep green | gone — yellow highlights, red acts |
+| tab bar | `paper` with a hairline and an ink crown | solid black chassis, yellow active, red crown |
+| toast | inverted to ink | yellow sticker, both schemes |
+| empty state | dashed hairline on the page | pink plate, dashed `ink-3` |
+| chart | accent + a second accent step | grey past months, red current month |
+| buttons | mono, uppercase, tracked, outlined | sentence case, 800, flat blocks |
+| background | nothing | five cut-out creatures |
+
+## R-42 · The token NAMES survive; only their values move.
+
+`paper`, `card`, `ink`, `ink-2`, `ink-3`, `rule`, `rule-strong`, `red`, `cat-*` and the
+whole `--text-*` scale keep their names and are re-pointed. **Ruling: re-point, do not
+rename.** Five features' worth of markup is written against these names, and a rename would
+have turned a visual revamp into a 6,500-line find-and-replace whose diff nobody could
+review. The design's own vocabulary is recorded in `tokens.css` beside each token
+(`--bg` → `paper`, `--line-2` → `rule`, `--line` → `rule-strong`).
+
+Names that genuinely died, because their meaning did: `--accent`, `--accent-2`,
+`--accent-soft`, `--font-serif`, `--font-mono`. Each of their ~50 call sites was changed by
+hand rather than aliased, because "the green one" no longer means anything here.
+
+## R-43 · Weight and tracking belong in the type scale, not at the call site.
+
+With one family, `text-label` has to carry 10px **and 800 and 0.14em** or every call site
+re-specifies them and they drift. **Ruling: every `--text-*` entry declares its own
+`--font-weight` and `--letter-spacing`.** This is also what let `font-mono` / `font-serif`
+be deleted from ~84 call sites without replacing them with anything.
+
+## R-44 · The category mark is a DISC, and `CategoryCode` is now an alias.
+
+The design's pictogram is a solid colour circle with a bold black two-letter mark —
+"like event badges" (`00 Foundations`). The bare tinted code the old system used is gone.
+`CategoryDisc` is the new component; **`CategoryCode` is exported as an alias of it** so the
+four feature plans written against that name keep compiling.
+
+## R-45 · Three light-mode hues, `cat-food` and both `ink-3`s are AMENDED for contrast.
+
+Same standard, and the same reasoning, as the 2026-08-19 pull's `ink-3` amendment. Every
+number below is produced by `scripts/palette-check.py`, which is the gate — it exits
+non-zero on a contrast failure and currently reports **0 failures**.
+
+| token | design | shipped | why |
+|---|---|---|---|
+| `ink-3` light | `#8f8f8f` | `#666666` | 2.63:1 on paper. Now 4.72 paper / 5.74 card. |
+| `ink-3` dark | `#7d7d7d` | `#858585` | 4.40:1 on card. Now 4.90 card / 5.69 paper. |
+| `cat-food` | `#e0281e` | `#e22c22` | 4.49:1 under the black mark — one hundredth under. |
+| `cat-transport` | `#1d6fe0` | `#2273e6` | 4.18:1 under the black mark. Now 4.66. |
+| `cat-housing` | `#7a44e0` | `#8c5ae8` | 3.46:1 under the black mark. Now 4.74. |
+| `cat-other` | `#6e6e6e` | `#767676` | 4.12:1 under the black mark. Now 4.62. |
+
+The **brand** `--red` keeps the design's exact `#e0281e`; only the food *disc* moves, and by
+an amount nobody can see with the two side by side.
+
+Three tokens are ADDED for the same reason, all following the `--rule-strong` precedent of
+the previous pull — a second value for a job the single design value cannot do:
+
+- **`--red-ink`** (`#b31610` light) — red as **type**. `--red` measures 3.79:1 on paper and
+  3.14:1 on the pink plate, and a form error and a "Hapus" button are made of red type.
+  Fills use `--red`, type uses `--red-ink`. Same value in dark, where the red already clears.
+- **`--red-fg`** (`#ffffff` light, `#0d0d0d` dark) — type printed **on** a red fill. The
+  design hard-codes `#fff`, which is right in light (4.68) and a **failure in dark** (3.33),
+  because dark's red is a bright `#ff4a3d`. The fill stays the design's value in both.
+- **`--green-ink`** (`#12692f` light) — "spending less". The design has no green and
+  expresses this by filling the delta tile; where it has to be type, the disc green measures
+  3.32:1 on card.
+- **`--chart-bar`** (`#8f8f8f` / `#6e6e6e`) — the 12-month chart's completed months. The
+  design draws them in `--line-2`, which is 1.44:1 on card: eleven of twelve bars below
+  every floor, with only the selected bar carrying a label.
+
+## R-46 · Two things the design gets wrong that are NOT amended, and why.
+
+**The borderless field.** A field is a white block with no border until an error turns it
+red. That is 1.23:1 against the page, below WCAG 1.4.11's 3:1 for the boundary that
+identifies a control. **Ruling: follow the design.** The amendments above are all *colour
+values*, which are invisible; adding a border back is a *structural* change that would
+visibly contradict the revamp. Every field still carries a real `<label>`, a 2px
+focus-visible ring, and full column width. The one-line revert is in `CONTROL_CLASS` and
+`TextArea`: `border-transparent` → `border-rule-strong`.
+
+**The breakdown bar on its track.** Four of eight fills are under 3:1 against the `rule`
+track in light mode. **There is no track colour that fixes it** — the eight fills span
+L\* 0.17 to 0.45, so any single track fails at one end or the other. Waived, with the
+reasoning written out in `BAR_WAIVER` in `scripts/palette-check.py`: every row states its
+label, its rupiah and its percent as text above the bar, and the bar carries a `role="img"`
+label repeating all three.
+
+## R-47 · The cut-out art is a `background-image`, not an `<img>`.
+
+Three reasons, all load-bearing: decorative art has no business in the accessibility tree
+and a CSS background is invisible to it by construction; a **missing file paints nothing**,
+where a broken `<img>` paints a broken-image glyph; and `background-size: contain` serves
+every device pixel ratio without a `srcset`.
+
+The clipping lives on the art layer, **not** on the column. `overflow-hidden` on the column
+would make it a scroll container, and `/m/[month]`'s sticky header would then stick to a box
+that never scrolls — i.e. stop sticking, silently.
+
+## R-48 · ⚠️ The five PNGs are not in this repo yet.
+
+`get_file` truncates at 256 KiB and each `*-cut.png` is larger, so the art could not be
+pulled with the rest of the design. `components/CutoutArt.tsx` is complete and wired; it
+currently resolves five 404s and paints nothing, which is exactly the degradation R-47 was
+built for.
+
+**To finish it:** export the five cut-outs from the design canvas and save them as
+`public/art/dragon.png`, `sheep.png`, `mountain.png`, `octopus.png`, `snake.png` —
+transparent PNG, square, and worth compressing hard, because five decorative images on a
+mobile-first app over an Indonesian connection is exactly the kind of weight this repo
+budgets for elsewhere. No code change is needed once they are there.
+
+## R-49 · Measurements to build to (supersedes R-41)
+
+Screen gutter **22px**; 4pt spacing base. Buttons **54px**, small variant **44px**. Inputs
+**50px** at **17px** text. Item rows **min 52px**, group rows **min 60px**. The category
+disc is **28px** (26 inside a chip), its mark 9px/900. Delete target a full **44×44**.
+Photo thumbnails 3-up; the draft strip uses **74×74** tiles. Sheet: grabber **44×5** in
+`--rule-strong`, 16px top corners, no border, no close button — tapping the scrim dismisses.
+Tab bar **54px** of solid `#0d0d0d` with a **56px** red crown breaking its top edge.
+Lightbox goes true black **in both schemes**, with a yellow counter pill.
 
 ---
+
+# 2026-08-19 — warm paper and two serifs (SUPERSEDED)
+
+> Everything about **colour, typeface and type scale** below is superseded by the
+> 2026-08-21 pull. What still stands: **R-34** (category codes, and the `CategoryMeta`
+> contract change), **R-37** (`inputMode="numeric"`), **R-38** (no tab bar on `/e/[id]`),
+> **R-39** (the breakdown is a bar list, not a donut) and **R-40** (the Indonesian copy is
+> fixed). **R-35** is reversed in substance but not in method — still two webfonts' worth of
+> reasoning, now spent on one. **R-36** (zero shadows) is not just kept but tightened: the
+> card hairline is gone too.
 
 ## R-34 · Category identity is a two-letter mono code, not an emoji. ⚠️ contract change
 

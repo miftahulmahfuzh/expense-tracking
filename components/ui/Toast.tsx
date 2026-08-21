@@ -41,9 +41,12 @@ interface ToastState extends ToastOptions {
  * consequence, confirmed against F07: two destructive actions in quick succession lose the
  * first undo. That is the right trade against a stack of overlays covering the tab bar.
  *
- * The toast inverts to ink so it reads as a different layer without a shadow (design R-36),
- * and it is where destructive actions get an "Urungkan" instead of a confirm dialog — undo
- * after the fact beats a modal before it, on every tap that is usually correct.
+ * The toast is a YELLOW STICKER — the same highlighter that marks the month pill and the
+ * active tab, at full width. It does not flip with the theme: yellow on black type is
+ * impossible to miss for the four seconds it lives, in either scheme, and a toast that
+ * matched the page would be a message you could scroll past. It is also where destructive
+ * actions get an "Urungkan" instead of a confirm dialog — undo after the fact beats a modal
+ * before it, on every tap that is usually correct.
  */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toast, setToast] = React.useState<ToastState | null>(null)
@@ -101,17 +104,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             key={toast.id}
             className={cn(
               'pointer-events-auto flex w-full max-w-app items-center gap-3',
-              'rounded-field bg-ink py-3.5 pr-2 pl-4',
+              'rounded-field bg-yellow py-3 pr-2 pl-4',
               'motion-safe:animate-[toast-in_220ms_var(--ease-out-soft)]',
             )}
           >
             <p
               className={cn(
-                'min-w-0 flex-1 text-body',
-                // The surface is ink in both schemes, so the message is always `paper`.
-                // `danger` warms it with red-soft rather than --red, which would be
-                // unreadable on ink in light mode.
-                toast.tone === 'danger' ? 'text-red-soft' : 'text-paper',
+                // The surface is yellow in both schemes, so the message is always the
+                // design's near-black — never `ink`, which inverts to white in dark mode
+                // and would vanish. `danger` reaches for the darkened red twin, which
+                // clears 4.5:1 on yellow; the brand `--red` does not.
+                'min-w-0 flex-1 text-chip',
+                toast.tone === 'danger' ? 'text-[#8a1410]' : 'text-[#0d0d0d]',
               )}
             >
               {toast.message}
@@ -123,7 +127,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   toast.action?.onAction()
                   dismiss()
                 }}
-                className="min-h-touch shrink-0 press px-3 font-mono text-action text-paper uppercase underline underline-offset-[3px]"
+                className="min-h-touch shrink-0 press px-3 text-chip font-black text-[#0d0d0d] underline underline-offset-[3px]"
               >
                 {toast.action.label}
               </button>

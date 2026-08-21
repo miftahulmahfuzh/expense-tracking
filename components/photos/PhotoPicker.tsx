@@ -133,7 +133,7 @@ export function PhotoPicker(props: PhotoPickerProps) {
     <section className={className}>
       <div className="mb-2 flex items-baseline justify-between">
         <h2 className="eyebrow">Foto</h2>
-        <span className="font-mono tabular text-meta text-ink-3">
+        <span className="tabular text-meta text-ink-3">
           {committedCount}/{max}
         </span>
       </div>
@@ -150,7 +150,7 @@ export function PhotoPicker(props: PhotoPickerProps) {
           props.value.map((photo) => (
             <div
               key={photo.blobPathname}
-              className="relative size-[74px] shrink-0 overflow-hidden rounded-field border border-rule bg-paper-2"
+              className="relative size-[74px] shrink-0 overflow-hidden rounded-field bg-paper-2"
             >
               {/*
                 Plain <img>, not next/image: this tile is transient (it lives only as long
@@ -169,7 +169,7 @@ export function PhotoPicker(props: PhotoPickerProps) {
                 type="button"
                 onClick={() => removeStaged(photo)}
                 aria-label="Hapus foto ini"
-                className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 font-mono text-label text-white"
+                className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 text-label text-white"
               >
                 <span aria-hidden="true">✕</span>
               </button>
@@ -192,16 +192,18 @@ export function PhotoPicker(props: PhotoPickerProps) {
             onClick={() => inputRef.current?.click()}
             className={cn(
               'grid size-[74px] shrink-0 press place-items-center rounded-field',
-              // rule-strong, not rule: this is a control whose only boundary is its border,
-              // which WCAG 1.4.11 holds to 3:1 (F10 R-49).
-              'border border-dashed border-rule-strong bg-paper text-ink-3',
+              // The design's dashed add-tile ("02 Sheet and Media"): bare, not filled, so it
+              // reads as a slot rather than as a photo. `ink-3` rather than `rule` on the
+              // dash because this is a control whose only boundary is its border, which WCAG
+              // 1.4.11 holds to 3:1 — the hairline is 1.09:1 and would not qualify.
+              'border border-dashed border-ink-3 bg-transparent text-ink-2',
             )}
           >
             <span className="text-center">
-              <span aria-hidden="true" className="block font-mono text-row leading-none">
-                ＋
+              <span aria-hidden="true" className="block text-[20px] leading-none font-bold">
+                +
               </span>
-              <span className="mt-1 block font-mono text-label tracking-normal">Foto</span>
+              <span className="mt-1 block text-label">Tambah</span>
             </span>
           </button>
         )}
@@ -234,21 +236,21 @@ export function PhotoPicker(props: PhotoPickerProps) {
       {(notices.length > 0 || items.some((it) => it.error)) && (
         <ul role="status" className="mt-2 space-y-1">
           {notices.map((n) => (
-            <li key={n} className="text-body text-red">
+            <li key={n} className="text-body text-red-ink">
               {n}
             </li>
           ))}
           {items
             .filter((it) => it.error)
             .map((it) => (
-              <li key={it.key} className="text-body text-red">
+              <li key={it.key} className="text-body text-red-ink">
                 {it.error}
               </li>
             ))}
         </ul>
       )}
 
-      {isBusy && <p className="mt-2 font-mono text-meta text-ink-3">Foto masih diunggah…</p>}
+      {isBusy && <p className="mt-2 text-meta text-ink-3">Foto masih diunggah…</p>}
     </section>
   )
 }

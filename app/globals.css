@@ -1,24 +1,32 @@
 @import 'tailwindcss';
 
 /* ==========================================================================
-   F10 — DESIGN SYSTEM
+   DESIGN SYSTEM — "flat, loud, graphic"
    ==========================================================================
-   Provenance: the values below are the Claude Design system pulled on
-   2026-08-19 (docs/design/tokens.css, docs/design/DESIGN_INTEGRATION.md).
-   F10's own OKLCH "ink" palette is superseded — see the F10 addendum in
-   docs/RECONCILIATION_v0.1.0.md. What survives from F10's plan is the
-   *structure*: the namespace reset, the iOS base layer, the utilities and the
-   component classes. What changed is every colour, both font families and the
-   type scale.
+   Provenance: the Claude Design project pulled on 2026-08-21
+   (claude.ai/design/p/8c505e75 — "00 Foundations", "01 Components",
+   "02 Sheet and Media", "03 App Prototype"). Mirrored locally in
+   docs/design/tokens.css; the amendments this file makes to it are listed in
+   docs/design/DESIGN_INTEGRATION.md.
 
-   Direction: warm paper and near-black ink. Source Serif 4 for anything that
-   is language, IBM Plex Mono for anything that is bookkeeping — every amount,
-   date, count, label and button. Money is bookkeeping, so money is always
-   mono, which gives tabular figures by construction instead of by CSS trick.
-   NO SHADOWS ANYWHERE: elevation is `card` sitting lighter than `paper` plus a
-   hairline `rule`; the sheet earns its layer from the scrim behind it, the
-   toast from inverting to ink. Shadows are invisible in dark mode; borders are
-   not, so a border-based system is the one that survives both schemes.
+   THIS REPLACES the warm-paper / Source-Serif / IBM-Plex-Mono system of
+   v0.1.0. What survives is the *structure* — the namespace reset, the iOS base
+   layer, the utilities, the component classes, and every token NAME so five
+   features' worth of markup keeps compiling. What changed is every colour,
+   the typeface, the type scale, and the elevation model.
+
+   Direction: cool grey paper, near-black ink, one grotesque (Archivo) at heavy
+   weights, saturated primaries. Red is the brand and the primary action.
+   Yellow is the highlighter — month pill, active tab, the toast. Pink and cyan
+   are big background moments, never text. Dark mode sits on true black and
+   keeps the palette saturated instead of dimming it.
+
+   ELEVATION IS CONTRAST, NOT A LINE AND NOT A SHADOW. The old system drew a
+   hairline around every card; this one does not. A card is white on grey (or
+   #161616 on black) and that is the entire separation. `rule` survives as the
+   ROW separator inside a card — the one hairline the design keeps — and
+   `rule-strong` as the sheet grabber. No shadows anywhere: they are invisible
+   in dark mode, and this design has no soft edges to cast them.
 
    Layer 1 (this section) is raw custom properties, because @theme cannot live
    inside a media query and these must flip under prefers-color-scheme.
@@ -28,81 +36,123 @@
 :root {
   color-scheme: light dark;
 
-  /* -- surfaces: three ---------------------------------------------------- */
-  --paper: #f0ede4; /* page                                    */
-  --paper-2: #e8e4d9; /* wells, thumbnails, input inside a card  */
-  --card: #fbfaf5; /* cards, sheet panel, tab bar             */
-
-  /* -- text: three -------------------------------------------------------- */
-  --ink: #20211d; /* primary                                 */
-  --ink-2: #5d5c52; /* secondary — body prose, amounts in rows */
+  /* -- surfaces ----------------------------------------------------------- */
+  --paper: #e9e9e6; /* page — the design's `--bg`               */
   /*
-   * AMENDED from the design's #8f8d81, which measured 2.85:1 on paper — a WCAG 1.4.3
-   * failure, and not a marginal one. ink-3 is every label, every meta line, every
-   * placeholder, the inactive tab and the ghost-button text: all of it content the user
-   * reads. Darkened along its own hue until it clears 4.5:1 (now 4.51 on paper, 5.05 on
-   * card). See scripts/palette-check.py and the F10 addendum in RECONCILIATION.
-   *
-   * The cost is that ink-2 and ink-3 sit close together in light mode. That is affordable
-   * here precisely because this design does not lean on colour for hierarchy: a label is a
-   * label because it is 10px mono uppercase at 0.2em tracking, not because it is pale.
+   * The design has exactly two surfaces. `paper-2` is kept as a NAME because
+   * AppShell and the sheet's inner fields both reference it, and it points at
+   * the page grey: a field inside a white card sits on the page colour, which
+   * is how the layers read without a border (see "02 Sheet and Media").
    */
-  --ink-3: #6e6c61; /* tertiary — labels, meta, placeholders   */
+  --paper-2: #e9e9e6;
+  --card: #ffffff; /* cards, sheet panel, chips                */
 
-  /* -- lines: three ------------------------------------------------------- */
-  --rule: #d8d3c4; /* container hairline, decorative          */
-  --rule-2: #eae6da; /* row separator inside a container        */
+  /* -- text --------------------------------------------------------------- */
+  --ink: #0d0d0d;
+  --ink-2: #4d4d4d; /* secondary — prose, amounts in item rows  */
   /*
-   * ADDED. `rule` at 1.28:1 on paper is right for a card edge or a row separator — both
-   * decorative, both backed up by layout — but WCAG 1.4.11 wants 3:1 for the boundary that
-   * *identifies a control*, and an input's fill only differs from the page by 1.09:1, so the
-   * border is doing that job alone. Used by inputs, secondary buttons and picker cells; never
-   * by a container edge. Restores the distinction F10's own palette had as
-   * --app-border/--app-border-strong and the design pull collapsed away.
-   *
-   * To revert to the design's whisper-soft fields, point this at var(--rule) and re-run
-   * scripts/palette-check.py to see what it costs.
+   * AMENDED from the design's #8f8f8f, which measures 2.63:1 on paper — a WCAG
+   * 1.4.3 failure, and not a marginal one. ink-3 is every label, every meta
+   * line, every placeholder and the inactive tab: all of it content the user
+   * reads. Darkened along the same neutral axis until it clears 4.5:1 (now
+   * 4.67 on paper, 5.74 on card). The design's own #8f8f8f survives untouched
+   * where it is legible — inside the black tab bar, where it measures 6.02:1
+   * (see `--tab-ink-3`). Same amendment, same reasoning, as the v0.1.0 system.
+   * Verified with scripts/palette-check.py.
    */
-  --rule-strong: #8d887b;
+  --ink-3: #666666; /* tertiary — labels, meta, placeholders    */
 
-  /* -- semantic ----------------------------------------------------------- */
-  --accent: #2f5d50; /* the active-tab dot, the completed bar   */
+  /* -- lines -------------------------------------------------------------- */
+  --rule: #d7d7d3; /* the design's `--line-2`: row separators   */
+  --rule-2: #d7d7d3; /* one hairline only; the name is kept      */
+  --rule-strong: #0d0d0d; /* the design's `--line`: grabber, hard edge */
+
+  /* -- brand and semantics ------------------------------------------------ */
+  --red: #e0281e; /* brand, primary action, destructive fill  */
   /*
-   * ADDED BY F08. The one-hue second step the 12-month chart needs for the
-   * in-progress month, so "this month is not finished yet" is encoded in the
-   * mark rather than only in the caption. `accent-soft` is a background wash
-   * (1.20:1 on card) and cannot carry a data mark; this sits at 3.15:1, which
-   * clears the 3:1 floor on its own and does not lean on the relief rule.
-   *
-   * Derived, not invented: accent mixed 35% toward `card`, so the hue spread is
-   * 0deg and the OKLCH lightness gap is above the 0.06 ordinal floor. Verified
-   * with the dataviz validator in --ordinal mode against #fbfaf5 / #1e1e1a --
-   * see the F08 addendum in docs/RECONCILIATION_v0.1.0.md.
+   * ADDED. `--red` as a FILL is fine — white on it measures 4.66:1 — but as
+   * TEXT it measures 3.79:1 on paper and 3.14:1 on the pink empty-state plate,
+   * and red text is exactly what a form error and a "Hapus" button are made
+   * of. This is the same red, darkened until it clears 4.5:1 on all three
+   * surfaces (5.62 paper / 6.91 card / 4.66 pink). Fills use `--red`, type
+   * uses `--red-ink`; in dark mode they are the same value because the dark
+   * red already clears everywhere.
    */
-  --accent-2: #76948a;
-  --accent-soft: #e0e8e2;
-  --red: #8a3324; /* destructive, errors                     */
-  --red-soft: #efdfd9;
-  --scrim: rgba(32, 33, 29, 0.45);
+  --red-ink: #b31610;
+  /*
+   * ADDED. Type printed ON a red fill — the Simpan button, the tab bar's raised crown, the
+   * share page's product mark. The design hard-codes #fff there, which is correct in light
+   * (4.68:1) and a FAILURE in dark (3.33:1), because dark mode's red is a bright #ff4a3d
+   * rather than a deep one. So the foreground flips with the scheme while the fill stays
+   * exactly the design's value in both. Never write `text-white` on a red block.
+   */
+  --red-fg: #ffffff;
+  --red-soft: #f6c9cf; /* the design's `--pink` — error plate, wash */
+  /*
+   * ADDED, for the same reason and by the same method as `--red-ink`. The design has no
+   * green: "spending less than last month" is expressed by FILLING the delta tile with
+   * `--cat-groceries` and setting black on it. Where that reading has to be type instead —
+   * `Money tone="success"` is a published prop and four features can reach it — the disc
+   * green measures 3.32:1 on card. This is that green darkened until it clears (6.80 card /
+   * 5.53 paper). Fills use `--cat-groceries`, type uses `--green-ink`.
+   */
+  --green-ink: #12692f;
 
-  /* -- the 8 categories --------------------------------------------------- */
-  --cat-food: #9c4a2a;
-  --cat-groceries: #63661f;
-  --cat-transport: #3e5c85;
-  --cat-bills: #8a651c;
-  --cat-housing: #6e4f33;
-  --cat-entertainment: #6d4a86;
-  --cat-health: #2c6b66;
-  --cat-other: #6d6b60;
+  --yellow: #ffe600; /* the highlighter. Same in both schemes.   */
+  --pink: #f6c9cf;
+  --cyan: #2fd8ce;
+
+  --scrim: rgba(0, 0, 0, 0.5);
+
+  /*
+   * The tab bar is a CHASSIS, not a surface: solid #0d0d0d in both schemes,
+   * with its own three-value palette that does not flip. Tokens rather than
+   * literals so the bar, the toast-lift rule and the raised Tambah button all
+   * agree.
+   */
+  --tab-bg: #0d0d0d;
+  --tab-ink: #ffe600; /* active label + dot — 15.4:1 on the bar   */
+  --tab-ink-3: #8f8f8f; /* inactive label — 6.02:1 on the bar       */
+
+  /* -- the 8 categories ---------------------------------------------------
+     Pictogram discs: a solid colour circle carrying a bold BLACK two-letter
+     mark, in both schemes. That only works if every disc stays bright enough
+     for black type, which is why three of the light values below are nudged
+     off the design's. */
+  /*
+   * AMENDED: the design makes `food` the brand red exactly, and at #e0281e the black disc
+   * mark measures 4.49:1 — one hundredth under. Nudged until it clears (4.62). The BRAND
+   * red above is untouched: this moves the disc only, and the two differ by an amount no
+   * one can see next to each other.
+   */
+  --cat-food: #e22c22;
+  --cat-groceries: #1fa24a;
+  /* AMENDED: design #1d6fe0 → 4.18:1 under the black mark. Now 4.66:1. */
+  --cat-transport: #2273e6;
+  --cat-bills: #e8a800;
+  /* AMENDED: design #7a44e0 → 3.46:1 under the black mark. Now 4.74:1. */
+  --cat-housing: #8c5ae8;
+  --cat-entertainment: #e23da4; /* the design's `fun` */
+  --cat-health: #0fa89a;
+  /* AMENDED: design #6e6e6e → 4.12:1 under the black mark. Now 4.62:1. */
+  --cat-other: #767676;
+
+  /*
+   * The mark drawn ON a category disc. Pure black rather than the design's
+   * #0d0d0d: at 9px/900 the mark is small text, and the extra 0.3 of contrast
+   * is what carries `--cat-food` over 4.5:1 without moving the brand red.
+   * Never theme-reactive — the discs stay bright in dark mode, so the mark
+   * stays black. "No recolouring of text, ever" (Foundations).
+   */
+  --disc-ink: #000000;
 
   /*
    * `lib/categories.ts` publishes CategoryMeta.color as the *name*
-   * `--color-cat-<key>` (reconciliation R-7), so that name has to resolve at
-   * runtime. It is an alias of the raw property above rather than the raw
-   * property itself: Tailwind's `@theme inline` block below also declares
-   * `--color-cat-<key>`, and pointing that at a property of the same name
-   * would be a circular reference that computes to nothing. Two names, one
-   * value, no cycle.
+   * `--color-cat-<key>`, so that name has to resolve at runtime. It is an
+   * alias of the raw property above rather than the raw property itself:
+   * Tailwind's `@theme inline` block below also declares `--color-cat-<key>`,
+   * and pointing that at a property of the same name would be a circular
+   * reference that computes to nothing. Two names, one value, no cycle.
    */
   --color-cat-food: var(--cat-food);
   --color-cat-groceries: var(--cat-groceries);
@@ -114,11 +164,17 @@
   --color-cat-other: var(--cat-other);
 
   /*
-   * The lightbox goes true black in BOTH schemes — photos want a dark room
-   * (design R-41). Deliberately not theme-reactive. F06 owns the lightbox;
-   * the token lives here so there is one hex, not two.
+   * The 12-month chart's completed-month bar. The design draws it in `--line-2`
+   * (= `--rule`), which measures 1.44:1 on card — eleven of twelve bars below
+   * every contrast floor. This is the same neutral pushed to 3.23:1, which is
+   * the WCAG 1.4.11 floor for a graphical object. The current month keeps the
+   * design's red untouched. Consumed by app/(shell)/stats/stats.css.
    */
-  --photo-void: #0d0d0b;
+  --chart-bar: #8f8f8f;
+
+  /* The lightbox goes true black in BOTH schemes — photos want a dark room.
+     Deliberately not theme-reactive. */
+  --photo-void: #000000;
 
   /* -- motion: one curve -------------------------------------------------- */
   --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1);
@@ -126,48 +182,56 @@
 
 /* Dark is authored, not derived — every token above is redefined below, never
    filtered. A token that exists in one scheme and not the other is how you
-   ship a paper-on-paper screen. The accent inverts: deep green on paper,
-   pale green on ink. */
+   ship an invisible screen. Note what does NOT flip: yellow, cyan, the tab-bar
+   trio, the disc mark and the lightbox void. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
 
-    --paper: #131311;
-    --paper-2: #1a1a17;
-    --card: #1e1e1a;
+    --paper: #000000;
+    --paper-2: #000000;
+    --card: #161616;
 
-    --ink: #eeebe1;
-    --ink-2: #a5a398;
-    /* AMENDED: the design's #6e6d64 measured 3.21:1 on card. Now 4.50 on card, 5.01 on paper. */
-    --ink-3: #86857b;
+    --ink: #ffffff;
+    --ink-2: #c2c2c2;
+    /* AMENDED, though less than light's: the design's #7d7d7d measures 4.40:1
+       on card. Lifted to 4.90 card / 5.69 paper. */
+    --ink-3: #858585;
 
-    --rule: #2e2e28;
-    --rule-2: #242420;
-    --rule-strong: #696962;
+    --rule: #2e2e2e;
+    --rule-2: #2e2e2e;
+    --rule-strong: #f2f2f2;
 
-    --accent: #86bba6;
-    /* F08. Accent mixed 45% toward `card`; 3.26:1 on card, hue spread 2deg. */
-    --accent-2: #577467;
-    --accent-soft: #1e2a25;
-    --red: #c97a62;
-    --red-soft: #2a1d18;
-    --scrim: rgba(0, 0, 0, 0.55);
+    --red: #ff4a3d;
+    /* 6.30:1 on paper, 5.33:1 on card — no darkened twin needed. */
+    --red-ink: #ff4a3d;
+    /* 5.83:1 on the bright dark red. See the note in the light block. */
+    --red-fg: #0d0d0d;
+    --red-soft: #2a1518;
+    /* 9.54:1 on card — the disc green needs no darkened twin here. */
+    --green-ink: #3ed874;
 
-    --cat-food: #d69a76;
-    --cat-groceries: #adb063;
-    --cat-transport: #92aed1;
-    --cat-bills: #c9a95c;
-    --cat-housing: #bb9772;
-    --cat-entertainment: #b195d1;
-    --cat-health: #7fbcb3;
-    --cat-other: #9b988c;
+    --pink: #2a1518;
+    --scrim: rgba(0, 0, 0, 0.65);
+
+    --cat-food: #ff5a4e;
+    --cat-groceries: #3ed874;
+    --cat-transport: #5b9cff;
+    --cat-bills: #ffd23f;
+    --cat-housing: #a98bff;
+    --cat-entertainment: #ff6fc4;
+    --cat-health: #3fe0cf;
+    --cat-other: #9e9e9e;
+
+    /* 3.48:1 on card. */
+    --chart-bar: #6e6e6e;
   }
 }
 
 /*
  * An explicit choice wins in both directions. There is no theme toggle in the
- * v0.1.0 UI — this exists so the Visual QA checklist can force a scheme from
- * the console (`document.documentElement.dataset.theme = 'dark'`) instead of
+ * UI — this exists so the Visual QA checklist can force a scheme from the
+ * console (`document.documentElement.dataset.theme = 'dark'`) instead of
  * changing an OS setting between every line.
  */
 :root[data-theme='light'] {
@@ -176,33 +240,37 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --paper: #131311;
-  --paper-2: #1a1a17;
-  --card: #1e1e1a;
+  --paper: #000000;
+  --paper-2: #000000;
+  --card: #161616;
 
-  --ink: #eeebe1;
-  --ink-2: #a5a398;
-  --ink-3: #86857b;
+  --ink: #ffffff;
+  --ink-2: #c2c2c2;
+  --ink-3: #858585;
 
-  --rule: #2e2e28;
-  --rule-2: #242420;
-  --rule-strong: #696962;
+  --rule: #2e2e2e;
+  --rule-2: #2e2e2e;
+  --rule-strong: #f2f2f2;
 
-  --accent: #86bba6;
-  --accent-2: #577467;
-  --accent-soft: #1e2a25;
-  --red: #c97a62;
-  --red-soft: #2a1d18;
-  --scrim: rgba(0, 0, 0, 0.55);
+  --red: #ff4a3d;
+  --red-ink: #ff4a3d;
+  --red-fg: #0d0d0d;
+  --red-soft: #2a1518;
+  --green-ink: #3ed874;
 
-  --cat-food: #d69a76;
-  --cat-groceries: #adb063;
-  --cat-transport: #92aed1;
-  --cat-bills: #c9a95c;
-  --cat-housing: #bb9772;
-  --cat-entertainment: #b195d1;
-  --cat-health: #7fbcb3;
-  --cat-other: #9b988c;
+  --pink: #2a1518;
+  --scrim: rgba(0, 0, 0, 0.65);
+
+  --cat-food: #ff5a4e;
+  --cat-groceries: #3ed874;
+  --cat-transport: #5b9cff;
+  --cat-bills: #ffd23f;
+  --cat-housing: #a98bff;
+  --cat-entertainment: #ff6fc4;
+  --cat-health: #3fe0cf;
+  --cat-other: #9e9e9e;
+
+  --chart-bar: #6e6e6e;
 }
 
 /* ==========================================================================
@@ -213,14 +281,15 @@
 
 @theme {
   /*
-   * Reset the two namespaces F10 owns completely (reconciliation R-24).
-   * `bg-red-500`, `text-gray-700`, `text-sm` and `text-2xl` cease to exist:
-   * there is exactly one design system in this repo, and this line is the
-   * mechanism that keeps five parallel feature plans on it. Must come FIRST —
-   * `initial` clears whatever precedes it in the same block.
+   * Reset the two namespaces this system owns completely. `bg-red-500`,
+   * `text-gray-700`, `text-sm` and `text-2xl` cease to exist: there is exactly
+   * one design system in this repo, and this line is the mechanism that keeps
+   * it that way. Must come FIRST — `initial` clears whatever precedes it in
+   * the same block.
    *
-   * `--radius-*` and `--spacing` are EXTENDED, not reset, so `rounded-full`
-   * and the numeric spacing scale (`p-4` = 16px) both still work.
+   * `--radius-*`, `--spacing` and `--font-weight-*` are EXTENDED, not reset,
+   * so `rounded-full`, the numeric spacing scale (`p-4` = 16px) and
+   * `font-extrabold` all still work.
    */
   --color-*: initial;
   --text-*: initial;
@@ -231,71 +300,102 @@
   --color-white: #fff;
   --color-black: #000;
 
-  /* -- type scale, tuned for a 414px column -----------------------------
-     Serif sizes are language, mono sizes are bookkeeping. The name says
-     which. Nothing below 16px is ever used on an input — see THE 17px RULE
-     in the base layer. */
+  /* -- type scale, tuned for a 414px column -------------------------------
+     ONE family, so a scale entry carries its WEIGHT and TRACKING as well as
+     its size — that pairing is the hierarchy, and splitting it across the
+     call site is how it drifts. Nothing below 16px is ever used on an input:
+     see THE 17px RULE in the base layer. */
 
-  --text-label: 0.625rem; /* 10 mono · section heads, field labels, sheet titles */
+  --text-label: 0.625rem; /* 10 · eyebrows, field labels, day pill      */
   --text-label--line-height: 0.875rem;
-  --text-label--letter-spacing: 0.2em;
+  --text-label--letter-spacing: 0.14em;
+  --text-label--font-weight: 800;
 
-  --text-meta: 0.6875rem; /* 11 mono · dates, counts, "6 catatan · 18 item"      */
+  --text-meta: 0.6875rem; /* 11 · row meta, "6 item · 3 foto"           */
   --text-meta--line-height: 1rem;
-  --text-meta--letter-spacing: 0.08em;
+  --text-meta--letter-spacing: 0.06em;
+  --text-meta--font-weight: 700;
 
-  --text-action: 0.6875rem; /* 11 mono · small button, tab label, toast action     */
+  --text-action: 0.6875rem; /* 11 · tab label, toast action, month pill   */
   --text-action--line-height: 1rem;
-  --text-action--letter-spacing: 0.14em;
+  --text-action--letter-spacing: 0.1em;
+  --text-action--font-weight: 800;
 
-  --text-btn: 0.75rem; /* 12 mono · full-width button                        */
-  --text-btn--line-height: 1rem;
-  --text-btn--letter-spacing: 0.16em;
+  --text-btn: 1.0625rem; /* 17 · full-width button. Sentence case.     */
+  --text-btn--line-height: 1.5rem;
+  --text-btn--font-weight: 800;
 
-  --text-money-sm: 0.875rem; /* 14 mono · line-item amount                         */
-  --text-money-sm--line-height: 1.125rem;
-
-  --text-chip: 0.875rem; /* 14 serif · chip label                              */
+  --text-chip: 0.875rem; /* 14 · chip and picker-cell label            */
   --text-chip--line-height: 1.125rem;
+  --text-chip--font-weight: 700;
 
-  --text-body: 0.9375rem; /* 15 serif · prose, picker cell label                */
+  --text-body: 0.9375rem; /* 15 · prose, descriptions                   */
   --text-body--line-height: 1.375rem;
+  --text-body--font-weight: 500;
 
-  --text-item: 1rem; /* 16 serif · item name, empty-state description      */
-  --text-item--line-height: 1.375rem;
+  --text-item: 0.9375rem; /* 15 · item name                             */
+  --text-item--line-height: 1.25rem;
+  --text-item--font-weight: 600;
 
-  --text-input: 1.0625rem; /* 17 · EVERY input. Never lower this. Ever.          */
+  --text-money-sm: 0.9375rem; /* 15 · line-item amount                      */
+  --text-money-sm--line-height: 1.25rem;
+  --text-money-sm--font-weight: 600;
+
+  --text-input: 1.0625rem; /* 17 · EVERY input. Never lower this. Ever.  */
   --text-input--line-height: 1.5rem;
+  --text-input--font-weight: 600;
 
-  --text-money-md: 1.0625rem; /* 17 mono 500 · per-expense total                    */
-  --text-money-md--line-height: 1.5rem;
+  --text-row: 1.0625rem; /* 17 · group row title                       */
+  --text-row--line-height: 1.375rem;
+  --text-row--font-weight: 700;
 
-  --text-row: 1.125rem; /* 18 serif · group row title                         */
-  --text-row--line-height: 1.5rem;
+  --text-money-md: 1.0625rem; /* 17 · per-expense total                     */
+  --text-money-md--line-height: 1.375rem;
+  --text-money-md--font-weight: 800;
 
-  --text-money-lg: 1.375rem; /* 22 mono 500 · draft running total                  */
-  --text-money-lg--line-height: 1.625rem;
+  --text-sheet: 1.125rem; /* 18 · sheet title                           */
+  --text-sheet--line-height: 1.375rem;
+  --text-sheet--letter-spacing: -0.01em;
+  --text-sheet--font-weight: 900;
 
-  --text-title: 1.6875rem; /* 27 serif · screen title                            */
+  --text-stat: 1.1875rem; /* 19 · stat-tile figure                      */
+  --text-stat--line-height: 1.5rem;
+  --text-stat--font-weight: 900;
+
+  --text-headline: 1.375rem; /* 22 · empty-state headline                  */
+  --text-headline--line-height: 1.625rem;
+  --text-headline--letter-spacing: -0.02em;
+  --text-headline--font-weight: 900;
+
+  --text-money-lg: 1.5rem; /* 24 · draft running total                   */
+  --text-money-lg--line-height: 1.75rem;
+  --text-money-lg--letter-spacing: -0.01em;
+  --text-money-lg--font-weight: 900;
+
+  --text-title: 1.875rem; /* 30 · screen title, detail title            */
   --text-title--line-height: 2rem;
-  --text-title--letter-spacing: -0.01em;
+  --text-title--letter-spacing: -0.03em;
+  --text-title--font-weight: 900;
 
-  --text-money-xl: 2.5rem; /* 40 mono · THE month total                          */
-  --text-money-xl--line-height: 2.625rem;
-  --text-money-xl--letter-spacing: -0.02em;
+  --text-money-xl: 2.75rem; /* 44 · THE month total                       */
+  --text-money-xl--line-height: 2.75rem;
+  --text-money-xl--letter-spacing: -0.03em;
+  --text-money-xl--font-weight: 900;
 
-  --text-hero: 2.5rem; /* 40 serif · the sign-in wordmark                    */
-  --text-hero--line-height: 2.75rem;
-  --text-hero--letter-spacing: -0.015em;
+  --text-hero: 3.375rem; /* 54 · the sign-in wordmark                  */
+  --text-hero--line-height: 3.125rem;
+  --text-hero--letter-spacing: -0.035em;
+  --text-hero--font-weight: 900;
 
-  /* -- named spacing on top of the default 4px scale (design R-41) ------- */
+  /* -- named spacing on top of the default 4px scale --------------------- */
   --spacing-gutter: 1.375rem; /* 22 — the horizontal page inset             */
   --spacing-touch: 2.75rem; /* 44 — the tap-target floor                  */
-  --spacing-control: 3rem; /* 48 — input / field height                  */
-  --spacing-btn: 3.25rem; /* 52 — full-width button, raised Tambah      */
+  --spacing-control: 3.125rem; /* 50 — input / field height                  */
+  --spacing-btn: 3.375rem; /* 54 — full-width button, raised Tambah      */
   --spacing-tab: 3.375rem; /* 54 — tab bar height, excl. safe area       */
   --spacing-row: 3.25rem; /* 52 — item row minimum                      */
-  --spacing-row-lg: 3.5rem; /* 56 — group row minimum                     */
+  --spacing-row-lg: 3.75rem; /* 60 — group row minimum                     */
+  --spacing-disc: 1.75rem; /* 28 — the category disc                     */
 
   /* -- the mobile column. The design canvas is exactly 414px. ------------ */
   --container-app: 26rem; /* 416px → max-w-app                          */
@@ -325,12 +425,21 @@
   --color-rule-2: var(--rule-2);
   --color-rule-strong: var(--rule-strong);
 
-  --color-accent: var(--accent);
-  --color-accent-2: var(--accent-2);
-  --color-accent-soft: var(--accent-soft);
   --color-red: var(--red);
+  --color-red-ink: var(--red-ink);
+  --color-red-fg: var(--red-fg);
   --color-red-soft: var(--red-soft);
+  --color-green-ink: var(--green-ink);
 
+  --color-yellow: var(--yellow);
+  --color-pink: var(--pink);
+  --color-cyan: var(--cyan);
+
+  --color-tab-bg: var(--tab-bg);
+  --color-tab-ink: var(--tab-ink);
+  --color-tab-ink-3: var(--tab-ink-3);
+
+  --color-disc-ink: var(--disc-ink);
   --color-photo-void: var(--photo-void);
 
   --color-cat-food: var(--cat-food);
@@ -342,18 +451,21 @@
   --color-cat-health: var(--cat-health);
   --color-cat-other: var(--cat-other);
 
-  /* Four radii, and that is the entire vocabulary (design R-41). */
+  /* Three radii, and that is the entire vocabulary. `chip` is the 2px
+     ticket-stub corner on every pill-shaped label; `field` and `card` are both
+     the design's 8px `--r-m`, kept as two names because the markup already
+     distinguishes them; `sheet` is the 16px `--r-l`, used once. */
   --radius-chip: 2px;
-  --radius-field: 6px;
-  --radius-card: 10px;
+  --radius-field: 8px;
+  --radius-card: 8px;
+  --radius-sheet: 16px;
 
   /*
-   * next/font emits these two on a class applied to <html>, so they do not
-   * exist at :root — which is exactly the case the v4 docs give for `inline`.
-   * The non-inline form would resolve them at :root and get nothing.
+   * next/font emits this on a class applied to <html>, so it does not exist at
+   * :root — which is exactly the case the v4 docs give for `inline`. The
+   * non-inline form would resolve it at :root and get nothing.
    */
-  --font-serif: var(--font-source-serif), Georgia, 'Times New Roman', serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: var(--font-archivo), 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 /* ==========================================================================
@@ -388,8 +500,9 @@
     min-height: 100dvh;
     background-color: var(--paper);
     color: var(--ink);
-    font-family: var(--font-serif);
-    font-size: var(--text-item);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    font-weight: 500;
     line-height: 1.45;
     -webkit-font-smoothing: antialiased;
     /* Stop the whole document rubber-banding. Scrollable panes opt back in
@@ -411,6 +524,7 @@
     font-family: inherit;
     font-size: 1.0625rem; /* 17px — do not lower this. Ever. */
     line-height: 1.5rem;
+    font-weight: 600;
     color: inherit;
     background-color: transparent;
     border-radius: 0; /* iOS rounds inputs by default */
@@ -442,12 +556,13 @@
   }
 
   ::selection {
-    background-color: var(--accent-soft);
-    color: var(--ink);
+    background-color: var(--yellow);
+    color: #0d0d0d;
   }
 
   ::placeholder {
     color: var(--ink-3);
+    font-weight: 500;
     opacity: 1; /* Firefox dims placeholders by default */
   }
 
@@ -456,8 +571,8 @@
   h2,
   h3,
   h4 {
-    font-weight: 400;
-    letter-spacing: -0.01em;
+    font-weight: 900;
+    letter-spacing: -0.03em;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -477,8 +592,8 @@
    ========================================================================== */
 
 /*
- * Tabular figures. IBM Plex Mono is monospaced so its digits already align,
- * but `tnum` also locks the comma/dot advance, which is what makes
+ * Tabular figures. Archivo is proportional, so unlike the mono family this
+ * replaces, `tnum` is not a nicety here — it is the ONLY thing making
  * "Rp 1.111.111" and "Rp 8.888.888" agree digit-for-digit. Applied by <Money>
  * automatically; use directly for any other column of numbers.
  */
@@ -500,17 +615,56 @@
 }
 
 /*
- * The mono eyebrow: section heads, field labels, sheet titles, tab labels.
- * Frequent enough across five features that spelling out
- * `font-mono text-label uppercase text-ink-3` every time invites drift.
+ * The eyebrow: section heads, field labels, small captions. 10px/800 at 0.14em
+ * uppercase — the ticket-stub voice. Frequent enough across five features that
+ * spelling out `text-label uppercase text-ink-3` every time invites drift.
  */
 @utility eyebrow {
-  font-family: var(--font-mono);
   font-size: var(--text-label);
   line-height: 0.875rem;
-  letter-spacing: 0.2em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-3);
+}
+
+/*
+ * THE STICKER. A flat block of colour carrying tiny loud uppercase type — the
+ * month pill, the day heading, the chart caption. `--sticker-bg` /
+ * `--sticker-fg` default to the yellow highlighter; override inline for the
+ * ink and red variants. 2px corners, never rounded-full: this is a printed
+ * label, not a badge.
+ */
+@utility sticker {
+  display: inline-block;
+  border-radius: var(--radius-chip);
+  padding: 0.25rem 0.625rem;
+  font-size: var(--text-label);
+  line-height: 0.875rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background-color: var(--sticker-bg, var(--yellow));
+  color: var(--sticker-fg, #0d0d0d);
+}
+
+/*
+ * The 12px sticker: the month pill and the sign-in tagline, which are the two the design
+ * sets a step larger. A separate utility rather than `sticker text-action`, because both
+ * would be setting font-size and letter-spacing in the same cascade layer and which one won
+ * would come down to declaration order in the generated stylesheet.
+ */
+@utility sticker-lg {
+  display: inline-block;
+  border-radius: var(--radius-chip);
+  padding: 0.3125rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background-color: var(--sticker-bg, var(--yellow));
+  color: var(--sticker-fg, #0d0d0d);
 }
 
 /* Tap feedback that replaces the tap-highlight the base layer removed. */
@@ -582,51 +736,73 @@
    ========================================================================== */
 
 @layer components {
-  /* ---- Chip and CategoryPicker cell -------------------------------------
-     The category colour arrives as an inline `--c` set by the component, so
-     there is one rule instead of eight. Selected fills with the category
-     colour and flips its text to paper — which is dark in dark mode, so
-     contrast holds in both schemes for free. */
+  /* ---- The category disc ------------------------------------------------
+     The pictogram the whole category system is built on: a solid disc in the
+     category colour carrying a bold BLACK two-letter mark, like an event
+     badge. The colour arrives as an inline `--c` set by the component, so
+     there is one rule instead of eight. `--disc-size` lets a dense row ask for
+     26px without a second class. */
+  .disc {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: var(--disc-size, var(--spacing-disc));
+    height: var(--disc-size, var(--spacing-disc));
+    border-radius: 9999px;
+    background-color: var(--c);
+    color: var(--disc-ink);
+    font-size: 0.5625rem; /* 9px */
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---- Chip -------------------------------------------------------------
+     A pill on `card`, disc first, label second. Selecting FLOODS the pill with
+     the category colour and inverts the disc to ink — so the selected state is
+     a block of colour, not an outline. The label goes #0d0d0d in both schemes
+     because the flood colour is bright in both. */
   .chip {
-    border: 1px solid var(--c);
     background-color: var(--card);
   }
   .chip[data-selected='true'] {
     background-color: var(--c);
   }
-  .chip-code {
-    color: var(--c);
+  .chip[data-selected='true'] .disc {
+    background-color: #0d0d0d;
+    color: #ffffff;
   }
   .chip-label {
-    color: var(--ink-2);
+    color: var(--ink);
   }
-  .chip[data-selected='true'] .chip-code,
+  /* `--disc-ink`, not the design's #0d0d0d: the label sits on the same bright fill as the
+     mark next to it, so it is held to the same 4.5:1 and needs the same pure black to get
+     there on `food`, `transport`, `housing` and `other`. */
   .chip[data-selected='true'] .chip-label {
-    color: var(--paper);
+    color: var(--disc-ink);
+    font-weight: 800;
   }
 
-  /* The picker cell is the same idea at card scale: hairline and paper when
-     unselected, so eight of them read as a grid rather than eight chips. */
-  /* rule-strong, not rule: an unselected cell is a control whose only boundary is its
-     border, and it sits on `paper` inside a `card` sheet — a 1.28:1 line would leave the
-     eight options reading as one block of text. */
+  /* The picker cell is the same idea at card scale: the page grey inside the
+     white sheet, so eight of them read as a grid of blocks with no borders
+     anywhere. Selected floods, exactly like the chip. */
   .cell {
-    border: 1px solid var(--rule-strong);
     background-color: var(--paper);
   }
   .cell[data-selected='true'] {
-    border-color: var(--c);
     background-color: var(--c);
   }
-  .cell-code {
-    color: var(--c);
+  .cell[data-selected='true'] .disc {
+    background-color: #0d0d0d;
+    color: #ffffff;
   }
   .cell-label {
-    color: var(--ink-2);
+    color: var(--ink);
   }
-  .cell[data-selected='true'] .cell-code,
   .cell[data-selected='true'] .cell-label {
-    color: var(--paper);
+    color: var(--disc-ink);
+    font-weight: 800;
   }
 
   /* ---- Sheet (native <dialog>) -----------------------------------------
@@ -688,7 +864,7 @@
   /* Hard-coded rather than var(--scrim): ::backdrop custom-property
      inheritance is not dependable on the Safari versions we target. */
   .sheet::backdrop {
-    background: rgba(32, 33, 29, 0.45);
+    background: rgba(0, 0, 0, 0.5);
     opacity: 0;
     transition:
       opacity 280ms var(--ease-out-soft),
@@ -705,7 +881,7 @@
   }
   @media (prefers-color-scheme: dark) {
     .sheet::backdrop {
-      background: rgba(0, 0, 0, 0.55);
+      background: rgba(0, 0, 0, 0.65);
     }
   }
 
@@ -717,9 +893,10 @@
     flex-direction: column;
     background-color: var(--card);
     color: var(--ink);
-    border-top: 1px solid var(--rule);
-    border-top-left-radius: var(--radius-card);
-    border-top-right-radius: var(--radius-card);
+    /* No border. The scrim is the separation — 16px corners on a white block
+       against a darkened page is the whole elevation. */
+    border-top-left-radius: var(--radius-sheet);
+    border-top-right-radius: var(--radius-sheet);
     transform: translateY(100%);
     /* 280ms both ways, and `Sheet`'s ENTRY_MS tracks it. An earlier attempt at a faster 180ms
        entry is reverted: the sheet was never slow — it was rendering off-screen (see the
@@ -751,7 +928,7 @@
     --toast-bottom: calc(env(safe-area-inset-bottom) + 1rem);
   }
   :root:has([data-tabbar]) {
-    --toast-bottom: calc(var(--spacing-tab) + env(safe-area-inset-bottom) + 0.75rem);
+    --toast-bottom: calc(var(--spacing-tab) + env(safe-area-inset-bottom) + 1.5rem);
   }
 
   @keyframes toast-in {
@@ -765,13 +942,13 @@
     }
   }
 
-  /* ---- Skeleton (F05's parse placeholder, F07/F08 loading) -------------
+  /* ---- Skeleton (the parse placeholder, and the route loading states) ---
      The loading state is the shape of the answer, not a spinner. */
   .skeleton {
     display: block;
-    background-color: var(--rule-2);
+    background-color: var(--rule);
     border-radius: var(--radius-chip);
-    animation: skeleton-pulse 1.4s ease-in-out infinite;
+    animation: skeleton-pulse 1.2s ease-in-out infinite;
   }
   @keyframes skeleton-pulse {
     0%,
@@ -779,7 +956,7 @@
       opacity: 1;
     }
     50% {
-      opacity: 0.4;
+      opacity: 0.35;
     }
   }
 }

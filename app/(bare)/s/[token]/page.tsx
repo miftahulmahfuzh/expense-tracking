@@ -12,7 +12,7 @@ import { notFound } from 'next/navigation'
  * Asserted by tests/share.bundle.test.ts.
  */
 import { PhotoGallery } from '@/components/photos/PhotoGallery'
-import { Card, CategoryCode, Money } from '@/components/ui'
+import { Card, CategoryDisc, Money, RED_STICKER } from '@/components/ui'
 import { getGroupByShareToken } from '@/lib/db/queries'
 import { dayLabel, formatIdr } from '@/lib/format'
 import { isValidId } from '@/lib/id'
@@ -165,8 +165,15 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
   return (
     <main className="pt-10 px-safe">
       <header>
-        <h1 className="text-title text-pretty">{group.title}</h1>
-        <p className="mt-1 font-mono text-meta text-ink-3">{dayLabel(group.occurredOn)}</p>
+        {/* The product mark, printed in the brand red. The only place it appears in the app
+            chrome, and it is here because this is the one page a stranger sees. */}
+        <p className="sticker" style={RED_STICKER}>
+          Expense Tracking
+        </p>
+        <h1 className="mt-4 text-title text-pretty">{group.title}</h1>
+        <p className="mt-2 inline-block rounded-chip bg-card px-2 py-1 text-chip text-ink-2">
+          {dayLabel(group.occurredOn)}
+        </p>
         {SHARE_SHOWS_OWNER_NAME && group.ownerName && (
           <p className="mt-1 text-body text-ink-2">
             {OWNER_PREFIX} {group.ownerName}
@@ -180,32 +187,32 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
 
       <div className="mt-7 mb-2 flex items-baseline justify-between">
         <h2 className="eyebrow">{ITEM_HEADING}</h2>
-        <span className="font-mono tabular text-meta text-ink-3">{group.items.length}</span>
+        <span className="tabular text-meta text-ink-3">{group.items.length}</span>
       </div>
 
       <Card as="ul" padded="rows">
         {group.items.map((item) => (
           <li
             key={item.id}
-            className="flex min-h-row items-center gap-2.5 border-b border-rule-2 py-2 pr-1.5 last:border-b-0"
+            className="flex min-h-row items-center gap-2.5 border-b border-rule py-2 pr-1.5 last:border-b-0"
           >
             {/*
              * R-111's standing constraint, and this page is exactly the case it was written
              * for: the reader is not the owner, and F10's eight category hues fail the CVD
              * separation gate on their own (ΔE 0.6 under deuteranopia between violet and
              * blue). The palette is only legal because nothing keys a category by colour
-             * alone — `CategoryCode` renders a two-letter mark plus an sr-only Indonesian
+             * alone — `CategoryDisc` renders a two-letter mark plus an sr-only Indonesian
              * label, so the identity survives a reader who cannot tell the hues apart.
              * Never replace this with a bare colour swatch.
              */}
-            <CategoryCode category={item.category} className="w-6 shrink-0" />
+            <CategoryDisc category={item.category} size={26} />
             <span className="min-w-0 flex-1 truncate text-item">{item.name}</span>
-            <Money value={item.amountIdr} size="sm" />
+            <Money value={item.amountIdr} size="sm" tone="muted" />
           </li>
         ))}
       </Card>
 
-      <div className="mt-6 flex items-baseline justify-between border-t border-rule pt-3.5">
+      <div className="mt-3.5 flex items-baseline justify-between rounded-card bg-card px-4 py-3">
         <span className="eyebrow">{TOTAL_LABEL}</span>
         <Money value={group.totalIdr} size="lg" />
       </div>
@@ -225,8 +232,8 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
         </section>
       )}
 
-      <footer className="mt-12 pb-10 text-center">
-        <Link href="/" className="font-mono text-meta text-ink-3 underline underline-offset-4">
+      <footer className="mt-9 border-t-2 border-rule pt-3.5 pb-10">
+        <Link href="/" className="text-meta text-ink-3 underline underline-offset-4">
           {FOOTER_LABEL}
         </Link>
       </footer>

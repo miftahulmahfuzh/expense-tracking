@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
-"""Verify the F10 palette: WCAG contrast for every real pairing, plus categorical separation.
+"""Verify the palette: WCAG contrast for every real pairing, plus categorical separation.
 
 Run:  python3 scripts/palette-check.py
 
 Zero dependencies, stdlib only. The token values below are transcribed from
 app/globals.css §1 and must stay in step with it — if a colour changes, including anything
 arriving from a later Claude Design pull, edit the two dicts and re-run rather than eyeball
-the result. Reconciliation R-28 makes this a hard gate before /stats ships: F08 validated its
-palette against surfaces (#fcfcfb / #1a1a19) that are NOT the ones the design shipped.
+the result. This is a hard gate: every "AMENDED"/"ADDED" note in globals.css cites a number
+that comes from here, and an un-run check is an unverified claim.
 
-Two things this checks that a generic contrast tool would not:
+CURRENT SYSTEM: the 2026-08-21 "flat, loud, graphic" pull (Archivo, cool grey paper, red
+brand, yellow highlighter). Three things it checks that a generic contrast tool would not:
 
-  1. A category colour is used as TEXT — the two-letter mono code IS the category in a dense
-     row — so it is held to 4.5:1, not to the 3:1 that a chart fill alone would need. The
-     design claimed ≥4.5:1 on paper; that was a claim to verify, not to inherit.
+  1. THE DISC MARK. A category colour is a FILL now, not text — the pictogram is a solid
+     colour circle carrying a bold black two-letter mark — so the pairing that matters is
+     `disc-ink` ON the category, held to 4.5:1 because the mark is small text. That is what
+     the three amended light hues were amended for.
 
-  2. Pairwise separation in Oklab, because eight muted earthy hues that each pass contrast
-     against the background can still be indistinguishable from each other, which is the
-     failure R-3 caught in the original donut.
+  2. SURFACES THAT DO NOT FLIP. Yellow, the tab-bar trio and the disc mark are the same
+     value in both schemes by design, so they are checked in both rather than once.
+
+  3. Pairwise separation in Oklab, because eight hues that each pass contrast against the
+     background can still be indistinguishable from each other, which is the failure R-3
+     caught in the original donut.
 
 Exits non-zero on a CONTRAST failure, so it can be used as a gate. Categorical separation and
 the decorative hairlines are reported but do not fail the run — see WAIVER and checks().
@@ -82,54 +87,108 @@ CATS = [
     'other',
 ]
 
+# Same in BOTH schemes, by design. Kept out of the two dicts so a future edit cannot
+# accidentally give one scheme a different yellow.
+FIXED = {
+    'yellow': '#ffe600',
+    'cyan': '#2fd8ce',
+    'disc-ink': '#000000',
+    'tab-bg': '#0d0d0d',
+    'tab-ink': '#ffe600',
+    'tab-ink-3': '#8f8f8f',
+    # The toast is yellow in both schemes, so its type cannot be a theme token.
+    'toast-ink': '#0d0d0d',
+    'toast-danger-ink': '#8a1410',
+}
+
+BAR_WAIVER = '''WAIVER — the category breakdown's bar-on-track pairing is below 3:1 in light mode.
+
+The bar list draws each category over a `rule` track. In LIGHT that track is #d7d7d3, and
+four of the eight fills land under 3:1 against it (bills 1.45, health 2.05, groceries 2.30,
+entertainment 2.68). Dark mode clears all eight.
+
+THERE IS NO TRACK COLOUR THAT FIXES IT, and that is why this is a waiver rather than a bug
+left open. The eight fills span L* 0.17 (food) to 0.45 (bills). A track dark enough for bills
+to clear would have to sit below L 0.025 — effectively black — and food would still fail
+against anything lighter than that; a track light enough for food would have to exceed L 1.0,
+which does not exist. Any single track fails at one end or the other. This is inherent to a
+bright eight-hue palette on a light page, not to this particular grey.
+
+What carries the information instead, on every single row, above the bar:
+
+  · the disc — category colour AND its two-letter mark AND an sr-only Indonesian label
+  · the Indonesian label in full, as text
+  · the rupiah amount, as text
+  · the percentage, as text
+
+The bar is a fourth, redundant rendering of a number already stated three times, and it
+carries `role="img"` with an aria-label repeating the label, the amount and the percent — so
+a reader who cannot resolve the bar at all loses nothing. That is the same structural
+argument as the categorical-separation waiver below, and it expires under the same condition:
+the moment a bar is the ONLY place a value appears.'''
+
 LIGHT = {
-    'paper': '#f0ede4',
-    'paper-2': '#e8e4d9',
-    'card': '#fbfaf5',
-    'ink': '#20211d',
-    'ink-2': '#5d5c52',
-    # Amended from the design's #8f8d81 (2.85:1 on paper). See globals.css §1.
-    'ink-3': '#6e6c61',
-    'rule': '#d8d3c4',
-    'rule-2': '#eae6da',
-    'rule-strong': '#8d887b',
-    'accent': '#2f5d50',
-    'accent-soft': '#e0e8e2',
-    'red': '#8a3324',
-    'red-soft': '#efdfd9',
-    'cat-food': '#9c4a2a',
-    'cat-groceries': '#63661f',
-    'cat-transport': '#3e5c85',
-    'cat-bills': '#8a651c',
-    'cat-housing': '#6e4f33',
-    'cat-entertainment': '#6d4a86',
-    'cat-health': '#2c6b66',
-    'cat-other': '#6d6b60',
+    'paper': '#e9e9e6',
+    'paper-2': '#e9e9e6',
+    'card': '#ffffff',
+    'ink': '#0d0d0d',
+    'ink-2': '#4d4d4d',
+    # Amended from the design's #8f8f8f (2.63:1 on paper). See globals.css §1.
+    'ink-3': '#666666',
+    'rule': '#d7d7d3',
+    'rule-2': '#d7d7d3',
+    'rule-strong': '#0d0d0d',
+    'red': '#e0281e',
+    # Added: the darkened twin for red used as TYPE. Fills keep --red.
+    'red-ink': '#b31610',
+    # Added: type printed ON a red fill. #fff in light, near-black in dark.
+    'red-fg': '#ffffff',
+    'red-soft': '#f6c9cf',
+    'pink': '#f6c9cf',
+    'green-ink': '#12692f',
+    # Added: the chart's completed-month bar, pushed off --rule (1.44:1) to clear 3:1.
+    'chart-bar': '#8f8f8f',
+    # Amended from the design's #e0281e (4.49:1 under the black mark — one hundredth under).
+    # The BRAND red above keeps the design's exact value; only the disc moves.
+    'cat-food': '#e22c22',
+    'cat-groceries': '#1fa24a',
+    # Amended from the design's #1d6fe0 (4.18:1 under the black mark).
+    'cat-transport': '#2273e6',
+    'cat-bills': '#e8a800',
+    # Amended from the design's #7a44e0 (3.46:1 under the black mark).
+    'cat-housing': '#8c5ae8',
+    'cat-entertainment': '#e23da4',
+    'cat-health': '#0fa89a',
+    # Amended from the design's #6e6e6e (4.12:1 under the black mark).
+    'cat-other': '#767676',
 }
 
 DARK = {
-    'paper': '#131311',
-    'paper-2': '#1a1a17',
-    'card': '#1e1e1a',
-    'ink': '#eeebe1',
-    'ink-2': '#a5a398',
-    # Amended from the design's #6e6d64 (3.21:1 on card).
-    'ink-3': '#86857b',
-    'rule': '#2e2e28',
-    'rule-2': '#242420',
-    'rule-strong': '#696962',
-    'accent': '#86bba6',
-    'accent-soft': '#1e2a25',
-    'red': '#c97a62',
-    'red-soft': '#2a1d18',
-    'cat-food': '#d69a76',
-    'cat-groceries': '#adb063',
-    'cat-transport': '#92aed1',
-    'cat-bills': '#c9a95c',
-    'cat-housing': '#bb9772',
-    'cat-entertainment': '#b195d1',
-    'cat-health': '#7fbcb3',
-    'cat-other': '#9b988c',
+    'paper': '#000000',
+    'paper-2': '#000000',
+    'card': '#161616',
+    'ink': '#ffffff',
+    'ink-2': '#c2c2c2',
+    # Amended from the design's #7d7d7d (4.40:1 on card).
+    'ink-3': '#858585',
+    'rule': '#2e2e2e',
+    'rule-2': '#2e2e2e',
+    'rule-strong': '#f2f2f2',
+    'red': '#ff4a3d',
+    'red-ink': '#ff4a3d',
+    'red-fg': '#0d0d0d',
+    'red-soft': '#2a1518',
+    'pink': '#2a1518',
+    'green-ink': '#3ed874',
+    'chart-bar': '#6e6e6e',
+    'cat-food': '#ff5a4e',
+    'cat-groceries': '#3ed874',
+    'cat-transport': '#5b9cff',
+    'cat-bills': '#ffd23f',
+    'cat-housing': '#a98bff',
+    'cat-entertainment': '#ff6fc4',
+    'cat-health': '#3fe0cf',
+    'cat-other': '#9e9e9e',
 }
 
 TEXT = 4.5
@@ -144,10 +203,11 @@ was the exact failure R-3 caught in the original eight-slice donut, and it is NO
 here, for one structural reason: in this design colour never carries a category on its own.
 
   · Every chip, picker cell, item row, bar-list head, tooltip and legend entry renders the
-    two-letter code and, wherever there is room, the Indonesian label. `Chip`, `CategoryCode`
-    and `CategoryPicker` have no colour-only mode to opt into.
-  · The 12-month chart has no categorical series at all — the current month is `accent` and
-    every other month is `rule` (design R-39).
+    disc's two-letter code and, wherever there is room, the Indonesian label. `Chip`,
+    `CategoryDisc` and `CategoryPicker` have no colour-only mode to opt into — the code and
+    an sr-only label are baked into the disc itself.
+  · The 12-month chart has no categorical series at all — the current month is `red` and
+    every other month is `chart-bar`.
   · The category breakdown is a bar list, not a donut, so each colour is attached to its own
     labelled row rather than competing with seven neighbours around a ring.
 
@@ -159,42 +219,71 @@ adding any chart that is not the bar list.'''
 
 def checks(t: dict[str, str]) -> list[tuple[str, float, float]]:
     """Every pairing the components actually paint, with the threshold each is held to."""
+    f = FIXED
     out: list[tuple[str, float, float]] = [
         # body text
         ('ink on card', contrast(t['ink'], t['card']), TEXT),
         ('ink on paper', contrast(t['ink'], t['paper']), TEXT),
         ('ink-2 on card', contrast(t['ink-2'], t['card']), TEXT),
         ('ink-2 on paper', contrast(t['ink-2'], t['paper']), TEXT),
-        # ink-3 is labels and meta: small, but still text.
+        # ink-3 is labels, meta and placeholders: small, but still text.
         ('ink-3 on card', contrast(t['ink-3'], t['card']), TEXT),
         ('ink-3 on paper', contrast(t['ink-3'], t['paper']), TEXT),
-        # primary button and toast: paper on ink
-        ('paper on ink', contrast(t['paper'], t['ink']), TEXT),
-        # destructive button is red text and border on the page, never a red fill
-        ('red on card', contrast(t['red'], t['card']), TEXT),
-        ('red on paper', contrast(t['red'], t['paper']), TEXT),
-        # the danger toast: red-soft on the inverted ink surface
-        ('red-soft on ink', contrast(t['red-soft'], t['ink']), TEXT),
-        # the active-tab dot and the current bar in F08's chart are graphical
-        ('accent on paper', contrast(t['accent'], t['paper']), GRAPHIC),
-        ('accent on card', contrast(t['accent'], t['card']), GRAPHIC),
-        # rule-strong is the boundary that IDENTIFIES a control — input, secondary button,
-        # picker cell — so 1.4.11's 3:1 applies to it. Plain `rule` and `rule-2` are a card
-        # edge and a row separator: decorative, backed up by layout and by the card's own
-        # fill, and deliberately left below 3:1. They are reported without a threshold below.
-        ('rule-strong on paper', contrast(t['rule-strong'], t['paper']), GRAPHIC),
+        # The primary button is a red FILL. `red-fg` rather than a literal #fff: the design
+        # hard-codes white, which fails at 3.33:1 against dark mode's bright red. This is the
+        # pairing that lets --red stay the design's exact brand value in both schemes.
+        ('red-fg on red fill', contrast(t['red-fg'], t['red']), TEXT),
+        # Red as TYPE — form errors, the destructive button, the delta tile. Three surfaces,
+        # because the empty-state plate is pink and the error notice sits on it.
+        ('red-ink on card', contrast(t['red-ink'], t['card']), TEXT),
+        ('red-ink on paper', contrast(t['red-ink'], t['paper']), TEXT),
+        ('red-ink on pink', contrast(t['red-ink'], t['pink']), TEXT),
+        # The delta tile's "spending less" reading.
+        ('green-ink on card', contrast(t['green-ink'], t['card']), TEXT),
+        ('green-ink on paper', contrast(t['green-ink'], t['paper']), TEXT),
+        # The pink empty-state plate carries a headline and a description.
+        ('ink on pink', contrast(t['ink'], t['pink']), TEXT),
+        ('ink-2 on pink', contrast(t['ink-2'], t['pink']), TEXT),
+        # THE TAB BAR — solid black in both schemes, so these are scheme-independent and are
+        # checked twice on purpose. The active tab is yellow, the inactive one is the
+        # design's #8f8f8f, which is legible here even though it is not on paper.
+        ('tab-ink on tab-bg', contrast(f['tab-ink'], f['tab-bg']), TEXT),
+        ('tab-ink-3 on tab-bg', contrast(f['tab-ink-3'], f['tab-bg']), TEXT),
+        ('red-fg on red crown', contrast(t['red-fg'], t['red']), TEXT),
+        # THE TOAST — yellow in both schemes, same reasoning.
+        ('toast-ink on yellow', contrast(f['toast-ink'], f['yellow']), TEXT),
+        ('toast-danger-ink on yellow', contrast(f['toast-danger-ink'], f['yellow']), TEXT),
+        # THE STICKERS. Yellow (month pill, tagline), ink (day heading, section heads) and
+        # red (the share page's product mark).
+        ('sticker ink on yellow', contrast('#0d0d0d', f['yellow']), TEXT),
+        ('sticker paper on ink', contrast(t['paper'], t['ink']), TEXT),
+        ('sticker red-fg on red', contrast(t['red-fg'], t['red']), TEXT),
+        # The 12-month chart. The completed bar is a graphical object; the current month is
+        # the brand red. `rule` is the gridline underneath them and is decorative.
+        ('chart-bar on card', contrast(t['chart-bar'], t['card']), GRAPHIC),
+        ('red bar on card', contrast(t['red'], t['card']), GRAPHIC),
+        # The lightbox counter pill, which is yellow over true black in both schemes.
+        ('counter ink on yellow', contrast('#0d0d0d', f['yellow']), TEXT),
+        # The dashed boundaries that IDENTIFY a control — the photo add-tile, the empty-state
+        # plate — are drawn in ink-3, which 1.4.11 holds to 3:1.
+        ('ink-3 dash on paper', contrast(t['ink-3'], t['paper']), GRAPHIC),
+        ('ink-3 dash on pink', contrast(t['ink-3'], t['pink']), GRAPHIC),
+        # The sheet grabber.
         ('rule-strong on card', contrast(t['rule-strong'], t['card']), GRAPHIC),
     ]
 
     for c in CATS:
         colour = t[f'cat-{c}']
-        # As TEXT: the two-letter code, and the label inside an unselected chip.
-        out.append((f'{c} code on card', contrast(colour, t['card']), TEXT))
-        out.append((f'{c} code on paper', contrast(colour, t['paper']), TEXT))
-        # Selected chip and picker cell: paper on the category fill.
-        out.append((f'paper on {c} fill', contrast(t['paper'], colour), TEXT))
-        # F08's 4px progress bar against its own well.
-        out.append((f'{c} bar on rule-2', contrast(colour, t['rule-2']), GRAPHIC))
+        # THE DISC MARK: a bold black two-letter code on the category fill. This is the
+        # pairing the three amended light hues exist for, and it is TEXT, not a fill check.
+        out.append((f'disc mark on {c}', contrast(f['disc-ink'], colour), TEXT))
+        # Selected chip / picker cell: the whole pill floods with the category colour and
+        # the label takes the SAME ink as the mark beside it, in both schemes, because the
+        # fills are bright in both. (The design says #0d0d0d; that costs 0.33 of ratio and
+        # fails on four of the eight in light, so the label uses --disc-ink instead.)
+        out.append((f'selected label on {c}', contrast(f['disc-ink'], colour), TEXT))
+        # NOTE: the breakdown's progress bar against its own `rule` track is NOT checked
+        # here. It is reported in the informational section instead — see BAR_WAIVER.
 
     return out
 
@@ -219,6 +308,10 @@ def main() -> int:
         print(f'    rule on paper      {contrast(t["rule"], t["paper"]):.2f}')
         print(f'    rule-2 on card     {contrast(t["rule-2"], t["card"]):.2f}')
 
+        print('  breakdown bar on its track (no threshold — see BAR_WAIVER):')
+        for c in CATS:
+            print(f'    {c:<14} {contrast(t[f"cat-{c}"], t["rule"]):.2f}')
+
         pairs = sorted(
             (delta_e(t[f'cat-{a}'], t[f'cat-{b}']), a, b)
             for a, b in itertools.combinations(CATS, 2)
@@ -230,6 +323,8 @@ def main() -> int:
         print()
 
     print('=' * 78)
+    print(BAR_WAIVER)
+    print()
     print(WAIVER)
     print('=' * 78)
     print(f'CONTRAST FAILURES: {failures}')

@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn'
  */
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive'
-/** `lg` = 52px, the design's normal button. `md` = 44px, the small variant. */
+/** `lg` = 54px, the design's normal button. `md` = 44px, the small variant. */
 export type ButtonSize = 'md' | 'lg'
 
 export interface ButtonBaseProps {
@@ -27,30 +27,33 @@ export interface ButtonProps
 }
 
 /*
- * Every button is mono, uppercase and letter-spaced: a button is an instruction, and
- * instructions are bookkeeping, not language. That is also what keeps a 12px label
- * legible — tracking at 0.16em buys back the size.
+ * A button is a flat BLOCK of colour with a heavy sentence-case label — no border, no
+ * shadow, no uppercase tracking. The previous system set every button in mono caps on the
+ * theory that an instruction is bookkeeping; this one gets its authority from weight (800)
+ * and size (17px) instead, which is what lets the label stay sentence case and still shout.
  */
 const BASE =
   'relative inline-flex items-center justify-center gap-2.5 select-none whitespace-nowrap ' +
-  'rounded-field border font-mono uppercase press ' +
+  'rounded-field border-0 press ' +
   'disabled:opacity-50 disabled:pointer-events-none'
 
 const SIZES: Record<ButtonSize, string> = {
-  md: 'h-touch px-4 text-action',
+  md: 'h-touch px-4.5 text-chip font-extrabold',
   lg: 'h-btn px-5 text-btn',
 }
 
 /*
- * One filled button per screen and it is ink. Everything else is an outline, so the page
- * has exactly one obvious next action. No shadows: `secondary` earns its edge from the
- * hairline, `destructive` from the red it borrows for both border and text.
+ * One RED button per screen and that is the next action. Everything else is a white block
+ * or nothing at all, so the page has exactly one obvious thing to tap. Elevation is
+ * contrast: `secondary` and `destructive` are `card` on `paper` and need no edge;
+ * `destructive` differs from `secondary` only in the colour of its type, which is the
+ * design's answer to "destructive should not compete with primary".
  */
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'border-ink bg-ink text-paper',
-  secondary: 'border-rule-strong bg-transparent text-ink-2',
-  ghost: 'border-transparent bg-transparent text-ink-3',
-  destructive: 'border-red bg-transparent text-red',
+  primary: 'bg-red text-red-fg',
+  secondary: 'bg-card text-ink',
+  ghost: 'bg-transparent text-ink-3',
+  destructive: 'bg-card text-red-ink',
 }
 
 /** Exported so a non-`<button>` element can borrow the look. Prefer `ButtonLink`. */
@@ -66,10 +69,10 @@ export function buttonClasses(o: ButtonBaseProps = {}): string {
  */
 export function LoadingDots({ className }: { className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-1', className)} aria-hidden="true">
-      <span className="size-1 animate-pulse rounded-full bg-current [animation-duration:1.1s]" />
-      <span className="size-1 animate-pulse rounded-full bg-current [animation-delay:0.18s] [animation-duration:1.1s]" />
-      <span className="size-1 animate-pulse rounded-full bg-current [animation-delay:0.36s] [animation-duration:1.1s]" />
+    <span className={cn('inline-flex items-center gap-1.5', className)} aria-hidden="true">
+      <span className="size-1.5 animate-pulse rounded-full bg-current [animation-duration:1s]" />
+      <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:0.16s] [animation-duration:1s]" />
+      <span className="size-1.5 animate-pulse rounded-full bg-current [animation-delay:0.32s] [animation-duration:1s]" />
     </span>
   )
 }

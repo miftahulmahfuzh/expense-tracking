@@ -13,11 +13,13 @@ const KEYBOARD_OPEN = { innerHeight: INNER, height: 506, offsetTop: 46, scale: 1
 
 describe('viewportGeometry', () => {
   it('is a no-op with the keyboard closed', () => {
-    expect(viewportGeometry({ innerHeight: INNER, height: INNER, offsetTop: 0, scale: 1 })).toEqual({
-      appHeight: 896,
-      top: 0,
-      keyboardInset: 0,
-    })
+    expect(viewportGeometry({ innerHeight: INNER, height: INNER, offsetTop: 0, scale: 1 })).toEqual(
+      {
+        appHeight: 896,
+        top: 0,
+        keyboardInset: 0,
+      },
+    )
   })
 
   /*
@@ -48,11 +50,13 @@ describe('viewportGeometry', () => {
 
   it('publishes nothing while pinch-zoomed', () => {
     // 2× halves the visual viewport; treating that as chrome would halve the app's height.
-    expect(viewportGeometry({ innerHeight: INNER, height: 448, offsetTop: 200, scale: 2 })).toEqual({
-      appHeight: null,
-      top: 0,
-      keyboardInset: 0,
-    })
+    expect(viewportGeometry({ innerHeight: INNER, height: 448, offsetTop: 200, scale: 2 })).toEqual(
+      {
+        appHeight: null,
+        top: 0,
+        keyboardInset: 0,
+      },
+    )
   })
 
   it('does not mistake float noise in scale for a zoom', () => {

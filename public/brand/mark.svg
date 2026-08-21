@@ -1,8 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!--
     The mark is the money rail: three right-aligned bars of decreasing length — a column of
-    numbers, which is what the app is. Ink ground and paper bars, the same pair as the raised
-    Tambah button.
+    numbers, which is what the app is.
+
+    Repainted for the 2026-08-21 design pull. The ground is now #0d0d0d, which is not merely
+    "the new ink" — it is the exact black of the tab bar, the one piece of hardware in the
+    app, and an app icon is the same kind of object. The top bar takes the brand red, because
+    the new system spends red on exactly one thing per surface and on an icon that thing is
+    the mark itself. The remaining two stay paper.
+
+    The CONCEPT is unchanged on purpose: the design supplies a product mark (a red disc
+    carrying "Rp") but it is made of type, and this file is rasterised by librsvg via sharp,
+    which would need Archivo installed on whatever machine runs the script to render a <text>
+    element the same way twice. Three rectangles render identically everywhere.
 
     The opaque <rect> ground is REQUIRED: iOS does not honour transparency or rounded corners
     on an apple-touch-icon, it applies its own squircle mask to an opaque square, and a
@@ -11,9 +21,9 @@
     The bars occupy the central 25%-75% horizontally and 35%-65% vertically, well inside the
     80% maskable safe zone, so one piece of art serves both the plain and the maskable icon.
   -->
-  <rect width="1024" height="1024" fill="#20211d"/>
-  <g fill="#f0ede4">
-    <rect x="256" y="360" width="512" height="72" rx="8"/>
+  <rect width="1024" height="1024" fill="#0d0d0d"/>
+  <rect x="256" y="360" width="512" height="72" rx="8" fill="#e0281e"/>
+  <g fill="#e9e9e6">
     <rect x="400" y="476" width="368" height="72" rx="8"/>
     <rect x="512" y="592" width="256" height="72" rx="8"/>
   </g>

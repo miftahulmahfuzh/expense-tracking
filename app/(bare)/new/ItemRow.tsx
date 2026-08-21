@@ -53,7 +53,7 @@ export function ItemRow({
   const label = item.name.trim() || `item ${index + 1}`
 
   return (
-    <li className="border-b border-rule-2 py-3 last:border-b-0">
+    <li className="border-b border-rule py-3 last:border-b-0">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           {/* Field owns the label, the generated id and the aria-describedby wiring.
@@ -82,11 +82,11 @@ export function ItemRow({
           disabled={disabled}
           // A full 44×44 (design R-41), from real box size rather than a transform, so the
           // hit area and the painted area agree.
-          className="flex size-touch shrink-0 press items-center justify-center rounded-field font-mono text-ink-3"
+          className="flex size-touch shrink-0 press items-center justify-center rounded-field text-ink-3"
           aria-label={`Hapus ${label}`}
         >
-          <span aria-hidden="true" className="text-row leading-none">
-            ✕
+          <span aria-hidden="true" className="text-[20px] leading-none font-bold">
+            ×
           </span>
         </button>
       </div>

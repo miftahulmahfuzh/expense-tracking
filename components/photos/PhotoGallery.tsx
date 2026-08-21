@@ -54,7 +54,7 @@ export function PhotoGallery({
               /* aspect-square + object-cover is the whole thumbnail story: every cell is a
                  perfect square whatever the source aspect ratio, centre-cropped rather
                  than letterboxed, so the grid reads as a grid. */
-              className="relative block aspect-square w-full press overflow-hidden rounded-field border border-rule bg-paper-2"
+              className="relative block aspect-square w-full press overflow-hidden rounded-field bg-paper-2"
             >
               <Image
                 src={photo.blobUrl}

@@ -60,7 +60,7 @@ export function Field({
         <label htmlFor={inputId} className={cn('mb-1.5 block eyebrow', hideLabel && 'sr-only')}>
           {label}
           {required && (
-            <span className="text-red" aria-hidden="true">
+            <span className="text-red-ink" aria-hidden="true">
               {' *'}
             </span>
           )}
@@ -71,12 +71,12 @@ export function Field({
         {/* Hint and error never show together: an error supersedes the instruction that
             failed to prevent it. */}
         {hint && !error && (
-          <p id={hintId} className="mt-1.5 font-mono text-meta text-ink-3">
+          <p id={hintId} className="mt-1.5 text-meta text-ink-3">
             {hint}
           </p>
         )}
         {error && (
-          <p id={errorId} className="mt-1.5 font-mono text-meta text-red">
+          <p id={errorId} className="mt-1.5 text-meta text-red-ink">
             {error}
           </p>
         )}
@@ -93,14 +93,21 @@ export function Field({
  *
  * `bg-card` assumes the field sits on `paper` — the normal case. Inside a sheet or a card,
  * where the surface is already `card`, pass `className="bg-paper"` to keep the well
- * readable; the caller's className is applied last, so it wins.
+ * readable; the caller's className is applied last, so it wins. That inversion IS the
+ * design's rule: a field is always the surface its container is not.
  *
- * `border-rule-strong`, not `border-rule`: the border is what identifies a text field, and
- * the fill differs from the page by only 1.09:1, so WCAG 1.4.11's 3:1 falls entirely on the
- * line. Container edges keep the soft `rule`.
+ * NO BORDER UNTIL IT IS WRONG. A field is a flat block, and the only line it ever draws is
+ * the red one an error puts around it — "errors turn the border red, no icons needed"
+ * (01 Components). The border is reserved as `transparent` rather than added on error so
+ * the field does not grow by 2px the moment it fails validation.
+ *
+ * KNOWN DEVIATION, and the one place this integration chose the design over the previous
+ * system: a borderless field is 1.23:1 against the page, below WCAG 1.4.11's 3:1 for the
+ * boundary that identifies a control. See docs/design/DESIGN_INTEGRATION.md — the one-line
+ * revert is `border-transparent` → `border-rule-strong` here and in `TextArea`.
  */
 export const CONTROL_CLASS =
-  'w-full h-control rounded-field border border-rule-strong bg-card px-3.5 ' +
+  'w-full h-control rounded-field border border-transparent bg-card px-3.5 ' +
   'text-input text-ink placeholder:text-ink-3 aria-[invalid=true]:border-red'
 
 /**
@@ -134,9 +141,10 @@ export type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & 
 }
 
 /**
- * Card-radius rather than field-radius, and padded rather than line-height-centred: a
- * textarea is a surface you write onto, not a slot you fill. F05's paste box is the main
- * consumer and adds `font-mono` — pasted receipt text is bookkeeping.
+ * Padded rather than line-height-centred: a textarea is a surface you write onto, not a
+ * slot you fill. F05's paste box is the main consumer, and it is the biggest white block in
+ * the app — pasted receipt text at 500 with generous leading, so a wall of lines still
+ * reads as a list.
  */
 export function TextArea({ className, id, rows = 6, ...rest }: TextAreaProps) {
   const field = useFieldContext()
@@ -147,8 +155,8 @@ export function TextArea({ className, id, rows = 6, ...rest }: TextAreaProps) {
       aria-describedby={rest['aria-describedby'] ?? field?.describedBy}
       aria-invalid={rest['aria-invalid'] ?? (field?.invalid || undefined)}
       className={cn(
-        'w-full rounded-card border border-rule-strong bg-card p-4',
-        'text-input leading-relaxed text-ink placeholder:text-ink-3',
+        'w-full rounded-card border border-transparent bg-card p-4',
+        'text-input leading-[1.6] font-medium text-ink placeholder:text-ink-3',
         'resize-none aria-[invalid=true]:border-red',
         className,
       )}

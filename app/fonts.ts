@@ -1,54 +1,38 @@
 /**
- * The two families the design is built on (docs/design/DESIGN_INTEGRATION.md R-35).
+ * ONE typeface. Archivo, a hard grotesque, at weights 400–900.
  *
- * Source Serif 4 for anything that is *language* — expense titles, day headings, item
- * names, prose, empty states. IBM Plex Mono for anything that is *bookkeeping* — every
- * amount, date, count, label, button and the tab bar. Money is bookkeeping, so money is
- * always mono, which produces the whole hierarchy from one rule and gives tabular figures
- * by construction rather than by CSS trick.
+ * This replaces the Source Serif 4 / IBM Plex Mono pair the previous system was built on.
+ * That system separated *language* from *bookkeeping* by family; this one separates them by
+ * WEIGHT — 900 for the hero, 800 for a total, 700 for a row title, 600 for an item, 500 for
+ * prose — and gets its column-aligned amounts from `font-variant-numeric: tabular-nums`
+ * (the `tabular` utility) rather than from a monospaced family. Loudness is the hierarchy:
+ * if two things compete, the heavier weight wins.
  *
- * This reverses F10's original "system stack, zero font bytes" decision. F10's reasoning
- * was sound on performance and wrong on substance: the serif/mono split IS the design, and
- * dropping it collapses the hierarchy into one voice. The performance concern is answered
- * differently instead — the design's own HTML used a render-blocking <link> to
- * fonts.googleapis.com; `next/font/google` downloads both families at BUILD time and
- * self-hosts them from our own origin, so there is no third-party round trip, no extra DNS
- * or TLS handshake, and nothing is shared with Google at request time.
+ * Archivo ships as a variable font on Google Fonts (weight 100–900), so one file covers the
+ * whole range and there is no `weight` array to keep in sync with the type scale.
  *
- * Latin subset only. Two mono weights only. No italics. `display: 'swap'` so text paints
- * in the fallback immediately rather than blocking on a font over an Indonesian mobile
- * connection — the app's own metric is time-to-first-amount-on-screen.
+ * Latin subset only. No italics — the design has none. `display: 'swap'` so text paints in
+ * the fallback immediately rather than blocking on a font over an Indonesian mobile
+ * connection; the app's own metric is time-to-first-amount-on-screen.
+ *
+ * The design's own HTML used a render-blocking <link> to fonts.googleapis.com.
+ * `next/font/google` downloads the family at BUILD time and self-hosts it from our origin,
+ * so there is no third-party round trip, no extra DNS or TLS handshake, and nothing is
+ * shared with Google at request time.
  */
-import { IBM_Plex_Mono, Source_Serif_4 } from 'next/font/google'
+import { Archivo } from 'next/font/google'
 
-/**
- * Variable font (optical size 8..60, weight 200..900) so no `weight` array: one file
- * covers the 400 body and the 600 the design uses for the Google button's "G".
- */
-export const serif = Source_Serif_4({
+export const sans = Archivo({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-source-serif',
-  fallback: ['Georgia', 'Times New Roman', 'serif'],
+  variable: '--font-archivo',
+  fallback: ['Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif'],
 })
 
 /**
- * Static font, so the weights have to be named. 400 for meta and labels, 500 for amounts —
- * the design leans on that half-step to make a total read as heavier than the date above
- * it without changing size.
+ * The variable class, for `<html>`. `@theme inline` in globals.css maps `--font-archivo`
+ * onto `font-sans`; next/font emits it on a class rather than at `:root`, which is exactly
+ * why that block is `inline` — the non-inline form would resolve it at `:root` and find
+ * nothing.
  */
-export const mono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  display: 'swap',
-  variable: '--font-plex-mono',
-  fallback: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
-})
-
-/**
- * Both variable classes, for `<html>`. `@theme inline` in globals.css maps
- * `--font-source-serif` / `--font-plex-mono` onto `font-serif` / `font-mono`; next/font
- * emits them on a class rather than at `:root`, which is exactly why that block is
- * `inline` — the non-inline form would resolve them at `:root` and find nothing.
- */
-export const fontVariables = `${serif.variable} ${mono.variable}`
+export const fontVariables = sans.variable

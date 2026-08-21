@@ -12,28 +12,32 @@ import Link from 'next/link'
  * There is no action on the right: on /new the primary action is the sticky Simpan at the
  * bottom, and a second one up here would compete with it.
  *
+ * The design gives Tambah a full SCREEN TITLE — 30px/900 on a white band — rather than the
+ * tiny chrome label the previous system used, because /new is a destination on the tab bar
+ * and not really a pushed view. The chevron survives anyway: R-51 keeps this screen out of
+ * `(shell)`, so the tab bar is not there to navigate away with.
+ *
  * The chevron carries its own accessible name rather than borrowing the heading's, so a
  * screen reader announces "Kembali ke daftar bulan ini, link" and then "Tambah, heading
  * level 1" — two different things, which is what they are.
  */
 export function NewHeader({ backHref }: { backHref: string }) {
   return (
-    <header className="flex shrink-0 items-center gap-1 pt-safe-header px-safe pb-3">
+    <header className="flex shrink-0 items-center gap-1 border-b border-rule bg-card pt-safe-header px-safe pb-3.5">
       <Link
         href={backHref}
         aria-label="Kembali ke daftar bulan ini"
         // -ml-2.5 pulls the 44px target's padding back so the glyph lines up with the
         // gutter rather than sitting a touch-target's worth inside it.
-        className="-ml-2.5 grid size-touch shrink-0 press place-items-center rounded-field text-ink-2"
+        className="-ml-2.5 grid size-touch shrink-0 press place-items-center rounded-field text-ink"
       >
-        <span aria-hidden="true" className="text-title leading-none">
+        <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
           ‹
         </span>
       </Link>
 
-      {/* The route's one <h1>. Mono label rather than a 27px serif title: this is a pushed
-          view, and the design gives pushed views a chrome label, not a screen title. */}
-      <h1 className="eyebrow">Tambah</h1>
+      {/* The route's one <h1>. */}
+      <h1 className="text-title">Tambah</h1>
     </header>
   )
 }

@@ -7,7 +7,7 @@ export type MoneyTone = 'default' | 'muted' | 'danger' | 'success'
 export interface MoneyProps {
   /** Whole rupiah. A negative value renders a real minus sign; use `signed` for deltas. */
   value: number
-  /** hero = 40px month total · lg = 22px draft total · md = 17px expense total · sm = 14px item */
+  /** hero = 44px month total · lg = 24px draft total · md = 17px expense total · sm = 15px item */
   size?: MoneySize
   tone?: MoneyTone
   /** Show the "Rp" prefix. Off inside a column that already has a Rp header. */
@@ -18,32 +18,34 @@ export interface MoneyProps {
 }
 
 /*
- * Mono at every size, because money is bookkeeping. The half-step from 400 to 500 on the
- * two mid sizes is what makes a group total read heavier than the date above it without
- * getting bigger — the whole reason two mono weights are loaded.
+ * WEIGHT IS THE HIERARCHY. One typeface at four sizes, each carrying its own weight in the
+ * scale — 900 for the hero and the draft total, 800 for a group total, 600 for a line item.
+ * That step is what makes a total read heavier than the rows under it without getting
+ * bigger, and it replaces the two mono weights the previous system loaded to do the job.
  */
 const SIZE: Record<MoneySize, string> = {
   hero: 'text-money-xl',
-  lg: 'text-money-lg font-medium',
-  md: 'text-money-md font-medium',
+  lg: 'text-money-lg',
+  md: 'text-money-md',
   sm: 'text-money-sm',
 }
 
 const TONE: Record<MoneyTone, string> = {
   default: 'text-ink',
   muted: 'text-ink-2',
-  /** Spending more than last month. */
-  danger: 'text-red',
-  /** Spending less. The accent is the only place green appears in the app. */
-  success: 'text-accent',
+  /** Spending more than last month. The darkened twin: this is type, not a fill. */
+  danger: 'text-red-ink',
+  /** Spending less. Green is not in this palette, so "better" is the category green. */
+  success: 'text-green-ink',
 }
 
 /**
  * The read-only amount, and the ONLY thing allowed to typeset money.
  *
- * Always mono and always `tabular`, so a column of these aligns digit-for-digit — that
- * alignment is the app's signature, and routing every amount through one component is what
- * stops a feature opting out of it by accident.
+ * Always `tabular`, so a column of these aligns digit-for-digit. That matters more here
+ * than it did under the old mono family: Archivo is proportional, so `font-variant-numeric`
+ * is the only thing holding the column together, and routing every amount through one
+ * component is what stops a feature opting out of it by accident.
  */
 export function Money({
   value,
@@ -61,7 +63,7 @@ export function Money({
   const digits = formatIdrDigits(magnitude)
 
   return (
-    <span className={cn('font-mono tabular whitespace-nowrap', SIZE[size], TONE[tone], className)}>
+    <span className={cn('tabular whitespace-nowrap', SIZE[size], TONE[tone], className)}>
       <span aria-hidden="true">
         {sign}
         {showPrefix ? `Rp ${digits}` : digits}

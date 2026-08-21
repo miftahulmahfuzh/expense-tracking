@@ -1,6 +1,7 @@
 'use client'
 
 import { CATEGORY_LIST, categoryStyle, type Category } from '@/lib/categories'
+import { CategoryDisc } from './Chip'
 import { Sheet } from './Sheet'
 
 export interface CategoryPickerProps {
@@ -49,12 +50,10 @@ export function CategoryPicker({
                 onSelect(meta.id)
                 onClose()
               }}
-              className="cell flex min-h-13 press items-center gap-2.5 rounded-field px-3 py-2 text-left"
+              className="cell flex min-h-13.5 press items-center gap-2.5 rounded-field py-2 pr-3 pl-2 text-left"
             >
-              <span className="cell-code font-mono text-label tracking-[0.08em]" aria-hidden="true">
-                {meta.code}
-              </span>
-              <span className="cell-label text-body leading-tight">{meta.label}</span>
+              <CategoryDisc category={meta.id} />
+              <span className="cell-label text-chip leading-tight">{meta.label}</span>
             </button>
           )
         })}

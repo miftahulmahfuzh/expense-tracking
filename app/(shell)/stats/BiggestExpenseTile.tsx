@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { CategoryCode, Money } from '@/components/ui'
+import { CategoryCode, INK_STICKER, Money } from '@/components/ui'
 import type { BiggestExpense } from '@/lib/db/queries'
 import { formatDayShort } from '@/lib/stats/format'
 import { toIdr } from '@/lib/stats/series'
@@ -21,11 +21,8 @@ export default function BiggestExpenseTile({ item }: { item: BiggestExpense | nu
   if (!item) return null
 
   return (
-    <section
-      className="rounded-card border border-rule bg-card p-4"
-      aria-labelledby="stats-big-title"
-    >
-      <h2 className="eyebrow" id="stats-big-title">
+    <section className="rounded-card bg-card p-4" aria-labelledby="stats-big-title">
+      <h2 className="sticker" style={INK_STICKER} id="stats-big-title">
         Pengeluaran terbesar
       </h2>
 
@@ -37,13 +34,16 @@ export default function BiggestExpenseTile({ item }: { item: BiggestExpense | nu
 
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="truncate text-item">{item.name}</span>
-          <span className="mt-0.5 truncate font-mono text-meta text-ink-3">
+          <span className="mt-0.5 truncate text-meta text-ink-3">
             {item.groupTitle} · {formatDayShort(item.occurredOn)}
           </span>
         </span>
 
         <Money value={toIdr(item.amountIdr)} size="md" />
-        <span aria-hidden="true" className="shrink-0 text-title leading-none text-ink-3">
+        <span
+          aria-hidden="true"
+          className="shrink-0 text-[22px] leading-none font-extrabold text-ink-3"
+        >
           ›
         </span>
       </Link>

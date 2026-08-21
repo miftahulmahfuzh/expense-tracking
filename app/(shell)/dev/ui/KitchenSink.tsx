@@ -40,7 +40,7 @@ export function KitchenSink() {
   return (
     <main className="px-gutter pt-safe-header">
       <h1 className="text-title">Kitchen sink</h1>
-      <p className="mt-1 mb-6 font-mono text-meta text-ink-3">
+      <p className="mt-1 mb-6 text-meta text-ink-3">
         Dev only. Force a scheme from the console with{' '}
         <code>document.documentElement.dataset.theme = &apos;dark&apos;</code>, or delete the key to
         follow the OS.
@@ -81,7 +81,7 @@ export function KitchenSink() {
         </div>
         <p className="mt-3 text-body text-ink-2">
           The hero is 8 digits — it must fit one line at 414px. The signed pair is F08&apos;s
-          month-over-month delta: red for spending more, accent for less.
+          month-over-month delta: red for spending more, green for less.
         </p>
       </Section>
 
@@ -118,7 +118,7 @@ export function KitchenSink() {
           <Button
             fullWidth
             variant="secondary"
-            leadingIcon={<span className="font-serif text-input font-semibold">G</span>}
+            leadingIcon={<span className="text-input font-semibold">G</span>}
           >
             Lanjut dengan Google
           </Button>
@@ -143,7 +143,7 @@ export function KitchenSink() {
         </div>
         <div className="mt-3 flex items-center gap-3">
           <Chip category={category} size="md" onClick={() => setPickerOpen(true)} />
-          <span className="font-mono text-meta text-ink-3">interactive · opens the picker</span>
+          <span className="text-meta text-ink-3">interactive · opens the picker</span>
         </div>
         <p className="mt-3 text-body text-ink-2">
           All sixteen must be legible in both themes and still tell each other apart. The code is
@@ -153,7 +153,7 @@ export function KitchenSink() {
 
       <Section title="Item rows — CategoryCode in a dense list">
         <Card padded="rows">
-          <ul className="divide-y divide-rule-2">
+          <ul className="divide-y divide-rule">
             {[
               ['roti buaya', 38500, 'food'],
               ['kungfu soccer', 49000, 'entertainment'],
@@ -167,7 +167,7 @@ export function KitchenSink() {
                 <button
                   type="button"
                   aria-label={`Hapus ${name as string}`}
-                  className="grid size-touch shrink-0 press place-items-center font-mono text-ink-3"
+                  className="grid size-touch shrink-0 press place-items-center text-ink-3"
                 >
                   <span aria-hidden="true">×</span>
                 </button>
@@ -202,14 +202,14 @@ export function KitchenSink() {
               onParseError={setParseError}
             />
           </Field>
-          <p className="font-mono text-meta text-ink-3">
+          <p className="text-meta text-ink-3">
             value = {amount === null ? 'null' : amount}
             {parseError !== null && ` · onParseError(${JSON.stringify(parseError)})`}
           </p>
 
           <Field label="Catatan" hideLabel>
             <TextArea
-              className="font-mono"
+              className="font-medium"
               rows={5}
               placeholder={
                 'bakar duit tuesday - 18/8/2026\nroti buaya 38500\nayam sambal hitam 45k'
@@ -296,7 +296,7 @@ export function KitchenSink() {
         <Card>
           <span className="skeleton h-4 w-[55%]" />
           <span className="skeleton mt-2 h-2.5 w-[32%]" />
-          <div className="mt-4 divide-y divide-rule-2">
+          <div className="mt-4 divide-y divide-rule">
             {['52%', '62%', '48%', '66%', '40%'].map((w, i) => (
               <div key={w} className="flex items-center gap-3 py-3.5">
                 <span className="skeleton h-3" style={{ flexBasis: w }} />
@@ -362,7 +362,7 @@ export function KitchenSink() {
           </Field>
           <div className="flex items-center gap-2">
             <Chip category={category} selected onClick={() => setPickerOpen(true)} />
-            <span className="font-mono text-meta text-ink-3">ganti ›</span>
+            <span className="text-meta text-ink-3">ganti ›</span>
           </div>
         </div>
       </Sheet>

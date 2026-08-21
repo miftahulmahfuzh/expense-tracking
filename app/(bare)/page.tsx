@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { CutoutArt } from '@/components/CutoutArt'
 import { Button } from '@/components/ui'
 import { signInWithGoogleAction } from '@/lib/auth/actions'
 import { getUserId } from '@/lib/auth/requireUserId'
@@ -35,39 +36,67 @@ export default async function Page({ searchParams }: PageProps<'/'>) {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-gutter text-center">
-      <div className="px-4">
-        <p className="font-mono text-label tracking-[0.24em] text-ink-3 uppercase">
-          expensetracking.online
-        </p>
+    /*
+     * THE PINK PLATE. The one screen that is not `paper` — a full-bleed background moment,
+     * with its own two cut-outs on top of it (the shell's five are underneath and covered).
+     * `-mt-*`/`min-h-dvh` are not needed: `(bare)`'s wrapper is only `pb-safe`, so this fills
+     * the column on its own.
+     *
+     * LEFT-ALIGNED, not centred. The design stacks the mark, the wordmark and the yellow
+     * tagline hard against a 32px left margin — the same edge the button and the domain line
+     * hang off — so the whole screen reads as one poster column.
+     */
+    <main className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-pink px-8">
+      <CutoutArt variant="signin" />
 
-        <h1 className="mt-3.5 mb-3 text-hero">Expense Tracking</h1>
-
-        <p className="text-input text-pretty text-ink-2">Catat pengeluaran dengan sekali tempel.</p>
-      </div>
-
-      {params.error ? (
-        <p role="alert" className="mt-9 px-4 font-mono text-meta text-red">
-          Gagal masuk. Coba lagi ya.
-        </p>
-      ) : null}
-
-      <form
-        action={signInWithGoogleAction}
-        className={params.error ? 'mt-5 w-full' : 'mt-11 w-full'}
-      >
-        <input type="hidden" name="next" value={next} />
-        <Button
-          type="submit"
-          variant="secondary"
-          fullWidth
-          leadingIcon={<span className="font-serif text-input font-semibold">G</span>}
+      <div className="relative z-10 flex flex-col items-start">
+        <span
+          aria-hidden="true"
+          className="grid size-18 place-items-center rounded-full bg-red text-[34px] leading-none font-black text-red-fg"
         >
-          Lanjut dengan Google
-        </Button>
-      </form>
+          Rp
+        </span>
 
-      <p className="mt-5 font-mono text-meta text-ink-3">Datamu privat. Cuma kamu yang lihat.</p>
+        {/* `text-hero` is 54px/900 at -0.035em. The break is authored, not wrapped: the
+            wordmark is two lines at every width the app is ever shown at. */}
+        <h1 className="mt-7 text-hero">
+          Expense
+          <br />
+          Tracking
+        </h1>
+
+        <p className="mt-3.5 sticker-lg">Catat sekali tempel</p>
+
+        {params.error ? (
+          <p role="alert" className="mt-7 text-meta text-red-ink">
+            Gagal masuk. Coba lagi ya.
+          </p>
+        ) : null}
+
+        <form
+          action={signInWithGoogleAction}
+          className={params.error ? 'mt-6 w-full' : 'mt-13 w-full'}
+        >
+          <input type="hidden" name="next" value={next} />
+          <Button
+            type="submit"
+            variant="secondary"
+            fullWidth
+            leadingIcon={<span className="text-[19px] font-black">G</span>}
+          >
+            Lanjut dengan Google
+          </Button>
+        </form>
+
+        {/*
+         * The domain, set as the design's tiny wide-tracked caption. `ink-3` on pink measures
+         * 3.87:1, which is fine for this line and this line only: it is the one piece of text
+         * on the screen that carries no information the user needs — the wordmark above it
+         * already says what the app is, and the privacy line below it is `ink-2`.
+         */}
+        <p className="mt-4.5 text-label text-ink-3 uppercase">expensetracking.online</p>
+        <p className="mt-2 text-meta text-ink-2">Datamu privat. Cuma kamu yang lihat.</p>
+      </div>
     </main>
   )
 }

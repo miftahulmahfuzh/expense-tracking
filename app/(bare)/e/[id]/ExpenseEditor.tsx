@@ -8,7 +8,7 @@ import { addItem, deleteItem, updateItem } from '@/app/actions/items'
 import {
   Button,
   Card,
-  CategoryCode,
+  CategoryDisc,
   Field,
   Input,
   Money,
@@ -198,18 +198,22 @@ export function ExpenseEditor({
        * this header because what flanks the label differs per route — here the right side is
        * F09's Bagikan, on /new there is nothing (R-89).
        */}
-      <header className="flex items-center gap-1 pt-safe-header px-safe pb-3">
+      {/* Back · label · action, on a white band with a hairline under it — the design's
+          pushed-view header. The label stays a tiny eyebrow rather than becoming a screen
+          title, because the expense's own title is the 30px thing on this screen and two
+          large headings would fight. */}
+      <header className="flex items-center gap-1 border-b border-rule bg-card pt-safe-header px-safe pb-2">
         <Link
           href={backHref}
           aria-label={BACK_LABEL}
-          className="-ml-2.5 grid size-touch shrink-0 press place-items-center rounded-field text-ink-2"
+          className="-ml-2.5 grid size-touch shrink-0 press place-items-center rounded-field text-ink"
         >
-          <span aria-hidden="true" className="text-title leading-none">
+          <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
             ‹
           </span>
         </Link>
-        <h1 className="eyebrow">{DETAIL_LABEL}</h1>
-        {shareSlot && <div className="ml-auto">{shareSlot}</div>}
+        <h1 className="mx-auto eyebrow">{DETAIL_LABEL}</h1>
+        <div className="ml-auto">{shareSlot}</div>
       </header>
 
       <div className="px-safe">
@@ -247,7 +251,7 @@ export function ExpenseEditor({
 
         <div className="mt-6 mb-2 flex items-baseline justify-between">
           <h2 className="eyebrow">{ITEM_HEADING}</h2>
-          <span className="font-mono tabular text-meta text-ink-3">{optimisticItems.length}</span>
+          <span className="tabular text-meta text-ink-3">{optimisticItems.length}</span>
         </div>
 
         {/* padded="rows" is the 16/6/2 inset a list of rows wants (R-52c): the separator runs
@@ -261,28 +265,28 @@ export function ExpenseEditor({
                  no idea which of eighteen rows the callout meant. scroll-mt clears the
                  sticky detail header so the anchored row is not parked underneath it. */
               id={`item-${item.id}`}
-              className="flex scroll-mt-24 items-stretch border-b border-rule-2 last:border-b-0"
+              className="flex scroll-mt-24 items-stretch border-b border-rule last:border-b-0"
             >
               <button
                 type="button"
                 onClick={() => setEditing(item)}
                 className="flex min-h-row flex-1 press items-center gap-2.5 py-2 pr-1.5 text-left"
               >
-                {/* The two-letter code, not a dot: colour AND identity, in a fixed 24px
-                    column so a list of items scans as a table (R-52g). */}
-                <CategoryCode category={item.category} className="w-6 shrink-0" />
+                {/* The pictogram disc: colour AND identity, in a fixed 28px column so a
+                    list of items scans as a table. */}
+                <CategoryDisc category={item.category} />
                 <span className="min-w-0 flex-1 truncate text-item">{item.name}</span>
-                <Money value={item.amountIdr} size="sm" />
+                <Money value={item.amountIdr} size="sm" tone="muted" />
               </button>
 
               <button
                 type="button"
                 onClick={() => removeItem(item)}
                 aria-label={`Hapus ${item.name}`}
-                className="grid size-touch shrink-0 press place-items-center rounded-field font-mono text-ink-3"
+                className="grid size-touch shrink-0 press place-items-center rounded-field text-ink-3"
               >
-                <span aria-hidden="true" className="text-row leading-none">
-                  ✕
+                <span aria-hidden="true" className="text-[20px] leading-none font-bold">
+                  ×
                 </span>
               </button>
             </li>
@@ -292,12 +296,12 @@ export function ExpenseEditor({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="mt-2 min-h-touch w-full press rounded-field border border-dashed border-rule-strong font-mono text-action text-ink-2 uppercase"
+          className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2 uppercase"
         >
           {ADD_ITEM_CTA}
         </button>
 
-        <div className="mt-6 flex items-baseline justify-between border-t border-rule pt-3.5">
+        <div className="mt-3.5 flex items-baseline justify-between rounded-card bg-card px-4 py-3">
           <span className="eyebrow">{TOTAL_LABEL}</span>
           {/*
            * Announced politely and atomically so a screen reader reads the whole new amount

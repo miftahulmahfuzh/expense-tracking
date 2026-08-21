@@ -16,14 +16,18 @@ export interface TabBarProps {
 /**
  * Three tabs: Bulan Ini · Tambah · Statistik.
  *
- * No icons. The label is mono and uppercase and that is the whole affordance — an icon set
- * would be three more drawings to keep consistent, and at 11px with 0.14em tracking the
- * word is faster to read than a glyph you have to learn. The active tab gets the accent
- * dot, which is the only place green appears in the chrome.
+ * The bar is solid black in BOTH schemes — a chassis, not a surface. It does not flip with
+ * the theme and it does not sit on `paper`; it is the one piece of hardware in the app, and
+ * everything else scrolls behind it. Its palette is its own three tokens (`tab-bg`,
+ * `tab-ink`, `tab-ink-3`) so nothing here has to reason about light and dark.
  *
- * Tambah is the app's reason to exist, so it is the one raised element: an ink circle
- * breaking the bar's top rule. Still shadowless (design R-36) — it reads as in front
- * because it overlaps the hairline, not because it casts anything.
+ * No icons. The label is 11px/800 uppercase and that is the whole affordance — an icon set
+ * would be three more drawings to keep consistent, and at that tracking the word is faster
+ * to read than a glyph you have to learn. The active tab goes YELLOW and gains a dot.
+ *
+ * Tambah is the app's reason to exist, so it is the one raised element: a red circle
+ * punching through the bar's top edge like a stopwatch crown. Still shadowless — it reads
+ * as in front because it overlaps the edge, not because it casts anything.
  *
  * `data-tabbar` is read by the `:has()` rule in globals.css that lifts the Toast above the
  * bar. Do not remove it.
@@ -40,24 +44,24 @@ export function TabBar({ monthHref }: TabBarProps) {
       aria-label="Navigasi utama"
       // Fixed to the viewport, but the contents are constrained to the same max-w-app
       // column as the page so the bar lines up on a wide viewport instead of stretching
-      // across it. `bg-paper` is opaque, so scrolled content passes cleanly behind.
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-rule bg-paper"
+      // across it. Opaque, so scrolled content passes cleanly behind.
+      className="fixed inset-x-0 bottom-0 z-40 bg-tab-bg"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="mx-auto grid max-w-app grid-cols-3">
+      <div className="mx-auto grid max-w-app grid-cols-3 px-1">
         <Link
           href={monthHref}
           aria-current={onMonth ? 'page' : undefined}
           className={cn(
-            'flex min-h-tab press flex-col items-center gap-1.5 pt-3 pb-1.5',
-            'font-mono text-action uppercase',
-            onMonth ? 'text-ink' : 'text-ink-3',
+            'flex min-h-tab press flex-col items-center gap-1.5 pt-3.5 pb-1.5',
+            'text-action uppercase',
+            onMonth ? 'text-tab-ink' : 'text-tab-ink-3',
           )}
         >
           {/* Always rendered, transparent when inactive, so the labels stay on one baseline. */}
           <span
             aria-hidden="true"
-            className={cn('size-[5px] rounded-full', onMonth ? 'bg-accent' : 'bg-transparent')}
+            className={cn('size-1.5 rounded-full', onMonth ? 'bg-tab-ink' : 'bg-transparent')}
           />
           Bulan Ini
         </Link>
@@ -70,15 +74,12 @@ export function TabBar({ monthHref }: TabBarProps) {
         >
           <span
             aria-hidden="true"
-            className="absolute -top-6 grid size-btn place-items-center rounded-full border border-ink bg-ink font-mono text-title leading-none text-paper"
+            className="absolute -top-6.5 grid size-14 place-items-center rounded-full bg-red text-[28px] leading-none font-bold text-red-fg"
           >
             +
           </span>
           <span
-            className={cn(
-              'mt-8 font-mono text-action uppercase',
-              onNew ? 'text-ink' : 'text-ink-3',
-            )}
+            className={cn('mt-9 text-action uppercase', onNew ? 'text-tab-ink' : 'text-tab-ink-3')}
           >
             Tambah
           </span>
@@ -88,14 +89,14 @@ export function TabBar({ monthHref }: TabBarProps) {
           href="/stats"
           aria-current={onStats ? 'page' : undefined}
           className={cn(
-            'flex min-h-tab press flex-col items-center gap-1.5 pt-3 pb-1.5',
-            'font-mono text-action uppercase',
-            onStats ? 'text-ink' : 'text-ink-3',
+            'flex min-h-tab press flex-col items-center gap-1.5 pt-3.5 pb-1.5',
+            'text-action uppercase',
+            onStats ? 'text-tab-ink' : 'text-tab-ink-3',
           )}
         >
           <span
             aria-hidden="true"
-            className={cn('size-[5px] rounded-full', onStats ? 'bg-accent' : 'bg-transparent')}
+            className={cn('size-1.5 rounded-full', onStats ? 'bg-tab-ink' : 'bg-transparent')}
           />
           Statistik
         </Link>

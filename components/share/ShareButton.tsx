@@ -202,7 +202,7 @@ export function ShareButton({
           readOnly
           value={manualUrl ?? ''}
           onFocus={(event) => event.currentTarget.select()}
-          className="font-mono"
+          className="tabular"
         />
       </Sheet>
     </>

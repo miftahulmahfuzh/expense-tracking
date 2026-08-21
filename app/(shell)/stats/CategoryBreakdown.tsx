@@ -1,4 +1,4 @@
-import { CategoryCode, Money } from '@/components/ui'
+import { CategoryCode, INK_STICKER, Money } from '@/components/ui'
 import { categoryFill } from '@/lib/categories'
 import { formatIdr } from '@/lib/format'
 import type { BreakdownRow } from '@/lib/stats/series'
@@ -29,11 +29,8 @@ export default function CategoryBreakdown({
   totalIdr: number
 }) {
   return (
-    <section
-      className="rounded-card border border-rule bg-card p-4"
-      aria-labelledby="stats-cat-title"
-    >
-      <h2 className="eyebrow" id="stats-cat-title">
+    <section className="rounded-card bg-card p-4" aria-labelledby="stats-cat-title">
+      <h2 className="sticker" style={INK_STICKER} id="stats-cat-title">
         Rincian kategori
       </h2>
 
@@ -49,7 +46,7 @@ export default function CategoryBreakdown({
                 <CategoryCode category={r.category} className="w-6 shrink-0" />
                 <span className="min-w-0 flex-1 truncate text-chip">{r.label}</span>
                 <Money value={r.amountIdr} size="sm" />
-                <span className="min-w-9 shrink-0 text-right font-mono tabular text-meta text-ink-3">
+                <span className="min-w-9 shrink-0 text-right tabular text-meta text-ink-3">
                   {r.pct}%
                 </span>
               </div>

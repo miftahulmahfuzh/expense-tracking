@@ -25,8 +25,9 @@ const MAX_DIGITS = 12
 const OWN_FORMATTING = /^[\d.\s]*$/
 
 /**
- * The amount field. `Rp` is a static mono span OUTSIDE the editable value, and thousands
- * dots are inserted as you type — never typed (design R-37, which reverses R-32).
+ * The amount field. `Rp` is a static span OUTSIDE the editable value, thousands dots are
+ * inserted as you type — never typed — and a yellow IDR block tags the field so the currency
+ * is legible at a glance in a column of otherwise identical white slabs (01 Components).
  *
  * `inputMode="numeric"`, never `type="number"`: a number input rejects a pasted `45k` or
  * `1,5jt` outright, shows spinners nobody wants on a phone, and drops leading formatting.
@@ -95,12 +96,13 @@ export function MoneyInput({
   return (
     <div
       className={cn(
-        'flex h-control items-center gap-2 rounded-field border border-rule-strong bg-card px-3.5',
+        'flex h-control items-center gap-2.5 rounded-field border border-transparent bg-card',
+        'pr-1.5 pl-3.5',
         invalid && 'border-red',
         className,
       )}
     >
-      <span className="font-mono text-body text-ink-3" aria-hidden="true">
+      <span className="text-chip font-extrabold text-ink-3" aria-hidden="true">
         Rp
       </span>
       <input
@@ -117,7 +119,7 @@ export function MoneyInput({
         aria-invalid={rest['aria-invalid'] ?? (invalid || undefined)}
         // 17px comes from the base layer's input rule, not from a class here, so it cannot
         // be overridden away. `tabular` keeps the digits in their columns.
-        className="h-full min-w-0 flex-1 border-0 bg-transparent font-mono tabular text-ink outline-none"
+        className="h-full min-w-0 flex-1 border-0 bg-transparent tabular font-bold text-ink outline-none"
         onChange={(e) => handleChange(e.target.value)}
         onFocus={(e) => {
           // Select all, so the commonest edit — replacing a wrong amount — is one tap and
@@ -132,6 +134,14 @@ export function MoneyInput({
         }}
         {...rest}
       />
+      {/* Not a control — a printed tag. Yellow in both schemes, like every other sticker in
+          the app, so it never has to reason about the theme. */}
+      <span
+        aria-hidden="true"
+        className="inline-flex h-9.5 shrink-0 items-center rounded-field bg-yellow px-3 text-action text-[#0d0d0d]"
+      >
+        IDR
+      </span>
     </div>
   )
 }

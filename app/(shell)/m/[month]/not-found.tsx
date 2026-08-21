@@ -11,7 +11,7 @@ export default function MonthNotFound() {
     <main className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-safe text-center">
       <p className="eyebrow">Bulan tidak ditemukan</p>
       <p className="max-w-[28ch] text-item text-pretty text-ink-2">
-        Alamatnya harus berbentuk <span className="font-mono">/m/2026-08</span>.
+        Alamatnya harus berbentuk <span className="tabular font-bold">/m/2026-08</span>.
       </p>
       <ButtonLink href={`/m/${currentMonthKey()}`} variant="secondary" className="mt-3">
         Ke bulan ini

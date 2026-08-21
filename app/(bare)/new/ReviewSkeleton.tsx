@@ -20,15 +20,16 @@ export function ReviewSkeleton({ rows }: { rows: number }) {
       <div className="skeleton mb-2 h-3 w-14" />
       <div className="skeleton mb-5 h-control w-1/2" />
 
-      <ul className="rounded-card border border-rule px-3">
+      <ul className="rounded-card bg-card px-3">
         {Array.from({ length: rows }, (_, index) => (
-          <li key={index} className="border-b border-rule-2 py-3 last:border-b-0">
+          <li key={index} className="border-b border-rule py-3 last:border-b-0">
             <div className="flex gap-2">
               <div className="skeleton h-control flex-1" />
               <div className="size-touch shrink-0" />
             </div>
-            <div className="mt-2 flex gap-2">
-              <div className="skeleton h-touch w-28 rounded-full" />
+            <div className="mt-2 flex items-center gap-2">
+              <div className="skeleton size-disc rounded-full" />
+              <div className="skeleton h-touch w-24 rounded-full" />
               <div className="skeleton ml-auto h-control w-[9.5rem]" />
             </div>
           </li>

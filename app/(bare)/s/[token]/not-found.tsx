@@ -14,7 +14,7 @@ export default function ShareNotFound() {
     <main className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-safe text-center">
       <p className="eyebrow">{NOT_FOUND_TITLE}</p>
       <p className="max-w-[28ch] text-item text-pretty text-ink-2">{NOT_FOUND_BODY}</p>
-      <Link href="/" className="mt-3 font-mono text-meta text-ink-3 underline underline-offset-4">
+      <Link href="/" className="mt-3 text-meta text-ink-3 underline underline-offset-4">
         {FOOTER_LABEL}
       </Link>
     </main>

@@ -161,30 +161,38 @@ export default async function StatsPage({ searchParams }: PageProps<'/stats'>) {
   /* ── render ─────────────────────────────────────────────────────────────── */
 
   return (
-    <main className="flex flex-col gap-3 pt-safe-header px-safe pb-2">
-      {/* Exactly ONE hero figure per view. This is it. */}
-      <section className="rounded-card border border-rule bg-card p-4">
-        <MonthSwitcher
-          selectedMonth={selectedMonth}
-          currentMonth={currentMonth}
-          earliestMonth={windowStart}
-        />
-        <p className="mt-3.5">
-          <Money value={selectedTotal} size="hero" />
-        </p>
-        <DeltaTile delta={delta} />
-      </section>
+    <main className="pb-2">
+      {/* The screen title band, matching /new's. A tab destination gets a title; a pushed
+          view gets a chrome label. */}
+      <header className="border-b border-rule bg-card pt-safe-header px-safe pb-3.5">
+        <h1 className="text-title">Statistik</h1>
+      </header>
 
-      {activeCount === 0 ? (
-        <NoDataState />
-      ) : activeCount === 1 && active[0] ? (
-        <SingleMonthState month={active[0].month} totalIdr={active[0].totalIdr} />
-      ) : (
-        <MonthlyChart series={series} selectedMonth={selectedMonth} />
-      )}
+      <div className="flex flex-col gap-2.5 pt-3.5 px-safe">
+        {/* Exactly ONE hero figure per view. This is it. */}
+        <section className="rounded-card bg-card p-4">
+          <MonthSwitcher
+            selectedMonth={selectedMonth}
+            currentMonth={currentMonth}
+            earliestMonth={windowStart}
+          />
+          <p className="mt-3">
+            <Money value={selectedTotal} size="hero" />
+          </p>
+          <DeltaTile delta={delta} />
+        </section>
 
-      <CategoryBreakdown rows={rows} totalIdr={breakdownTotal} />
-      <BiggestExpenseTile item={biggest} />
+        {activeCount === 0 ? (
+          <NoDataState />
+        ) : activeCount === 1 && active[0] ? (
+          <SingleMonthState month={active[0].month} totalIdr={active[0].totalIdr} />
+        ) : (
+          <MonthlyChart series={series} selectedMonth={selectedMonth} />
+        )}
+
+        <CategoryBreakdown rows={rows} totalIdr={breakdownTotal} />
+        <BiggestExpenseTile item={biggest} />
+      </div>
     </main>
   )
 }

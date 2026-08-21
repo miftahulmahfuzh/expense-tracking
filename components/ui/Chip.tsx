@@ -1,27 +1,30 @@
+import type * as React from 'react'
 import { cn } from '@/lib/cn'
 import { CATEGORY_META, categoryStyle, type Category } from '@/lib/categories'
 
 export interface ChipProps {
   category: Category
-  /** `sm` = inline in a dense row (32px) · `md` = a standalone control (44px) */
+  /** `sm` = inline in a dense row (36px) · `md` = a standalone control (44px) */
   size?: 'sm' | 'md'
   /** Provide to render a `<button>` that opens the CategoryPicker. Omit for a label. */
   onClick?: () => void
-  /** Fills with the category colour. Used inside CategoryPicker and on an assigned chip. */
+  /** Floods the pill with the category colour. Used inside CategoryPicker and on an assigned chip. */
   selected?: boolean
-  /** Keep only the two-letter code; the label stays for screen readers. */
+  /** Keep only the disc; the label stays for screen readers. */
   labelHidden?: boolean
   className?: string
 }
 
 /**
- * A category, as a pill: two-letter mono code in the category colour, then the Indonesian
- * label. Colour is never the only channel — the code carries the category for colour-blind
- * readers and in a greyscale screenshot, which is what makes an eight-colour palette safe.
+ * A category, as a pill: the colour disc, then the Indonesian label.
  *
- * The colour arrives through an inline `--c` custom property so globals.css has one
- * `.chip` rule instead of eight. Selected fills with the category colour and flips its text
- * to `paper` — which is dark in dark mode, so contrast holds in both schemes for free.
+ * Colour is never the only channel — the two-letter mark carries the category for
+ * colour-blind readers and in a greyscale screenshot, which is what makes an eight-colour
+ * palette safe. The label always travels with the disc for the same reason.
+ *
+ * The colour arrives through an inline `--c` custom property so globals.css has one `.chip`
+ * rule instead of eight. Selected FLOODS the pill with the category colour and inverts the
+ * disc to ink — a block of colour, not an outline.
  */
 export function Chip({
   category,
@@ -35,24 +38,14 @@ export function Chip({
 
   const content = (
     <>
-      <span className="chip-code font-mono text-label tracking-[0.08em]" aria-hidden="true">
-        {meta.code}
-      </span>
-      <span
-        className={cn(
-          'chip-label',
-          size === 'sm' ? 'text-chip' : 'text-body',
-          labelHidden && 'sr-only',
-        )}
-      >
-        {meta.label}
-      </span>
+      <CategoryDisc category={category} size={size === 'sm' ? 26 : 28} />
+      <span className={cn('chip-label text-chip', labelHidden && 'sr-only')}>{meta.label}</span>
     </>
   )
 
   const classes = cn(
-    'chip inline-flex items-center gap-[7px] rounded-full',
-    size === 'sm' ? 'min-h-8 py-1 pr-3 pl-2.5' : 'min-h-touch py-2 pr-3.5 pl-3',
+    'chip inline-flex items-center gap-2 rounded-full',
+    size === 'sm' ? 'min-h-9 py-1 pr-3.5 pl-[5px]' : 'min-h-touch py-1.5 pr-4 pl-1.5',
     className,
   )
 
@@ -79,20 +72,33 @@ export function Chip({
 }
 
 /**
- * The code on its own, for a row too dense for a pill — the item rows on `/new`, `/e/[id]`
- * and `/s/[token]`, and the head of each bar in F08's category list. The visible glyph is
- * the code; the full Indonesian label rides along for screen readers, so this is never
- * colour-only either.
+ * THE PICTOGRAM. A solid disc in the category colour carrying a bold black two-letter mark,
+ * like an event badge. This is the atom every other category surface is built from — the
+ * chip, the picker cell, the item rows on `/new`, `/e/[id]` and `/s/[token]`, and the head
+ * of each bar in the stats breakdown.
  *
- * `w-6` because eight two-letter codes in a fixed column is what lets a list of items scan
- * as a table rather than as ragged text.
+ * The mark stays black in both schemes because the discs stay bright in both; the palette
+ * is tuned so all eight clear 4.5:1 under it (see the amendment notes in globals.css). The
+ * full Indonesian label rides along visually-hidden, so this is never colour-only either.
+ *
+ * Inside a `.chip` / `.cell` the selected state inverts the disc to ink; that lives in CSS
+ * so this component has no idea it happened.
  */
-export function CategoryCode({ category, className }: { category: Category; className?: string }) {
+export function CategoryDisc({
+  category,
+  size = 28,
+  className,
+}: {
+  category: Category
+  /** Painted diameter in px. 26 in a chip, 28 in a row, 30 in the draft editor. */
+  size?: number
+  className?: string
+}) {
   const meta = CATEGORY_META[category]
   return (
     <span
-      style={categoryStyle(category)}
-      className={cn('chip-code font-mono text-label tracking-[0.08em]', className)}
+      style={{ ...categoryStyle(category), '--disc-size': `${size}px` } as React.CSSProperties}
+      className={cn('disc', className)}
     >
       <span aria-hidden="true">{meta.code}</span>
       <span className="sr-only">{meta.label}</span>
@@ -101,8 +107,15 @@ export function CategoryCode({ category, className }: { category: Category; clas
 }
 
 /**
- * A 10px colour dot. Published because F10's contract named it and F08 may want it in a
- * chart legend; prefer `CategoryCode`, which carries the same colour plus the identity.
+ * Alias kept because the published component interface named this `CategoryCode` and four
+ * feature plans were written against that name. The bare tinted code it used to render is
+ * gone — the design's category mark is the disc, everywhere.
+ */
+export const CategoryCode = CategoryDisc
+
+/**
+ * A 10px colour dot, for a chart legend where a 28px disc would not fit. Prefer
+ * `CategoryDisc`, which carries the same colour plus the identity.
  */
 export function CategoryDot({ category, className }: { category: Category; className?: string }) {
   return (

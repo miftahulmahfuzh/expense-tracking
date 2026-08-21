@@ -48,7 +48,7 @@ export function UploadTile({
         // 74px is the design's draft-strip tile. size-[74px] rather than a spacing token
         // because this measurement belongs to one strip, not to the scale.
         'relative size-[74px] shrink-0 overflow-hidden rounded-field border bg-paper-2',
-        failed ? 'border-red' : 'border-rule',
+        failed ? 'border-red' : 'border-transparent',
       )}
     >
       {/*
@@ -75,7 +75,7 @@ export function UploadTile({
           aria-label={`Coba lagi unggah foto ini${item.error ? `: ${item.error}` : ''}`}
           className="absolute inset-0 grid press place-items-center bg-red-soft/85"
         >
-          <span aria-hidden="true" className="font-mono text-row text-red">
+          <span aria-hidden="true" className="text-row text-red-ink">
             ↻
           </span>
         </button>
@@ -89,14 +89,14 @@ export function UploadTile({
               style={{ width: `${item.progress}%` }}
             />
           </div>
-          <span className="block truncate font-mono text-label tracking-normal text-white">
+          <span className="block truncate text-label tracking-normal text-white">
             {LABEL[item.status]}
           </span>
         </div>
       )}
 
       {(item.status === 'error' || item.status === 'canceled') && (
-        <span className="absolute inset-x-0 bottom-0 block truncate bg-black/60 px-1 py-0.5 text-center font-mono text-label tracking-normal text-white">
+        <span className="absolute inset-x-0 bottom-0 block truncate bg-black/60 px-1 py-0.5 text-center text-label tracking-normal text-white">
           {LABEL[item.status]}
         </span>
       )}
@@ -111,7 +111,7 @@ export function UploadTile({
         type="button"
         onClick={() => (inFlight ? onCancel(item.key) : onDismiss(item.key))}
         aria-label={inFlight ? 'Batalkan unggahan' : 'Hapus dari daftar'}
-        className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 font-mono text-label text-white"
+        className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 text-label text-white"
       >
         <span aria-hidden="true">✕</span>
       </button>

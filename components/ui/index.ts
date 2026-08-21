@@ -1,10 +1,11 @@
 /**
- * The F10 design system. Everything F05, F06, F07, F08 and F09 import lives here.
+ * The design system. Everything F05, F06, F07, F08 and F09 import lives here.
  *
  * Two rules that are not negotiable, because they are the reason this barrel exists:
  *  - Never write a raw `<input>`. Use `Input` / `TextArea` / `MoneyInput`, which carry the
  *    17px floor that stops Safari zooming the page on focus.
- *  - Never typeset an amount by hand. Use `Money`, which carries the mono tabular rail.
+ *  - Never typeset an amount by hand. Use `Money`, which carries the tabular money rail —
+ *    Archivo is proportional, so nothing else keeps a column of rupiah aligned.
  */
 
 export { Button, ButtonLink, LoadingDots, Spinner, buttonClasses } from './Button'
@@ -31,8 +32,10 @@ export type { MoneyInputProps } from './MoneyInput'
 export { Sheet } from './Sheet'
 export type { SheetProps } from './Sheet'
 
-export { CategoryCode, CategoryDot, Chip } from './Chip'
+export { CategoryCode, CategoryDisc, CategoryDot, Chip } from './Chip'
 export type { ChipProps } from './Chip'
+
+export { INK_STICKER, RED_STICKER } from './stickers'
 
 export { CategoryPicker } from './CategoryPicker'
 export type { CategoryPickerProps } from './CategoryPicker'
