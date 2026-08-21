@@ -212,7 +212,11 @@ export function ExpenseEditor({
             ‹
           </span>
         </Link>
-        <h1 className="mx-auto eyebrow">{DETAIL_LABEL}</h1>
+        {/* Hard against the chevron, not centred. `mx-auto` pushed it to the middle of the
+            band, which read as a title competing with the expense's own 30px one below —
+            this is a chrome label, and a chrome label belongs beside the control it labels
+            the way back from. `ml-auto` on the action still pins Bagikan to the right. */}
+        <h1 className="eyebrow">{DETAIL_LABEL}</h1>
         <div className="ml-auto">{shareSlot}</div>
       </header>
 

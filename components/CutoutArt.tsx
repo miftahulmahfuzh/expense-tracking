@@ -57,13 +57,31 @@ interface Cutout {
   rotate: number
 }
 
-/** The five behind every screen. */
+/**
+ * The five behind every screen.
+ *
+ * RE-SCATTERED from the canvas, on purpose. The design's arrangement was composed against a
+ * mock with one screenful of content; these positions are the same five creatures re-placed
+ * against the real app. Three changes from "04 App Prototype":
+ *
+ *  - MOUNTAIN is dead centre now rather than right of it. It is the one landscape-shaped
+ *    creature, so it anchors the composition and the other four orbit it.
+ *  - SNAKE AND SHEEP TRADE PLACES. The snake takes the top right and the sheep the bottom
+ *    left. Each keeps its own width — this is a swap of position, not of size.
+ *  - THE SNAKE SITS LOWER than the sheep did, so its head clears the month header's white
+ *    band instead of being cut in half by it.
+ *
+ * The sheep is cropped by the left edge at the bottom, which is intended: the rose is on the
+ * sheep's right-hand side, so what survives the crop is the half worth seeing.
+ */
 const PAGE: Cutout[] = [
   { name: 'dragon', left: -110, top: 140, width: 280, rotate: -16 },
-  { name: 'sheep', left: 258, top: 34, width: 200, rotate: 18 },
-  { name: 'mountain', left: 110, top: 410, width: 260, rotate: 7 },
+  { name: 'snake', left: 258, top: 110, width: 220, rotate: 18 },
+  // Centred measured AFTER the 1.35x growth: the scaled box is 351px, so 77/318 puts its
+  // middle on 207/448 — the middle of the 414x896 canvas.
+  { name: 'mountain', left: 77, top: 318, width: 260, rotate: 7 },
   { name: 'octopus', left: 262, top: 614, width: 230, rotate: -14 },
-  { name: 'snake', left: -84, top: 648, width: 220, rotate: 10 },
+  { name: 'sheep', left: -84, top: 648, width: 200, rotate: 10 },
 ]
 
 /**
