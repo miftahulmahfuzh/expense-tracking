@@ -526,7 +526,7 @@ export function Lightbox({
             type="button"
             onClick={onClose}
             aria-label={COPY.close}
-            className="pointer-events-auto grid size-touch press place-items-center rounded-full bg-white/15 text-white"
+            className="pointer-events-auto grid size-touch press place-items-center rounded-full bg-black/60 text-white"
           >
             <CloseIcon />
           </button>
@@ -568,7 +568,7 @@ export function Lightbox({
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="h-touch press rounded-field bg-white/15 px-5 text-action text-white"
+              className="h-touch press rounded-field bg-black/60 px-5 text-action text-white"
             >
               {COPY.cancel}
             </button>
@@ -893,6 +893,33 @@ function Slide({
  * One circle in the floating cluster. The label is the `aria-label` and never visible: three
  * words across the bottom of a 414px screen would cover the photo they are acting on, and the
  * word survives where it matters — for a screen reader and for voice control.
+ *
+ * ════════════════════════════════════════════════════════════════════════
+ *  `bg-black/60`, NOT the `bg-white/15` this shipped with, and the reason is a bug report:
+ *  "they are all transparent".
+ *
+ *  A 15% WHITE scrim carrying WHITE glyphs is legible over exactly one thing — the black
+ *  letterbox. But this cluster floats over the PHOTO, and the photos in this app are receipts:
+ *  mostly white paper. White-on-barely-there-white-on-white is nothing at all.
+ *
+ *  A dark scrim inverts the failure into a guarantee, because the two channels can never fail
+ *  together:
+ *
+ *    over white paper   → the disc is dark and obvious; the glyph rides on it
+ *    over the true-black surround → the disc disappears, and a white 2.5-stroke glyph on black
+ *                                   is as legible as this design gets
+ *    over a mid photo   → 60% black darkens whatever is under it into a plate
+ *
+ *  So one of the disc and the glyph is always carrying the contrast, whichever photo is open.
+ *
+ *  NOT the yellow of the counter pill above, which is the other legible-on-anything treatment
+ *  already in this view. `stickers.ts` reserves yellow for "you are here" — the active tab, the
+ *  month pill, the toast — and spending it on three ordinary actions would dilute the one thing
+ *  it currently means. The counter is a STATE and keeps it; these are controls.
+ *
+ *  Fixed colours, not tokens, for the reason this footer already documents: `ink`/`paper` flip
+ *  with the colour scheme, and this room is true black in both.
+ * ════════════════════════════════════════════════════════════════════════
  */
 function ClusterButton({
   label,
@@ -915,7 +942,7 @@ function ClusterButton({
       disabled={busy}
       aria-label={label}
       aria-busy={busy || undefined}
-      className="grid size-touch press place-items-center rounded-full bg-white/15 text-white disabled:opacity-60"
+      className="grid size-touch press place-items-center rounded-full bg-black/60 text-white disabled:opacity-60"
     >
       {children}
     </button>
@@ -946,13 +973,13 @@ function StatusSlot({ status, onDismiss }: { status: Status; onDismiss: () => vo
           value={status.url}
           onFocus={(event) => event.currentTarget.select()}
           aria-label={COPY.copyByHand}
-          className="min-w-0 flex-1 rounded-field bg-white/15 px-3 py-2 tabular text-[17px] text-white"
+          className="min-w-0 flex-1 rounded-field bg-black/60 px-3 py-2 tabular text-[17px] text-white"
         />
         <button
           type="button"
           onClick={onDismiss}
           aria-label={COPY.close}
-          className="grid size-touch shrink-0 press place-items-center rounded-full bg-white/15 text-white"
+          className="grid size-touch shrink-0 press place-items-center rounded-full bg-black/60 text-white"
         >
           <CloseIcon />
         </button>

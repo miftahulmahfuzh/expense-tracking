@@ -216,3 +216,49 @@ describe('download: the share sheet is for fingers, not for laptops', () => {
     expect(render).not.toContain('canShare')
   })
 })
+
+describe('contrast: the chrome floats over photos, not over the letterbox', () => {
+  it('uses a DARK scrim, never a white one', () => {
+    /*
+     * Reported as "they are all transparent". A 15% white scrim carrying white glyphs is legible
+     * over the black letterbox and over nothing else — and this app's photos are receipts, i.e.
+     * mostly white paper. A dark scrim cannot fail on both channels at once: over paper the disc
+     * carries it, over the true-black surround the white glyph does.
+     */
+    expect(code).toContain('bg-black/60')
+    expect(code, 'a white scrim under white glyphs is invisible on a receipt').not.toContain(
+      'bg-white/15',
+    )
+  })
+
+  /**
+   * Just `ClusterButton`'s own body — BOUNDED at the next top-level declaration, because
+   * everything after it (`StatusSlot`, `Slide`) legitimately carries yellow and red: the copied
+   * confirmation is yellow and the error pill is red. An unbounded slice made both assertions
+   * below fail against code that was perfectly correct.
+   */
+  const clusterButton = (() => {
+    const start = code.indexOf('function ClusterButton')
+    const end = code.indexOf('\nfunction ', start + 1)
+    return code.slice(start, end === -1 ? undefined : end)
+  })()
+
+  it('leaves the counter pill yellow and does not spend yellow on the controls', () => {
+    // stickers.ts reserves yellow for "you are here". The counter is a STATE and keeps it; the
+    // four controls are actions and must not dilute it.
+    expect(code).toContain('bg-yellow')
+    expect(clusterButton).not.toContain('bg-yellow')
+  })
+
+  it('keeps red for the destructive CONFIRM only, not the resting trash icon', () => {
+    expect(code).toContain('bg-red')
+    expect(clusterButton).not.toContain('bg-red')
+  })
+
+  it('uses fixed colours, not scheme tokens, in a room that is black in both schemes', () => {
+    // `ink`/`paper` flip with prefers-color-scheme; `photo-void` does not.
+    const chrome = code.slice(code.indexOf('role="dialog"'))
+    expect(chrome).not.toMatch(/bg-paper\b/)
+    expect(chrome).not.toMatch(/bg-ink\b/)
+  })
+})
