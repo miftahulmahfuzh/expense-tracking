@@ -39,14 +39,16 @@ export default async function Page({ searchParams }: PageProps<'/'>) {
     /*
      * THE PINK PLATE. The one screen that is not `paper` — a full-bleed background moment,
      * with its own two cut-outs on top of it (the shell's five are underneath and covered).
-     * `-mt-*`/`min-h-dvh` are not needed: `(bare)`'s wrapper is only `pb-safe`, so this fills
-     * the column on its own.
+     * `-mt-*` is not needed: `(bare)`'s wrapper adds no padding of its own, so `min-h-dvh`
+     * fills the column exactly. `pb-5.5` is a floor rather than a measured last row — the
+     * poster is vertically centred, so on any real phone the privacy line is nowhere near the
+     * edge; it is there so a very short viewport cannot push it under the home indicator.
      *
      * LEFT-ALIGNED, not centred. The design stacks the mark, the wordmark and the yellow
      * tagline hard against a 32px left margin — the same edge the button and the domain line
      * hang off — so the whole screen reads as one poster column.
      */
-    <main className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-pink px-8">
+    <main className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-pink px-8 pb-5.5">
       <CutoutArt variant="signin" />
 
       <div className="relative z-10 flex flex-col items-start">

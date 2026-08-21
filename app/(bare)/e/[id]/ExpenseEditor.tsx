@@ -383,16 +383,16 @@ export function ExpenseEditor({
       {shareLinkSlot && <div className="mt-10 px-safe empty:hidden">{shareLinkSlot}</div>}
 
       {/*
-       * THE LAST BLOCK ON THE PAGE, and `pb-3` is the whole answer to "how close to the
-       * bottom". `(bare)/layout.tsx` already pads by `env(safe-area-inset-bottom)`, which is
-       * 34px of home-indicator clearance on a notched iPhone and 0 everywhere else; this adds
-       * 12px on top of it. So the note stops 12px clear of the indicator rather than the 32px
-       * the deleted `pb-8` was reserving — snug, without the CTA sitting under the black bar.
+       * THE LAST BLOCK ON THE PAGE, so `pb-1.5` is the whole answer to "how close to the
+       * bottom" — the 8px edge rule (globals.css), minus the 16px of slack the CTA's own 48px
+       * tap target already puts under its 16px line box. That lands "+ Tambah catatan" 22px
+       * off the screen edge, level with the home indicator.
        *
-       * Do NOT re-add safe-area padding here. Doubling it is the classic way this goes wrong,
-       * and the symptom is a 68px band of nothing that only appears on real hardware.
+       * Do NOT add safe-area padding here. `(bare)/layout.tsx` deliberately no longer pads,
+       * and `env(safe-area-inset-bottom)` on top of this is what used to leave the CTA
+       * stranded 62px up — a band of nothing that only appears on real hardware.
        */}
-      <div className="mt-7 px-safe pb-3">
+      <div className="mt-7 px-safe pb-1.5">
         <NoteField
           key={`note:${optimisticMeta.note ?? ''}`}
           value={optimisticMeta.note ?? ''}

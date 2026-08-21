@@ -163,7 +163,10 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
   if (!group) notFound()
 
   return (
-    <main className="pt-10 px-safe">
+    /* `pt-safe-header` even though this page has no header BAR: it is still the first row on
+       the screen, and the flat `pt-10` it replaces was 40px — four short of the notch inset,
+       so on a notched phone in standalone the product mark sat under the clock. */
+    <main className="pt-safe-header px-safe">
       <header>
         {/* The product mark, printed in the brand red. The only place it appears in the app
             chrome, and it is here because this is the one page a stranger sees. */}
@@ -232,7 +235,9 @@ export default async function SharedExpensePage({ params }: PageProps<'/s/[token
         </section>
       )}
 
-      <footer className="mt-9 border-t-2 border-rule pt-3.5 pb-10">
+      {/* `pb-5.5` is the 8px edge rule with no tap target to borrow slack from: this is a
+          bare text link, so the 22px is paid in full here. */}
+      <footer className="mt-9 border-t-2 border-rule pt-3.5 pb-5.5">
         <Link href="/" className="text-meta text-ink-3 underline underline-offset-4">
           {FOOTER_LABEL}
         </Link>

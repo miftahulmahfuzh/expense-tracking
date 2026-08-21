@@ -215,20 +215,12 @@ export function AddExpenseClient({
      * what keeps the sticky bar above it; 100dvh is only the fallback for the first paint and
      * for a browser with no visualViewport.
      *
-     * THE COLUMN RUNS TO THE PHYSICAL BOTTOM OF THE SCREEN, home indicator included, and the
-     * negative bottom margin is what buys that. This used to end one safe-area inset short —
-     * height was `100dvh - env(safe-area-inset-bottom)` to match the `pb-safe` the (bare)
-     * layout wraps every screen in — which left the sticky footer's white block floating
-     * above a ~34px strip of page background. The footer is the bottom of this screen, so it
-     * has to paint down to the edge; `StickyBar`'s own bottom padding is what sets the
-     * label's clearance over the home indicator now.
-     *
-     * The margin CANCELS the wrapper's padding rather than the layout dropping it: `/`,
-     * `/e/[id]` and `/s/[token]` are ordinary scrolling pages that still want it. Negative
-     * margin, not a taller height — height alone would overflow the padded parent and the
-     * document would scroll by exactly the inset, the ~34px wobble the old subtraction was
-     * there to avoid. Shrinking the parent's content box by the same amount it pads keeps the
-     * document exactly 100dvh, and stays exact whatever env() resolves to.
+     * THE COLUMN RUNS TO THE PHYSICAL BOTTOM OF THE SCREEN, home indicator included. Height
+     * was once `100dvh - env(safe-area-inset-bottom)`, to match a `pb-safe` the (bare) layout
+     * used to wrap every screen in, which left the sticky footer's white block floating above
+     * a ~34px strip of page background. The footer IS the bottom of this screen, so it has to
+     * paint down to the edge; `StickyBar`'s own 8px is what sets the label's clearance now.
+     * The layout no longer pads, so there is nothing left here to subtract or cancel.
      *
      * min(), not a bare `var(--app-h)`, so a browser reporting a visual viewport TALLER than
      * the layout one (mid-scroll, collapsing URL bar) cannot stretch the column past the
@@ -249,7 +241,7 @@ export function AddExpenseClient({
      * element the containing block for every `position: fixed` DESCENDANT, and this subtree has
      * real ones: F06's Lightbox is `fixed inset-0` and is reachable from the PhotoPicker on this
      * very screen, so it would shrink from full-screen to this column. A margin would collapse
-     * straight out through the `pb-safe` wrapper and the shell's two `min-h-dvh` ancestors. A
+     * straight out through the `(bare)` wrapper and the shell's two `min-h-dvh` ancestors. A
      * relative offset shifts only what this element paints — it leaves document height alone,
      * does not disturb the `sticky` bar inside it, and every absolutely-positioned descendant in
      * here (Button's spinner, the photo tiles, `touch-target`) already carries its own
@@ -259,7 +251,6 @@ export function AddExpenseClient({
       className="relative flex flex-col"
       style={{
         height: 'min(var(--app-h, 100dvh), 100dvh)',
-        marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
         top: 'var(--vv-top, 0px)',
       }}
     >

@@ -92,10 +92,10 @@ export function FullscreenToggle() {
   return (
     // pointer-events-none on the band, auto on the chip: the wrapper spans the full width and
     // would otherwise swallow taps meant for the tab bar underneath it.
-    <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40"
-      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
-    >
+    // `pb-5.5` is the 8px edge rule as a FLOATING element takes it: 22px to the chip's own
+    // bottom edge, so the capsule clears the home indicator instead of landing on it. A docked
+    // full-bleed bar measures its last line of type instead.
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 pb-5.5">
       {/*
        * THE TRANSLATE LIVES HERE, NOT ON THE BUTTON, and that is not a stylistic choice:
        * `press` gives the button `transform: scale(0.975)` while held, and a second transform
@@ -107,8 +107,10 @@ export function FullscreenToggle() {
         className={cn(
           'mx-auto flex max-w-app justify-end px-safe',
           'transition-transform duration-280 ease-out-soft motion-reduce:transition-none',
-          // Out of the tab bar's way while the tab bar is still there.
-          !active && '-translate-y-[var(--spacing-tab)]',
+          /* Out of the tab bar's way while the tab bar is still there. The bar is
+             `--spacing-tab` of links PLUS its own `pb-4`, so the raise has to include both or
+             the chip sits 6px off its top edge instead of the intended 22px. */
+          !active && '-translate-y-[calc(var(--spacing-tab)+1rem)]',
         )}
       >
         <button

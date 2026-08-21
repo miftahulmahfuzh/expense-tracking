@@ -9,12 +9,17 @@ import { AppShell } from '@/components/AppShell'
  * (see `03 App Prototype`'s Detail screen). That header belongs to the screen, because what
  * sits on either side of the label differs per route; F10 does not own screens.
  *
- * `pb-safe` rather than `pb-tabbar`: content only has to clear the home indicator here.
+ * NO BOTTOM PADDING, and that is the 8px edge rule (globals.css) rather than an omission.
+ * This used to wrap every screen in `pb-safe`, which meant no screen in the group could put
+ * anything within 34px of the bottom edge — `/new`'s footer had to cancel it with a negative
+ * margin to paint to the edge at all, and `/e/[id]`'s last row sat 62px up. The inset is not
+ * a floor every screen wants; it is a decision each screen's bottom-most element makes about
+ * its own last row, so it belongs there.
  */
 export default function BareLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppShell>
-      <div className="pb-safe">{children}</div>
+      <div>{children}</div>
     </AppShell>
   )
 }

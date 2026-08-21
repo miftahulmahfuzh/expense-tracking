@@ -168,10 +168,10 @@ export function Sheet({
 
         <div className="min-h-0 flex-1 scroll-pane px-4 pt-3.5">{children}</div>
 
-        <div
-          className="shrink-0 px-4 pt-2"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.25rem)' }}
-        >
+        {/* `pb-2`, no safe inset — the 8px edge rule (globals.css). A docked sheet owns the
+            bottom edge exactly like `/new`'s footer does, and its button's 44px tap target
+            supplies the remaining slack that puts the label 22px up. */}
+        <div className="shrink-0 px-4 pt-2 pb-2">
           {footer}
         </div>
       </div>

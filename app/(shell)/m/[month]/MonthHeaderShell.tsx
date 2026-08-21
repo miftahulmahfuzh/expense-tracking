@@ -54,13 +54,13 @@ export function MonthHeaderShell({ children }: { children: React.ReactNode }) {
         /*
          * `pt-safe` IS ON THE HEADER, NOT ON THE COLLAPSING BOX, and this is the notch fix.
          *
-         * The clearance used to be a single `pt-safe-header` — `env(safe-area-inset-top) +
-         * 1.75rem` — on the inner box, so collapsing that box took the notch inset with it and
-         * the first day sticker landed under the status bar: on an iPhone XS Max in standalone,
-         * behind the clock and the battery. Splitting the token is the whole repair. The inset
-         * half lives out here where the collapse cannot reach it and is therefore honoured in
-         * BOTH states; the inner box keeps only the 1.75rem of decorative air. Their sum is
-         * `pt-safe-header` exactly, so the open header is unchanged to the pixel.
+         * The clearance used to be a single `pt-safe-header` on the inner box, so collapsing
+         * that box took the notch inset with it and the first day sticker landed under the
+         * status bar: on an iPhone XS Max in standalone, behind the clock and the battery.
+         * Splitting the token is the whole repair. The inset half lives out here where the
+         * collapse cannot reach it and is therefore honoured in BOTH states; the inner box
+         * keeps only `pt-header-air`. Their sum is `pt-safe-header` exactly at every inset, so
+         * the open header is unchanged to the pixel.
          *
          * It could not have been caught in a desktop browser: `env(safe-area-inset-*)` is 0
          * everywhere except on a notched device with `viewport-fit=cover`, so the bug renders
@@ -105,9 +105,10 @@ export function MonthHeaderShell({ children }: { children: React.ReactNode }) {
          */}
         <div
           className={cn(
-            // `pt-7` is the 1.75rem half of `pt-safe-header`; the notch inset half is on the
-            // <header> above, where the collapse cannot take it away. Do not merge them back.
-            'pt-7 px-safe pb-4',
+            // `pt-header-air` is the decorative half of `pt-safe-header`; the notch inset
+            // half is on the <header> above, where the collapse cannot take it away. Do not
+            // merge them back — the utility exists so the two stay in sync at every inset.
+            'pt-header-air px-safe pb-4',
             'transition-transform duration-280 ease-out-soft motion-reduce:transition-none',
             /*
              * `100%` PLUS THE INSET, not `100%`. Overflow clips to the PADDING BOX, so the

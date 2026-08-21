@@ -705,20 +705,43 @@
 @utility pt-safe {
   padding-top: env(safe-area-inset-top);
 }
-@utility pb-safe {
-  padding-bottom: env(safe-area-inset-bottom);
-}
 @utility px-safe {
   padding-left: max(var(--spacing-gutter), env(safe-area-inset-left));
   padding-right: max(var(--spacing-gutter), env(safe-area-inset-right));
 }
-/* A sticky header: the notch plus breathing room. */
+/* ---- THE 8px EDGE RULE -------------------------------------------------
+   Every screen puts its first and last rows the SAME 8px past whatever boundary the system
+   hands it: the status bar at the top, the physical screen edge at the bottom. With a 44px
+   notch inset and a control's own ~14px of internal slack that lands the type ~22px off each
+   edge, which is the number to check a screenshot against.
+
+   The asymmetry in the reference is not an oversight. The notch is HARDWARE and the status
+   bar is drawn over the page — 8px past `env(safe-area-inset-top)` or the clock sits on the
+   title. The home indicator is a hint drawn ON TOP of a screen the app fully owns, so the
+   bottom measures from the real edge and the last row rides level with the pill rather than
+   stacked above the 34px reserved for it. Padding by the full inset at the bottom is what
+   this rule replaced: it left every footer floating ~26px too high.
+
+   So: do NOT add `env(safe-area-inset-bottom)` to anything that sits at the bottom of the
+   screen. The old instinct is wrong here and the symptom only shows on real hardware. */
+
+/* A sticky header: the notch, plus 8px. The floor is for a flat phone and the desktop
+   column, where env() is 0 and 8px from the window edge reads as broken. */
 @utility pt-safe-header {
-  padding-top: calc(env(safe-area-inset-top) + 1.75rem);
+  padding-top: max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem));
 }
-/* Bottom of a scrolling page, so content clears the tab bar + home indicator. */
+/* The decorative half of `pt-safe-header`, for a header that COLLAPSES: the inset half has to
+   live on an element the collapse cannot take with it, or the first row lands under the clock
+   (see MonthHeaderShell). Sums to `pt-safe-header` exactly at every inset — that is what the
+   subtraction is for, and why neither half is a plain constant. */
+@utility pt-header-air {
+  padding-top: max(0.5rem, calc(1.25rem - env(safe-area-inset-top)));
+}
+/* Bottom of a scrolling page, so content clears the tab bar. No safe inset: the bar's own
+   16px bottom pad is the home-indicator clearance now, and adding it here would reserve it
+   twice. */
 @utility pb-tabbar {
-  padding-bottom: calc(var(--spacing-tab) + env(safe-area-inset-bottom) + 2rem);
+  padding-bottom: calc(var(--spacing-tab) + 1rem + 2rem);
 }
 
 /* Any independently scrolling region. Contains its own rubber-band so the
@@ -925,10 +948,13 @@
      Sits above the tab bar where there is one, above the home indicator where
      there is not. :has() keeps this declarative — no JS measuring. */
   :root {
-    --toast-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+    /* A FLOATING pill, so the 8px edge rule applies to its own bottom edge rather than to a
+       line of type inside a full-bleed bar: 22px keeps the whole capsule clear of the home
+       indicator instead of landing on it. */
+    --toast-bottom: 1.375rem;
   }
   :root:has([data-tabbar]) {
-    --toast-bottom: calc(var(--spacing-tab) + env(safe-area-inset-bottom) + 1.5rem);
+    --toast-bottom: calc(var(--spacing-tab) + 1rem + 1.5rem);
   }
 
   @keyframes toast-in {

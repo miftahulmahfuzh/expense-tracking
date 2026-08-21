@@ -152,8 +152,9 @@ export function Lightbox({
 
       {onDelete && (
         <footer
-          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-3 pt-3"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 0.75rem)' }}
+          /* `pb-2`, no safe inset — the 8px edge rule (globals.css). The h-touch buttons carry
+             the rest of the 22px themselves. */
+          className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-3 pt-3 pb-2"
         >
           {confirming ? (
             <>

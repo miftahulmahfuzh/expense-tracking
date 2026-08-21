@@ -60,8 +60,16 @@ export function TabBar({ monthHref }: TabBarProps) {
          * `2rem` clears the crown's 1.625rem with a little slack for subpixel rounding.
          */
         hidden && 'translate-y-[calc(100%+2rem)]',
+        /*
+         * `pb-4`, NOT `env(safe-area-inset-bottom)` — the 8px edge rule (globals.css). Padding
+         * by the full 34px inset put the three labels 40px off the bottom edge with a band of
+         * black chassis under them; 16px plus each link's own `pb-1.5` lands the type at 22px,
+         * level with the home indicator rather than stacked above the space reserved for it.
+         * It is also the better number on a flat phone, where the inset is 0 and the labels
+         * used to sit 6px off the edge.
+         */
+        'pb-4',
       )}
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       /*
        * `inert`, not just off-screen. A translated element is still in the layout and its
        * three links are still focusable and still announced — a keyboard or screen-reader
