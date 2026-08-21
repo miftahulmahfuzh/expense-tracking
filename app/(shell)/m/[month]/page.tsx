@@ -92,13 +92,24 @@ export default async function MonthPage({ params }: PageProps<'/m/[month]'>) {
              * per-day total at all, so it never had to answer this — but it answers it
              * everywhere else the same way: small type over art gets a plate.
              */}
+            {/*
+             * THE DAY TOTAL IS EARNED, and only a day with more than one expense earns it.
+             * A single-expense day printed the identical rupiah figure twice, 30px apart —
+             * once on the day tag and once on the only row under it — which is a sum of one
+             * addend presented as a summary. It read as two different numbers that happened
+             * to match, and the reader has to compare them to find out they do not mean
+             * anything different. From two rows up the total is doing real work: it is the
+             * only place the day's arithmetic exists.
+             */}
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="sticker" style={INK_STICKER}>
                 {dayLabel(bucket.day)}
               </h2>
-              <span className="rounded-chip bg-card px-2 py-1">
-                <Money value={bucket.totalIdr} size="sm" tone="muted" />
-              </span>
+              {bucket.rows.length > 1 && (
+                <span className="rounded-chip bg-card px-2 py-1">
+                  <Money value={bucket.totalIdr} size="sm" tone="muted" />
+                </span>
+              )}
             </div>
 
             <Card as="ul" padded={false} className="mt-2 overflow-hidden px-4">
