@@ -1,5 +1,6 @@
 'use client'
 
+import { CloseIcon } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import type { UploadItem } from '@/lib/photos/types'
 
@@ -102,7 +103,7 @@ export function UploadTile({
       )}
 
       {/*
-        One affordance, one meaning: ✕ removes this tile. While the upload is in flight
+        One affordance, one meaning: the ✕ removes this tile. While the upload is in flight
         that means cancel; afterwards it means dismiss. Painted at 20px, expanded to the
         44px floor by `touch-target` (design R-41) so it is hittable without covering the
         photo it sits on.
@@ -111,9 +112,11 @@ export function UploadTile({
         type="button"
         onClick={() => (inFlight ? onCancel(item.key) : onDismiss(item.key))}
         aria-label={inFlight ? 'Batalkan unggahan' : 'Hapus dari daftar'}
-        className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 text-label text-white"
+        className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 text-white"
       >
-        <span aria-hidden="true">✕</span>
+        {/* F12: was a `✕` character sized by `text-label`. `xs` is 14px, which is the size
+            that character optically rendered at inside this 20px disc. */}
+        <CloseIcon size="xs" />
       </button>
     </div>
   )

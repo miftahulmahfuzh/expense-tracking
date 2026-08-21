@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { discardStagedPhotos } from '@/app/actions/photos'
+import { CloseIcon } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { MAX_PHOTOS_PER_GROUP } from '@/lib/photos/constants'
 import type { StagedPhoto } from '@/lib/photos/types'
@@ -169,9 +170,10 @@ export function PhotoPicker(props: PhotoPickerProps) {
                 type="button"
                 onClick={() => removeStaged(photo)}
                 aria-label="Hapus foto ini"
-                className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 text-label text-white"
+                className="touch-target absolute top-0.5 right-0.5 grid size-5 press place-items-center rounded-full bg-black/60 text-white"
               >
-                <span aria-hidden="true">✕</span>
+                {/* F12: was a `✕` character. Same 14px optical size, now a real glyph. */}
+                <CloseIcon size="xs" />
               </button>
             </div>
           ))}

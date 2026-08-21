@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { createShareLink } from '@/app/actions/share'
-import { Button, Input, LoadingDots, Sheet, useToast } from '@/components/ui'
+import { Button, Input, LoadingDots, Sheet, ShareIcon, useToast } from '@/components/ui'
 import { formatJakartaLong } from '@/lib/format'
 import { copyText } from '@/lib/share/clipboard'
 import { shareUrl } from '@/lib/share/config'
@@ -38,44 +38,26 @@ export type ShareButtonProps = {
   initialToken: string | null
 }
 
-/**
- * The share glyph: a tray with an arrow leaving through the top. iOS's own share mark, which
- * on this app's only real target is not "an icon that means share" but *the* icon that means
- * share — the one already sitting in Safari's toolbar two centimetres below it.
+/*
+ * THE SHARE GLYPH MOVED (F12) to `components/ui/Icon.tsx` as `ShareIcon`, which wraps
+ * lucide's `Share` — the same drawing: a tray with an arrow leaving through the top, iOS's
+ * own mark, the icon already sitting in Safari's toolbar two centimetres below this button.
+ * NOT lucide's `Share2`, which is the three-node graph that means share on Android and
+ * nothing at all in Safari.
  *
- * HAND-DRAWN, and `FullscreenToggle` carries the full argument: this repo has no icon
- * dependency, and adding one for two glyphs would import a library to use a fraction of it.
- * The numbers here are that file's contract, not fresh choices — 24 viewBox, 2.5 stroke,
- * square caps, mitred joins, 22px rendered. A 1.5-stroke library glyph next to Archivo at 800
- * reads as a different app.
+ * What was here before was that shape hand-drawn in three paths, under a docblock arguing
+ * that "this repo has no icon dependency, and adding one for two glyphs would import a
+ * library to use a fraction of it". F12 took the app to twelve glyphs and flipped that
+ * arithmetic; the stroke half of the argument — 24 viewBox, 2.5 stroke, square caps, mitred
+ * joins, 22px rendered — is now enforced by `Icon.tsx` on every glyph rather than restated
+ * per file.
  *
  * WHY A PICTURE IS ALLOWED TO REPLACE THE WORD HERE, when `copy.ts`'s whole premise is that
- * the words are canonical: the header had one text action and now has two actions, and two
- * words — `Bagikan` and `Hapus pengeluaran` — do not fit beside a label on a 414px band
- * without one of them wrapping or shrinking below the design's type floor. The word survives
- * as the `aria-label`, so nothing that reads the page rather than looking at it lost anything.
+ * the words are canonical: the header had one text action and now has two, and two words —
+ * `Bagikan` and `Hapus pengeluaran` — do not fit beside a label on a 414px band without one
+ * of them wrapping or dropping below the design's type floor. The word survives as the
+ * `aria-label`, so nothing that reads the page rather than looking at it lost anything.
  */
-function ShareGlyph() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.5}
-      strokeLinecap="square"
-      strokeLinejoin="miter"
-      className="size-5.5"
-      aria-hidden="true"
-    >
-      {/* The arrow: shaft, then the head as one open chevron whose apex is the shaft's top.
-          It stops at y=15, inside the tray, so the two shapes read as one gesture. */}
-      <path d="M12 15V3.5" />
-      <path d="M7.5 8 12 3.5 16.5 8" />
-      {/* The tray, open at the top where the arrow leaves it. */}
-      <path d="M6.5 10.5H4v10.5h16V10.5h-2.5" />
-    </svg>
-  )
-}
 
 /** WebKit reports a dismissed share sheet as AbortError. That is a user choice, not a failure. */
 function isAbortError(err: unknown): boolean {
@@ -238,7 +220,7 @@ export function ShareButton({
       >
         {/* Swapped, not overlaid: an icon button has no label box to preserve, so there is
             nothing to keep from collapsing and the dots can simply take the glyph's place. */}
-        {sharing ? <LoadingDots /> : <ShareGlyph />}
+        {sharing ? <LoadingDots /> : <ShareIcon />}
       </button>
 
       <Sheet

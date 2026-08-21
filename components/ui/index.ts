@@ -37,6 +37,30 @@ export type { ChipProps } from './Chip'
 
 export { INK_STICKER, RED_STICKER } from './stickers'
 
+/**
+ * THE ICON SET. A closed list — `components/ui/Icon.tsx` is the only module allowed to import
+ * `lucide-react` (enforced by `no-restricted-imports` in eslint.config.mjs and by
+ * tests/icon.contract.test.ts), and it exports finished components rather than an adapter, so
+ * the 2.5-stroke square-cap contract has no bypass. A new glyph is a new line in that file.
+ */
+export {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  CollapseIcon,
+  DownloadIcon,
+  ExpandIcon,
+  PhotoStackIcon,
+  ShareIcon,
+  TrashIcon,
+  TrendDownIcon,
+  TrendFlatIcon,
+  TrendUpIcon,
+} from './Icon'
+export type { GlyphProps, IconSize } from './Icon'
+
+export { TitlePresets } from './TitlePresets'
+
 export { CategoryPicker } from './CategoryPicker'
 export type { CategoryPickerProps } from './CategoryPicker'
 

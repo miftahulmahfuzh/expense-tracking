@@ -7,7 +7,7 @@ import { requireUserId } from '@/lib/auth/requireUserId'
 import { CATEGORIES } from '@/lib/categories'
 import { db } from '@/lib/db'
 import { getOwnedGroupAnchor, getOwnedItemAnchor } from '@/lib/db/queries'
-import { expenseItems } from '@/lib/db/schema'
+import { expenseGroups, expenseItems } from '@/lib/db/schema'
 import { newItemId } from '@/lib/id'
 
 import { revalidateGroup } from './_revalidate'
@@ -57,6 +57,41 @@ const UpdateItemZ = z
 
 const IdZ = z.string().min(1).max(64)
 
+/**
+ * Bump the parent group's `updated_at` — F12 §6.1.
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ *  WHY AN ITEM WRITE HAS TO TOUCH ITS GROUP, when nothing here reads that column.
+ *
+ *  F12 keys the LLM summaries' freshness on `max(expense_groups.updated_at)`, and before this
+ *  function that key was A LIE for every mutation in this file: correcting an amount writes to
+ *  `expense_items` and leaves the group row untouched, so the summary would keep quoting the
+ *  old number while reporting itself fresh. Nothing renders wrong; the paragraph is simply
+ *  false, which is the one failure this app cannot absorb because the user reads it instead of
+ *  re-checking the table.
+ *
+ *  EXPLICIT `set`, NOT `$onUpdate`. The schema's `$onUpdate` fires on Drizzle `.update()` calls
+ *  and the column comment already warns that a raw SQL UPDATE will not bump it — so relying on
+ *  a side effect of an unrelated write is exactly the ambiguity to avoid here. This states the
+ *  intent.
+ *
+ *  COST: one extra statement on a primary key, in actions that already run two or three, and
+ *  the group id is one this caller has already proven it owns. It is deliberately NOT scoped by
+ *  userId again — R-99: ownership came from the anchor, and a second copy of that check is the
+ *  R-77 failure mode.
+ *
+ *  Photo actions do NOT do this, and that asymmetry is intentional: an insight is written from
+ *  item rows only, so attaching a receipt would invalidate a good summary and pay for a model
+ *  call that produces identical text. See app/actions/photos.ts.
+ * ════════════════════════════════════════════════════════════════════════════
+ */
+async function touchGroup(groupId: string): Promise<void> {
+  await db
+    .update(expenseGroups)
+    .set({ updatedAt: new Date() })
+    .where(eq(expenseGroups.id, groupId))
+}
+
 async function nextSortOrder(groupId: string): Promise<number> {
   const [row] = await db
     .select({ max: sql<number>`coalesce(max(${expenseItems.sortOrder}), -1)`.mapWith(Number) })
@@ -84,6 +119,7 @@ export async function addItem(groupId: string, input: unknown): Promise<{ id: st
     sortOrder: data.sortOrder ?? (await nextSortOrder(anchor.groupId)),
   })
 
+  await touchGroup(anchor.groupId)
   revalidateGroup(anchor.groupId, anchor.occurredOn)
   return { id: itemId }
 }
@@ -103,6 +139,7 @@ export async function updateItem(id: string, input: unknown): Promise<void> {
     .set(patch)
     .where(and(eq(expenseItems.id, itemId), eq(expenseItems.groupId, anchor.groupId)))
 
+  await touchGroup(anchor.groupId)
   revalidateGroup(anchor.groupId, anchor.occurredOn)
 }
 
@@ -125,5 +162,6 @@ export async function deleteItem(id: string): Promise<void> {
     .delete(expenseItems)
     .where(and(eq(expenseItems.id, itemId), eq(expenseItems.groupId, anchor.groupId)))
 
+  await touchGroup(anchor.groupId)
   revalidateGroup(anchor.groupId, anchor.occurredOn)
 }

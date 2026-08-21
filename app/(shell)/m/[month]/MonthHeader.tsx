@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { Money } from '@/components/ui'
+import { ChevronLeftIcon, ChevronRightIcon, Money } from '@/components/ui'
 import { cn } from '@/lib/cn'
 import { addMonths, isAfterCurrentMonth, monthLabel, type MonthKey } from '@/lib/format'
 
@@ -22,12 +22,14 @@ import { MonthHeaderShell } from './MonthHeaderShell'
  * the worst backdrop the wallpaper can put under it.
  */
 
+/*
+ * F12: was a `‹` / `›` character at 22px/800. A typed glyph is whatever the font decides it
+ * is — Archivo's single guillemets are noticeably lighter than its letterforms — and there
+ * were two byte-identical copies of this component, in this file and its twin, held together
+ * by a comment promising they stayed "glyph for glyph". One import is that promise, kept.
+ */
 function Chevron({ dir }: { dir: 'prev' | 'next' }) {
-  return (
-    <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
-      {dir === 'prev' ? '‹' : '›'}
-    </span>
-  )
+  return dir === 'prev' ? <ChevronLeftIcon /> : <ChevronRightIcon />
 }
 
 const CHEVRON_BOX = 'grid size-touch shrink-0 place-items-center rounded-field'

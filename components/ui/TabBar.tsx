@@ -15,16 +15,22 @@ export interface TabBarProps {
 }
 
 /**
- * Three tabs: Bulan Ini · Tambah · Statistik.
+ * Three tabs: Bulan Ini · Tambah · Simpulan.
  *
  * The bar is solid black in BOTH schemes — a chassis, not a surface. It does not flip with
  * the theme and it does not sit on `paper`; it is the one piece of hardware in the app, and
  * everything else scrolls behind it. Its palette is its own three tokens (`tab-bg`,
  * `tab-ink`, `tab-ink-3`) so nothing here has to reason about light and dark.
  *
- * No icons. The label is 12px/800 Title Case and that is the whole affordance — an icon set
- * would be three more drawings to keep consistent, and the word is faster to read than a
- * glyph you have to learn. The active tab goes YELLOW and gains a dot.
+ * STILL NO ICONS, and now by choice rather than by absence. This docblock's original argument
+ * was "an icon set would be three more drawings to keep consistent" — F12 installed one
+ * (components/ui/Icon.tsx), so that half of the reasoning is spent. The half that stands is the
+ * half that mattered: the word is faster to read than a glyph you have to learn, and these three
+ * destinations are abstractions — a month, an act of adding, a summary — that no pictogram names
+ * as well as the word does. Putting icons here now would be doing it because we can.
+ *
+ * The label is 12px/800 Title Case and that is the whole affordance. The active tab goes YELLOW
+ * and gains a dot.
  *
  * Tambah is the app's reason to exist, so it is the one raised element: a red circle
  * punching through the bar's top edge like a stopwatch crown. Still shadowless — it reads
@@ -127,7 +133,7 @@ export function TabBar({ monthHref }: TabBarProps) {
             aria-hidden="true"
             className={cn('size-1.5 rounded-full', onStats ? 'bg-tab-ink' : 'bg-transparent')}
           />
-          Statistik
+          Simpulan
         </Link>
       </div>
     </nav>

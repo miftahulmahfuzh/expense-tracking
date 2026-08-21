@@ -5,7 +5,19 @@ import { useOptimistic, useState, useTransition, type ReactNode } from 'react'
 
 import { updateExpenseMeta } from '@/app/actions/expenses'
 import { addItem, deleteItem, updateItem } from '@/app/actions/items'
-import { Card, CategoryDisc, Field, Input, Money, TextArea, useToast } from '@/components/ui'
+import {
+  Card,
+  CategoryDisc,
+  ChevronLeftIcon,
+  CloseIcon,
+  Field,
+  Input,
+  Money,
+  TextArea,
+  TitlePresets,
+  TrashIcon,
+  useToast,
+} from '@/components/ui'
 import { isValidDateISO, monthKey } from '@/lib/format'
 
 import {
@@ -239,9 +251,11 @@ export function ExpenseEditor({
           aria-label={BACK_LABEL}
           className="-ml-2.5 grid size-touch shrink-0 press place-items-center rounded-field text-ink"
         >
-          <span aria-hidden="true" className="text-[22px] leading-none font-extrabold">
-            ‹
-          </span>
+          {/* F12: was a `‹` at 22px/800. The docblock above says this screen and /new "both
+              open with chevron · title · (actions)" and typeset it identically — which was true
+              of the size and false of the drawing, since each file had its own typed glyph. Now
+              it is one import, so "identically" is structural. */}
+          <ChevronLeftIcon />
         </Link>
         {/* Hard against the chevron, not centred — the same left-aligned title-beside-chevron
             arrangement /new uses. `mx-auto` pushed it to the middle of the band, which is an
@@ -262,7 +276,7 @@ export function ExpenseEditor({
             aria-label={DELETE_GROUP_CTA}
             className="grid size-touch shrink-0 press place-items-center rounded-field text-ink-3"
           >
-            <TrashGlyph />
+            <TrashIcon />
           </button>
         </div>
       </header>
@@ -349,9 +363,9 @@ export function ExpenseEditor({
                 aria-label={`Hapus ${item.name}`}
                 className="grid size-touch shrink-0 press place-items-center rounded-field text-ink-3"
               >
-                <span aria-hidden="true" className="text-[20px] leading-none font-bold">
-                  ×
-                </span>
+                {/* F12: was a `×` (U+00D7, the multiplication sign) at 20px/700 — the same
+                    stand-in ItemRow used on /new, and now the same real glyph. */}
+                <CloseIcon />
               </button>
             </li>
           ))}
@@ -453,6 +467,19 @@ export function ExpenseEditor({
 function TitleField({ value, onCommit }: { value: string; onCommit: (next: string) => void }) {
   const [draft, setDraft] = useState(value)
 
+  /**
+   * F12 §5. Typing here commits on BLUR; a preset tap has no blur to wait for, so it writes
+   * through immediately — and it must also move the local `draft`, or the box would keep showing
+   * the old text until the optimistic update landed.
+   *
+   * The `!== value` guard is the same one `onBlur` carries: re-tapping the chip that is already
+   * active is a no-op rather than a needless action call and revalidation.
+   */
+  const pick = (preset: string) => {
+    setDraft(preset)
+    if (preset !== value) onCommit(preset)
+  }
+
   return (
     <Field label={TITLE_LABEL}>
       <Input
@@ -477,6 +504,7 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (next: strin
         autoCapitalize="none"
         autoCorrect="off"
       />
+      <TitlePresets value={draft} onPick={pick} className="-mx-safe mt-2 px-safe" />
     </Field>
   )
 }
@@ -571,40 +599,19 @@ function NoteField({ value, onCommit }: { value: string; onCommit: (next: string
   )
 }
 
-/**
- * The trash glyph: lid, handle, tapered can. Three paths.
+/*
+ * THE TRASH GLYPH MOVED (F12) to `components/ui/Icon.tsx` as `TrashIcon`, wrapping lucide's
+ * `Trash2`.
  *
- * HAND-DRAWN, per `FullscreenToggle`'s standing argument — no icon dependency in this repo,
- * and its numbers are the contract this follows rather than re-deciding: 24 viewBox, 2.5
- * stroke, square caps, mitred joins, 22px rendered. A hairline library glyph beside Archivo
- * at 800 weight reads as a different app.
+ * What was here was the same drawing in three hand-cut paths — lid, handle, tapered can —
+ * under a docblock deferring to `FullscreenToggle`'s "no icon dependency in this repo" and
+ * restating its numbers: 24 viewBox, 2.5 stroke, square caps, mitred joins, 22px rendered.
+ * All five survive, as props inside `Icon`. What does not survive is the rib argument: the old
+ * glyph deliberately had NO ribs on the can, because two vertical ribs at a 2.5 stroke silt up
+ * into a grey block at 22px. Lucide's `Trash2` HAS two ribs, so if the can ever reads as a
+ * smudge on the XS Max, `Trash` (ribless) is the swap — one word in Icon.tsx, and this
+ * paragraph is why you would.
  *
- * NO RIBS ON THE CAN, and that is a rendering fact rather than taste. Two vertical ribs at a
- * 2.5 stroke inside a 12-unit can leave 1.5 units of paper between the marks; at 22px they
- * silt up into a grey block. Lid plus handle plus a tapered body is already unambiguously a
- * bin, and the taper is what keeps it from reading as a plain rectangle.
- *
- * `currentColor`, so the `ink-3` on the button is the only place the colour is decided — see
- * the header docblock for why grey and not red.
+ * `currentColor` still applies, so the `ink-3` on the button remains the only place the colour
+ * is decided — see the header docblock for why grey and not red.
  */
-function TrashGlyph() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.5}
-      strokeLinecap="square"
-      strokeLinejoin="miter"
-      className="size-5.5"
-      aria-hidden="true"
-    >
-      {/* The lid, running wider than the can — the overhang is what makes it a lid. */}
-      <path d="M3.5 6.5h17" />
-      {/* The handle above it. */}
-      <path d="M9.5 6.5V3.5h5v3" />
-      {/* The can, narrowing by one unit a side on the way down. */}
-      <path d="M6 6.5l1 14.5h10l1-14.5" />
-    </svg>
-  )
-}

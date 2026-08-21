@@ -51,6 +51,14 @@ describe('proxy matcher', () => {
     expect(matches('/s')).toBe(false)
   })
 
+  it('LEAVES /f/[token] PUBLIC — F12, same invariant, same force', () => {
+    // Adding this path would redirect every recipient of a shared receipt to a sign-in page for
+    // an account they do not have. Nothing else in the suite would notice: the owner's own
+    // browser is signed in, so it would keep working for the one person who cannot see the bug.
+    expect(matches('/f/abc123def456')).toBe(false)
+    expect(matches('/f')).toBe(false)
+  })
+
   it('leaves the sign-in page and the Auth.js flow alone', () => {
     // Matching `/` would bounce the sign-in page to itself; matching `/api/auth/*` would break
     // the callback that completes the sign-in.

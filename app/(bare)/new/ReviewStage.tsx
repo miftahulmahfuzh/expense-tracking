@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { PhotoPicker } from '@/components/photos'
-import { Button, CategoryPicker, Card, Field, Input, Money, TextArea } from '@/components/ui'
+import {
+  Button,
+  CategoryPicker,
+  Card,
+  Field,
+  Input,
+  Money,
+  TextArea,
+  TitlePresets,
+} from '@/components/ui'
 import type { Category } from '@/lib/categories'
 import type { StagedPhoto } from '@/lib/photos/types'
 import { revealAboveBar } from '@/lib/scroll/revealAboveBar'
@@ -185,7 +194,7 @@ export function ReviewStage(props: ReviewStageProps) {
           </div>
         ) : null}
 
-        <Field label="Judul" error={errors.title} className="mb-4">
+        <Field label="Judul" error={errors.title} className="mb-2">
           <Input
             id="draft-title"
             type="text"
@@ -197,6 +206,21 @@ export function ReviewStage(props: ReviewStageProps) {
             onChange={(event) => props.onTitleChange(event.target.value)}
           />
         </Field>
+
+        {/*
+          F12 §5. Goes through the SAME `onTitleChange` the input does, so the draft reducer, the
+          localStorage draft and `validate.ts` all see a preset exactly as they see typing — there
+          is no second path into `draft.title` that could skip a check.
+
+          The field above dropped from `mb-4` to `mb-2` to pay for this row rather than pushing
+          Tanggal and the item table down the screen.
+        */}
+        <TitlePresets
+          value={draft.title}
+          onPick={props.onTitleChange}
+          disabled={saving}
+          className="-mx-safe mb-4 px-safe"
+        />
 
         <Field label="Tanggal" error={errors.occurredOn} className="mb-5">
           <Input

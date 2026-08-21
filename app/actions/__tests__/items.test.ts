@@ -60,6 +60,19 @@ beforeEach(() => {
   authMock.mockResolvedValue({ user: { id: USER } })
 })
 
+/**
+ * F12 §6.1 — each of these actions now runs ONE MORE STATEMENT than it used to: an
+ * `update expense_groups set updated_at` on the parent row. It exists because the LLM summaries
+ * on /stats key their freshness on `max(expense_groups.updated_at)`, and before it that key was
+ * a lie for every mutation in this file — correcting an amount writes to `expense_items` only,
+ * so a stale summary would have reported itself fresh.
+ *
+ * The statement counts below are asserted rather than loosened, and that is deliberate: the
+ * count is how this suite catches an accidental N+1, so "one more, and here is which one" is the
+ * assertion worth having.
+ */
+const TOUCH_SQL = /^update "expense_groups" set "updated_at"/
+
 describe('addItem', () => {
   it('proves group ownership before inserting, and scopes the insert to that group', async () => {
     queueRows(anchorRow)
@@ -67,9 +80,11 @@ describe('addItem', () => {
     const { id } = await addItem(GROUP, { ...newItem, sortOrder: 3 })
 
     expect(id).toMatch(/^[0-9A-Za-z_-]{12}$/)
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(3) // anchor, insert, touch (F12 §6.1)
 
-    const [anchor, insert] = calls
+    const [anchor, insert, touch] = calls
+    expect(normalise(touch!.sql)).toMatch(TOUCH_SQL)
+    expect(touch!.params).toContain(GROUP)
     expect(normalise(anchor!.sql)).toMatch(/^select .* from "expense_groups"/)
     expect(anchor!.sql).toContain('"user_id"')
     expect(anchor!.params).toEqual([GROUP, USER, 1])
@@ -88,9 +103,10 @@ describe('addItem', () => {
 
     await addItem(GROUP, newItem)
 
-    expect(calls).toHaveLength(3)
+    expect(calls).toHaveLength(4) // anchor, max(sort_order), insert, touch
     expect(normalise(calls[1]!.sql)).toContain('max("sort_order")')
     expect(calls[2]!.params).toContain(7)
+    expect(normalise(calls[3]!.sql)).toMatch(TOUCH_SQL)
   })
 
   it('redirects before touching the database when there is no session', async () => {
@@ -138,7 +154,8 @@ describe('updateItem', () => {
 
     await updateItem(ITEM, { amountIdr: 45_000 })
 
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(3) // anchor, update, touch (F12 §6.1)
+    expect(normalise(calls[2]!.sql)).toMatch(TOUCH_SQL)
 
     const [anchor, update] = calls
     const anchorSql = normalise(anchor!.sql)
@@ -193,7 +210,8 @@ describe('deleteItem', () => {
 
     await deleteItem(ITEM)
 
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(3) // anchor, delete, touch (F12 §6.1)
+    expect(normalise(calls[2]!.sql)).toMatch(TOUCH_SQL)
     const deleteSql = normalise(calls[1]!.sql)
     expect(deleteSql).toMatch(/^delete from "expense_items"/)
     expect(deleteSql).toContain('"id" = $')

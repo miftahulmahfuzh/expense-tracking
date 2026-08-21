@@ -160,6 +160,80 @@ export const shareLinks = pgTable(
   (t) => [uniqueIndex('share_links_group_id_unq').on(t.groupId)],
 )
 
+export const photoShareLinks = pgTable(
+  'photo_share_links',
+  {
+    /** nanoid(12), URL-safe — the same generator as `share_links.token` (lib/id.ts). */
+    token: text('token').primaryKey(),
+    photoId: text('photo_id')
+      .notNull()
+      .references(() => expensePhotos.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  /*
+   * F12 §4. Shape-for-shape with `share_links` above, deliberately, so there is one pattern to
+   * learn rather than two — including WHY the unique index exists: one active link per photo,
+   * so a second tap of the share icon copies the SAME url. A fresh token would silently break
+   * the link the user sent yesterday.
+   *
+   * THIS IS A SECOND, NARROWER TOKEN TYPE, not a duplicate of the first. `share_links`
+   * publishes a whole group — title, every item, every amount. Sending someone a receipt photo
+   * should not also publish what you spent, so `/f/[token]` resolves to one blob URL and
+   * nothing else (see `getPhotoByShareToken`).
+   *
+   * ON REVOKE: `onDelete: 'cascade'` means deleting the photo kills its link. That IS the
+   * revoke — there is no separate control, and F12 §4.7 records that as an accepted cost.
+   */
+  (t) => [uniqueIndex('photo_share_links_photo_id_unq').on(t.photoId)],
+)
+
+/**
+ * The LLM-written summaries behind `/stats` — F12 §6.
+ *
+ * ONE ROW PER USER, not one per section. All three summaries come from a single model call
+ * over a single window of data and go stale together, so splitting them would be three
+ * upserts, three freshness comparisons and three ways to end up with a "this week" paragraph
+ * written against last week's numbers.
+ *
+ * ════════════════════════════════════════════════════════════════════════════
+ *  THE TWO KEYS ARE THE WHOLE DESIGN. Freshness is `dataKey` AND `scopeKey`, and each catches
+ *  something the other cannot:
+ *
+ *  dataKey  — did the underlying expenses change? Derived, never written by a mutation: see
+ *             `insightDataKey()` in lib/db/insights.ts. It is NOT just MAX(updated_at),
+ *             because deleting a group whose updated_at sits BELOW the max leaves the max
+ *             untouched while the data changed — a stale summary that reads as fresh. The row
+ *             count travels with it for exactly that case.
+ *
+ *  scopeKey — did the CALENDAR move? On Monday morning, with no new expense anywhere, the
+ *             dataKey is unchanged but "Simpulan Minggu Ini" is now describing last week.
+ *             Nothing about the data can detect that; only the clock can.
+ *
+ *  Miss either and the failure is silent, because a wrong summary looks exactly like a right
+ *  one. There is no rendering glitch to notice.
+ * ════════════════════════════════════════════════════════════════════════════
+ *
+ * NOT a cache in the discardable sense: if it is missing we pay a model call, so it is the
+ * only copy of text that cost money. It is still safe to TRUNCATE — the next page view
+ * regenerates.
+ */
+export const expenseInsights = pgTable('expense_insights', {
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  /** Simpulan Minggu Ini · Bulan Ini · 2 Bulan Terakhir. Nullable: a model may decline one. */
+  weekText: text('week_text'),
+  monthText: text('month_text'),
+  twoMonthText: text('two_month_text'),
+  /** `<max(updated_at) as epoch ms>:<group count>` — see the block above. */
+  dataKey: text('data_key').notNull(),
+  /** `<jakarta ISO week>|<jakarta month>`, e.g. `2026-W34|2026-08`. */
+  scopeKey: text('scope_key').notNull(),
+  generatedAt: timestamp('generated_at', { withTimezone: true, mode: 'date' }).notNull(),
+  /** The model that wrote this text. `glm-5.2` aliases upward server-side (lib/llm/COST.md). */
+  model: text('model').notNull(),
+})
+
 /* ============================================================================
  * Relations. Optional convenience for db.query.*; the sanctioned read path in
  * lib/db/queries.ts uses explicit selects + db.batch. Kept because F07 may want
@@ -193,6 +267,17 @@ export const expenseItemsRelations = relations(expenseItems, ({ one }) => ({
 
 export const expensePhotosRelations = relations(expensePhotos, ({ one }) => ({
   group: one(expenseGroups, { fields: [expensePhotos.groupId], references: [expenseGroups.id] }),
+  shareLink: one(photoShareLinks, {
+    fields: [expensePhotos.id],
+    references: [photoShareLinks.photoId],
+  }),
+}))
+
+export const photoShareLinksRelations = relations(photoShareLinks, ({ one }) => ({
+  photo: one(expensePhotos, {
+    fields: [photoShareLinks.photoId],
+    references: [expensePhotos.id],
+  }),
 }))
 
 export const shareLinksRelations = relations(shareLinks, ({ one }) => ({
@@ -215,3 +300,7 @@ export type ExpensePhoto = typeof expensePhotos.$inferSelect
 export type NewExpensePhoto = typeof expensePhotos.$inferInsert
 export type ShareLink = typeof shareLinks.$inferSelect
 export type NewShareLink = typeof shareLinks.$inferInsert
+export type PhotoShareLink = typeof photoShareLinks.$inferSelect
+export type NewPhotoShareLink = typeof photoShareLinks.$inferInsert
+export type ExpenseInsights = typeof expenseInsights.$inferSelect
+export type NewExpenseInsights = typeof expenseInsights.$inferInsert

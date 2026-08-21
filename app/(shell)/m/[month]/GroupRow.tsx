@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { Money } from '@/components/ui'
+import { Money, PhotoStackIcon } from '@/components/ui'
 import type { MonthGroupRow } from '@/lib/db/queries'
 
 /**
@@ -11,7 +11,7 @@ import type { MonthGroupRow } from '@/lib/db/queries'
  * with the amount for the right edge, which belongs to the money rail.
  *
  * NO THUMBNAIL, and that is the design's call rather than an omission. Design R-40 puts the
- * photo evidence in the meta line as `⧉ 3`, and roadmap §5 lists the row as "title, item
+ * photo evidence in the meta line as a photo-stack glyph and a count, and roadmap §5 lists the row as "title, item
  * count, photo count, total" — the 44px thumbnail was F07's own plan (its A10 / R-14),
  * written before the design landed. `firstPhotoUrl` therefore ships unused here; it stays in
  * `MonthGroupRow` because it costs nothing (same aggregate, same round trip) and F08/F09 may
@@ -34,8 +34,10 @@ export function GroupRow({ group }: { group: MonthGroupRow }) {
             {group.photoCount > 0 && (
               <>
                 {' · '}
-                {/* The glyph is decorative; the count needs the word to make sense spoken. */}
-                <span aria-hidden="true">⧉ </span>
+                {/* The glyph is decorative; the count needs the word to make sense spoken.
+                    F12: was `⧉` (U+29C9), which is outside Archivo's coverage and fell back to
+                    whatever the system had — a box on some Androids. */}
+                <PhotoStackIcon size="inline" />{' '}
                 {group.photoCount}
                 <span className="sr-only"> foto</span>
               </>
