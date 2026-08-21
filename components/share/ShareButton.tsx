@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 
 import { createShareLink } from '@/app/actions/share'
-import { Button, Input, Sheet, useToast } from '@/components/ui'
+import { Button, Input, LoadingDots, Sheet, useToast } from '@/components/ui'
 import { formatJakartaLong } from '@/lib/format'
 import { copyText } from '@/lib/share/clipboard'
 import { shareUrl } from '@/lib/share/config'
@@ -38,6 +38,45 @@ export type ShareButtonProps = {
   initialToken: string | null
 }
 
+/**
+ * The share glyph: a tray with an arrow leaving through the top. iOS's own share mark, which
+ * on this app's only real target is not "an icon that means share" but *the* icon that means
+ * share — the one already sitting in Safari's toolbar two centimetres below it.
+ *
+ * HAND-DRAWN, and `FullscreenToggle` carries the full argument: this repo has no icon
+ * dependency, and adding one for two glyphs would import a library to use a fraction of it.
+ * The numbers here are that file's contract, not fresh choices — 24 viewBox, 2.5 stroke,
+ * square caps, mitred joins, 22px rendered. A 1.5-stroke library glyph next to Archivo at 800
+ * reads as a different app.
+ *
+ * WHY A PICTURE IS ALLOWED TO REPLACE THE WORD HERE, when `copy.ts`'s whole premise is that
+ * the words are canonical: the header had one text action and now has two actions, and two
+ * words — `Bagikan` and `Hapus pengeluaran` — do not fit beside a label on a 414px band
+ * without one of them wrapping or shrinking below the design's type floor. The word survives
+ * as the `aria-label`, so nothing that reads the page rather than looking at it lost anything.
+ */
+function ShareGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className="size-5.5"
+      aria-hidden="true"
+    >
+      {/* The arrow: shaft, then the head as one open chevron whose apex is the shaft's top.
+          It stops at y=15, inside the tray, so the two shapes read as one gesture. */}
+      <path d="M12 15V3.5" />
+      <path d="M7.5 8 12 3.5 16.5 8" />
+      {/* The tray, open at the top where the arrow leaves it. */}
+      <path d="M6.5 10.5H4v10.5h16V10.5h-2.5" />
+    </svg>
+  )
+}
+
 /** WebKit reports a dismissed share sheet as AbortError. That is a user choice, not a failure. */
 function isAbortError(err: unknown): boolean {
   return (
@@ -46,8 +85,13 @@ function isAbortError(err: unknown): boolean {
 }
 
 /**
- * The **Bagikan** action in `/e/[id]`'s header (design R-38: back chevron · mono label ·
- * optional action). One tap → the native share sheet. F09 §2.3.
+ * The **Bagikan** action in `/e/[id]`'s header. One tap → the native share sheet. F09 §2.3.
+ *
+ * NOW AN ICON, and no longer alone up there. Design R-38 specified a text button and R-124
+ * put `Hapus pengeluaran` at the far end of the page instead of beside it, on the reading
+ * that the header gets exactly ONE action. Both are superseded: the header carries share
+ * and delete as two 44px icon buttons. `ExpenseEditor`'s header docblock is where that
+ * decision and its cost are written down — read it before adding a third.
  *
  * ═══ TWO BROWSER CONSTRAINTS SHAPE EVERYTHING BELOW ═══
  *
@@ -61,9 +105,11 @@ function isAbortError(err: unknown): boolean {
  *    called with the gesture intact. After the first mint the token is in state and every
  *    later tap is synchronous by construction.
  *
- * 2. FEATURE DETECTION IS NOT SSR-SAFE. Branching the rendered label on `navigator.share`
- *    existing would produce a hydration mismatch. The button always says Bagikan; the branch
- *    lives entirely inside the handler.
+ * 2. FEATURE DETECTION IS NOT SSR-SAFE. Branching what is RENDERED on `navigator.share`
+ *    existing would produce a hydration mismatch — which is why the glyph and the
+ *    `aria-label` are the same on the server, on a desktop browser and on an iPhone. The
+ *    branch lives entirely inside the handler, and the icon is if anything more honest than
+ *    the word was: a tray with an arrow is what BOTH outcomes do.
  *
  * ═══ AND THE ERROR TAXONOMY, MOST OF WHICH ARE NOT ERRORS ═══
  *
@@ -174,16 +220,26 @@ export function ShareButton({
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="md"
-        className="-mr-2.5"
+      <button
+        type="button"
         onPointerDown={warm}
         onClick={onShare}
-        loading={sharing}
+        disabled={sharing}
+        aria-busy={sharing || undefined}
+        /*
+         * THE LABEL IS NOW THE `aria-label`, and that is the only thing the icon changed
+         * about this control's accessibility contract: `Bagikan` is still the accessible
+         * name, still the same canonical string from `copy.ts`, and still what voice
+         * control matches on. What it is NOT any more is visible — see the glyph's own
+         * docblock for why a picture is allowed to carry it here.
+         */
+        aria-label={SHARE_CTA}
+        className="grid size-touch shrink-0 press place-items-center rounded-field text-ink disabled:opacity-50"
       >
-        {SHARE_CTA}
-      </Button>
+        {/* Swapped, not overlaid: an icon button has no label box to preserve, so there is
+            nothing to keep from collapsing and the dots can simply take the glyph's place. */}
+        {sharing ? <LoadingDots /> : <ShareGlyph />}
+      </button>
 
       <Sheet
         open={manualUrl !== null}

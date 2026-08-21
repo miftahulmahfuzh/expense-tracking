@@ -5,20 +5,12 @@ import { useOptimistic, useState, useTransition, type ReactNode } from 'react'
 
 import { updateExpenseMeta } from '@/app/actions/expenses'
 import { addItem, deleteItem, updateItem } from '@/app/actions/items'
-import {
-  Button,
-  Card,
-  CategoryDisc,
-  Field,
-  Input,
-  Money,
-  TextArea,
-  useToast,
-} from '@/components/ui'
+import { Card, CategoryDisc, Field, Input, Money, TextArea, useToast } from '@/components/ui'
 import { isValidDateISO, monthKey } from '@/lib/format'
 
 import {
   ADD_ITEM_CTA,
+  ADD_NOTE_CTA,
   BACK_LABEL,
   DATE_LABEL,
   DELETE_FAILED,
@@ -73,13 +65,22 @@ export function ExpenseEditor({
   meta: EditableMeta
   items: EditableItem[]
   photoSlot?: ReactNode
-  /** F09's Bagikan button — the header's one optional action (design R-38). */
+  /**
+   * F09's Bagikan control, now an icon button. It is the LEFT of the header's two actions —
+   * delete is drawn here rather than passed in, because its confirm sheet is already this
+   * component's state. See the header's docblock for why there are two.
+   */
   shareSlot?: ReactNode
   /**
    * F09's live-link status and its revoke control. Renders nothing when the group has no
    * share link, which is the common case, so the slot is usually an empty node rather than
-   * a conditional here. It goes above the delete button, not beside the header action:
-   * see the docblock on `ShareLinkPanel` for why status and action are separated.
+   * a conditional here — hence the `empty:hidden` at the call site.
+   *
+   * It used to sit above `Hapus pengeluaran` at the foot of the page. The delete button is
+   * gone from there, so it now sits between the photos and the note: still the last
+   * *statement* on the page, still separated from the header action that shares the link,
+   * and no longer the second-to-last thing before a red block. `ShareLinkPanel`'s own
+   * docblock carries the reason status and action are separated at all.
    */
   shareLinkSlot?: ReactNode
 }) {
@@ -193,12 +194,35 @@ export function ExpenseEditor({
   return (
     <main>
       {/*
-       * The pushed-view header design R-38 specifies: back chevron · mono label · optional
-       * action. `/e/[id]` has no tab bar (R-51), so this IS its navigation. F10 does not ship
-       * this header because what flanks the label differs per route — here the right side is
-       * F09's Bagikan, on /new there is nothing (R-89).
+       * ════════════════════════════════════════════════════════════════════════
+       *  THE HEADER NOW CARRIES TWO ACTIONS, and that supersedes two earlier rulings.
+       *
+       *  Design R-38 specified: back chevron · mono label · ONE optional action, as a text
+       *  button. R-124 leaned on the "one action" half of that to put `Hapus pengeluaran`
+       *  at the very bottom of the page as a full-width destructive block. Both are now
+       *  reversed on purpose: share and delete sit up here as two 44px icon buttons.
+       *
+       *  WHY. Both were the only two things on this screen that were not *the expense*. A
+       *  page that ends in a red full-width DELETE button ends on its most frightening
+       *  control, and the note — the one genuinely optional field — was wedged above it
+       *  where nobody scrolls. Moving both actions into the chrome band lets the page end
+       *  on `+ Tambah catatan`, which is an invitation rather than a warning.
+       *
+       *  WHAT IT COSTS, stated plainly because R-38's reasoning was not wrong: the delete
+       *  target is now one thumb-width from a target the user taps on purpose, instead of a
+       *  scroll away. `DeleteExpenseSheet` is what makes that survivable — it is a real
+       *  confirm that quotes the group's own title, and it is the reason this trade is
+       *  acceptable here and would not be for anything undoable. The glyph is therefore
+       *  `ink-3` grey, NOT red: red in the chrome band would read as an alarm on every
+       *  visit to a page that is usually just being read (see the trash glyph below).
+       *
+       *  `/e/[id]` has no tab bar (R-51), so this IS its navigation. F10 does not ship this
+       *  header because what flanks the label differs per route — on /new there is nothing
+       *  (R-89). A THIRD action does not fit: 414px minus the gutters, the chevron and the
+       *  label leaves room for two 44px boxes and no more.
+       * ════════════════════════════════════════════════════════════════════════
        */}
-      {/* Back · label · action, on a white band with a hairline under it — the design's
+      {/* Back · label · actions, on a white band with a hairline under it — the design's
           pushed-view header. The label stays a tiny eyebrow rather than becoming a screen
           title, because the expense's own title is the 30px thing on this screen and two
           large headings would fight. */}
@@ -215,9 +239,25 @@ export function ExpenseEditor({
         {/* Hard against the chevron, not centred. `mx-auto` pushed it to the middle of the
             band, which read as a title competing with the expense's own 30px one below —
             this is a chrome label, and a chrome label belongs beside the control it labels
-            the way back from. `ml-auto` on the action still pins Bagikan to the right. */}
+            the way back from. `ml-auto` on the action group still pins both icons right. */}
         <h1 className="eyebrow">{DETAIL_LABEL}</h1>
-        <div className="ml-auto">{shareSlot}</div>
+        {/* `-mr-2.5` on the GROUP, mirroring the chevron's `-ml-2.5`: each 44px box overhangs
+            the gutter by the same 10px, so the two outermost glyphs are optically flush with
+            the column while their touch targets stay full size. `gap-0.5` and not more —
+            these are two 44px boxes whose glyphs are 22px, so there is already 11px of dead
+            space between the marks without adding any. */}
+        <div className="-mr-2.5 ml-auto flex items-center gap-0.5">
+          {shareSlot}
+
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            aria-label={DELETE_GROUP_CTA}
+            className="grid size-touch shrink-0 press place-items-center rounded-field text-ink-3"
+          >
+            <TrashGlyph />
+          </button>
+        </div>
       </header>
 
       <div className="px-safe">
@@ -320,20 +360,31 @@ export function ExpenseEditor({
 
       {photoSlot && <div className="mt-7">{photoSlot}</div>}
 
-      <div className="mt-7 px-safe">
+      {/*
+       * `empty:hidden`, and it is load-bearing now that this is not the second-to-last block.
+       * `shareLinkSlot` is an ELEMENT that renders null, so the truthiness check above cannot
+       * see that, and the wrapper survives as an empty div whose 40px top margin would
+       * collapse through it and push the note down on every group WITHOUT a share link — i.e.
+       * on nearly all of them. `display: none` takes the box and both its margins out.
+       */}
+      {shareLinkSlot && <div className="mt-10 px-safe empty:hidden">{shareLinkSlot}</div>}
+
+      {/*
+       * THE LAST BLOCK ON THE PAGE, and `pb-3` is the whole answer to "how close to the
+       * bottom". `(bare)/layout.tsx` already pads by `env(safe-area-inset-bottom)`, which is
+       * 34px of home-indicator clearance on a notched iPhone and 0 everywhere else; this adds
+       * 12px on top of it. So the note stops 12px clear of the indicator rather than the 32px
+       * the deleted `pb-8` was reserving — snug, without the CTA sitting under the black bar.
+       *
+       * Do NOT re-add safe-area padding here. Doubling it is the classic way this goes wrong,
+       * and the symptom is a 68px band of nothing that only appears on real hardware.
+       */}
+      <div className="mt-7 px-safe pb-3">
         <NoteField
           key={`note:${optimisticMeta.note ?? ''}`}
           value={optimisticMeta.note ?? ''}
           onCommit={(note) => commitMeta({ note })}
         />
-      </div>
-
-      {shareLinkSlot && <div className="mt-10 px-safe">{shareLinkSlot}</div>}
-
-      <div className="mt-10 px-safe pb-8">
-        <Button variant="destructive" fullWidth onClick={() => setConfirmingDelete(true)}>
-          {DELETE_GROUP_CTA}
-        </Button>
       </div>
 
       {/*
@@ -410,8 +461,72 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (next: strin
   )
 }
 
+/**
+ * NO EMPTY WHITE BOX. A note is the one field on this screen that most expenses will never
+ * have, and a 2-row textarea sitting there empty was the page asking a question nobody had
+ * asked it — the biggest blank rectangle on the screen, reserved for the least-used field.
+ *
+ * So the field is EARNED, in three states and no more:
+ *
+ *   value empty, untouched   → one mono row, `+ Tambah catatan`. No box, no label.
+ *   value empty, tapped      → the real field, focused, keyboard up.
+ *   value present            → the real field, exactly as before.
+ *
+ * `expanded` IS THE `autoFocus` GUARD, which is why it is one boolean doing two jobs. It is
+ * true only on the mount that FOLLOWS the user tapping the CTA, so the textarea focuses then
+ * and only then. A group that arrives from the server with a note already on it mounts with
+ * `expanded === false`, so the field is visible but does NOT grab focus and shove the
+ * keyboard up over the page on every visit — the bug a bare `autoFocus` would ship.
+ *
+ * COLLAPSING BACK. Opening the field and typing nothing puts it away again on blur, and
+ * costs no round trip: the draft is empty, the value is empty, so there is nothing to commit
+ * and `onCommit` is never called. Tapping the CTA is therefore free and undoable, which is
+ * the point of making it a tap in the first place.
+ *
+ * Everything past that is the `key` contract at the call site: a commit remounts this with a
+ * fresh `value`, `expanded` resets to false, and the state table above picks the right
+ * rendering — the field for a saved note, the CTA again for one cleared back to empty. That
+ * is also why `expanded` is not `useOptimistic`; it is this component's own scratch state and
+ * nothing about it needs to survive a rollback (R-92).
+ */
 function NoteField({ value, onCommit }: { value: string; onCommit: (next: string) => void }) {
   const [draft, setDraft] = useState(value)
+  const [expanded, setExpanded] = useState(false)
+
+  if (!value && !expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setExpanded(true)
+          /*
+           * The field is taller than the row it replaces, and this row is the LAST block on
+           * the page — so at the foot of a long expense the box it turns into lands partly
+           * below the fold. Scrolling to the document's new bottom always reveals it, which
+           * is only true because of that "last block" invariant; move the note back up the
+           * page and this needs rethinking.
+           *
+           * One frame late, because the box does not exist until React has committed. NOT an
+           * effect: this is a consequence of a tap, and it belongs in the tap handler.
+           *
+           * iOS ALSO scrolls a focused input clear of the keyboard on its own, ~250ms later,
+           * and that adjustment lands after this one and wins. This is for the platforms that
+           * do not — desktop Safari, an iPad with a hardware keyboard.
+           */
+          requestAnimationFrame(() =>
+            window.scrollTo({ top: document.documentElement.scrollHeight }),
+          )
+        }}
+        /* The `+ Tambah item` row, verbatim, minus the `mt-1` its own list wanted. Same
+           height, same mono uppercase, same ink — because it is the same kind of thing, and
+           two different-looking "add a thing" rows on one screen is how a design starts
+           drifting. min-h-12 keeps the 44px target the 15px type does not fill on its own. */
+        className="flex min-h-12 w-full press items-center text-left text-action text-ink-2 uppercase"
+      >
+        {ADD_NOTE_CTA}
+      </button>
+    )
+  }
 
   return (
     <Field label={NOTE_LABEL}>
@@ -419,12 +534,57 @@ function NoteField({ value, onCommit }: { value: string; onCommit: (next: string
         rows={2}
         value={draft}
         maxLength={2_000}
+        autoFocus={expanded}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
           const trimmed = draft.trim()
-          if (trimmed !== value) onCommit(trimmed)
+          if (trimmed !== value) {
+            onCommit(trimmed)
+            return
+          }
+          // Nothing typed, nothing saved — put the box away rather than leaving the user
+          // looking at the empty rectangle they just asked to see.
+          if (!trimmed) setExpanded(false)
         }}
       />
     </Field>
+  )
+}
+
+/**
+ * The trash glyph: lid, handle, tapered can. Three paths.
+ *
+ * HAND-DRAWN, per `FullscreenToggle`'s standing argument — no icon dependency in this repo,
+ * and its numbers are the contract this follows rather than re-deciding: 24 viewBox, 2.5
+ * stroke, square caps, mitred joins, 22px rendered. A hairline library glyph beside Archivo
+ * at 800 weight reads as a different app.
+ *
+ * NO RIBS ON THE CAN, and that is a rendering fact rather than taste. Two vertical ribs at a
+ * 2.5 stroke inside a 12-unit can leave 1.5 units of paper between the marks; at 22px they
+ * silt up into a grey block. Lid plus handle plus a tapered body is already unambiguously a
+ * bin, and the taper is what keeps it from reading as a plain rectangle.
+ *
+ * `currentColor`, so the `ink-3` on the button is the only place the colour is decided — see
+ * the header docblock for why grey and not red.
+ */
+function TrashGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      className="size-5.5"
+      aria-hidden="true"
+    >
+      {/* The lid, running wider than the can — the overhang is what makes it a lid. */}
+      <path d="M3.5 6.5h17" />
+      {/* The handle above it. */}
+      <path d="M9.5 6.5V3.5h5v3" />
+      {/* The can, narrowing by one unit a side on the way down. */}
+      <path d="M6 6.5l1 14.5h10l1-14.5" />
+    </svg>
   )
 }

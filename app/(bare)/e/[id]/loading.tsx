@@ -1,14 +1,23 @@
 /**
  * The detail skeleton: header, title, date, three item rows, total. Same shape as the real
- * screen so the content does not jump when it arrives.
+ * screen so the content does not jump when it arrives — which is why the header here carries
+ * TWO action squares and a label hard against the chevron. Both track `ExpenseEditor`'s
+ * header exactly; if that grows or loses a control, this is the second place to change.
+ *
+ * The note is deliberately absent. It is the last block on the real page and it is now one
+ * mono row or nothing at all, so drawing a placeholder for it would reserve height that the
+ * loaded page often does not use — the opposite of what this file is for.
  */
 export default function DetailLoading() {
   return (
     <main aria-busy="true">
       <div className="flex items-center gap-2 border-b border-rule bg-card pt-safe-header px-safe pb-2">
         <span className="skeleton -ml-2.5 size-touch rounded-field" />
-        <span className="skeleton mx-auto h-3 w-16" />
-        <span className="skeleton size-touch rounded-field" />
+        <span className="skeleton h-3 w-16" />
+        <span className="-mr-2.5 ml-auto flex items-center gap-0.5">
+          <span className="skeleton size-touch rounded-field" />
+          <span className="skeleton size-touch rounded-field" />
+        </span>
       </div>
 
       <div className="pt-4 px-safe">
