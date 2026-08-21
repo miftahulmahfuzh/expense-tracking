@@ -41,6 +41,31 @@ export function isFullscreenValue(value: string | undefined | null): boolean {
 }
 
 /**
+ * Reads the preference out of a `document.cookie` string.
+ *
+ * WHY THE CLIENT HAS TO BE ABLE TO READ THIS AT ALL. The server's value reaches the provider
+ * as a prop, and a prop is a SNAPSHOT of the render that produced it. `/new` lives in the
+ * `(bare)` group, so walking to the Tambah tab unmounts the whole `(shell)` layout — and an
+ * iOS edge-swipe back then remounts it from Next's client Router Cache, replaying whatever
+ * payload that URL was last cached with. Cache a payload while the preference was on, turn
+ * the preference off, come back by gesture, and the stale `initial` puts you in a fullscreen
+ * you cannot have navigated away from. The cookie is the truth; the prop is only the truth at
+ * first paint, and this is how the client checks.
+ *
+ * Exact name match, so a future `et-fullscreen-<something>` cannot be mistaken for this one.
+ * Values are handed to `isFullscreenValue`, so a garbage cookie still reads as off.
+ */
+export function readFullscreenCookie(cookieString: string): boolean {
+  for (const pair of cookieString.split(';')) {
+    const eq = pair.indexOf('=')
+    if (eq === -1) continue
+    if (pair.slice(0, eq).trim() !== FULLSCREEN_COOKIE) continue
+    return isFullscreenValue(pair.slice(eq + 1).trim())
+  }
+  return false
+}
+
+/**
  * Builds the `document.cookie` assignment string.
  *
  * `secure` is a parameter rather than a `location.protocol` read so this stays pure and

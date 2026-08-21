@@ -6,6 +6,7 @@ import {
   FULLSCREEN_ON,
   fullscreenCookie,
   isFullscreenValue,
+  readFullscreenCookie,
 } from '@/lib/fullscreen'
 
 /**
@@ -80,5 +81,59 @@ describe('fullscreenCookie', () => {
   it('omits secure when the page is not on https', () => {
     expect(fullscreenCookie({ on: true, secure: false })).not.toContain('secure')
     expect(fullscreenCookie({ on: true, secure: true })).toContain('secure')
+  })
+})
+
+describe('readFullscreenCookie', () => {
+  it('finds the value among other cookies', () => {
+    expect(readFullscreenCookie(`a=1; ${FULLSCREEN_COOKIE}=${FULLSCREEN_ON}; z=9`)).toBe(true)
+  })
+
+  it('tolerates the whitespace browsers actually emit', () => {
+    // `document.cookie` joins with "; " but the leading pair has no space, and some
+    // environments differ. Nothing here should depend on which.
+    expect(readFullscreenCookie(`${FULLSCREEN_COOKIE}=${FULLSCREEN_ON}`)).toBe(true)
+    expect(readFullscreenCookie(`x=1;${FULLSCREEN_COOKIE}=${FULLSCREEN_ON}`)).toBe(true)
+    expect(readFullscreenCookie(`x=1;   ${FULLSCREEN_COOKIE}=${FULLSCREEN_ON}   `)).toBe(true)
+  })
+
+  it('reads an empty cookie jar as off', () => {
+    expect(readFullscreenCookie('')).toBe(false)
+  })
+
+  it('reads a jar without this cookie as off', () => {
+    expect(readFullscreenCookie('authjs.session-token=abc; theme=dark')).toBe(false)
+  })
+
+  /*
+   * Exact name match. A prefix test would let a future `et-fullscreen-variant` cookie drive
+   * this one, and the failure would be a screen with no navigation on it.
+   */
+  it('does not match a cookie that merely starts with the name', () => {
+    expect(readFullscreenCookie(`${FULLSCREEN_COOKIE}-variant=${FULLSCREEN_ON}`)).toBe(false)
+    expect(readFullscreenCookie(`not-${FULLSCREEN_COOKIE}=${FULLSCREEN_ON}`)).toBe(false)
+  })
+
+  /*
+   * THE BUG THIS FUNCTION EXISTS FOR. Cookie deleted (so absent), but a cached RSC payload
+   * still carries `initial={true}`. The live jar has to win, or an edge-swipe back from
+   * /new lands in a fullscreen the user cannot have navigated away from.
+   */
+  it('reports off once the cookie is deleted, whatever a stale payload claims', () => {
+    const deleted = fullscreenCookie({ on: false, secure: true })
+    // What a browser is left holding after that assignment is simply no entry at all.
+    expect(deleted).toContain('max-age=0')
+    expect(readFullscreenCookie('authjs.session-token=abc')).toBe(false)
+  })
+
+  /*
+   * The writer and the reader are the two halves of one contract and nothing else checks that
+   * they agree: `document.cookie` hands back only the `name=value` pairs, never the attributes
+   * the writer appends, so this drops everything after the first `;` the way a browser does.
+   */
+  it('round-trips the value it writes', () => {
+    const written = fullscreenCookie({ on: true, secure: false })
+    const [pair = ''] = written.split(';')
+    expect(readFullscreenCookie(pair)).toBe(true)
   })
 })
