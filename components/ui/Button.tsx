@@ -31,6 +31,11 @@ export interface ButtonProps
  * shadow, no uppercase tracking. The previous system set every button in mono caps on the
  * theory that an instruction is bookkeeping; this one gets its authority from weight (800)
  * and size (17px) instead, which is what lets the label stay sentence case and still shout.
+ *
+ * That argument used to describe only the 17px tier, and caps survived below it in
+ * `eyebrow` / `sticker` / the tab bar — so casing was really a function of font size. F11
+ * finished the job: nothing in the app is capsed now, and what a string looks like is
+ * decided by what it IS. See THE CASING RULE in `app/globals.css`.
  */
 const BASE =
   'relative inline-flex items-center justify-center gap-2.5 select-none whitespace-nowrap ' +

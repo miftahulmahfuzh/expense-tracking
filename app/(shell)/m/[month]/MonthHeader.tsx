@@ -91,7 +91,7 @@ export function MonthHeader({ month, summary }: { month: MonthKey; summary: Mont
         <Money value={summary.totalIdr} size="hero" />
       </p>
 
-      <p className="mt-2 tabular text-meta text-ink-3 uppercase">
+      <p className="mt-2 tabular text-meta text-ink-3">
         {summary.groupCount} catatan · {summary.itemCount} item
       </p>
     </MonthHeaderShell>

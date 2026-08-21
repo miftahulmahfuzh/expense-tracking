@@ -239,7 +239,7 @@ export function ReviewStage(props: ReviewStageProps) {
           ref={addRef}
           onClick={props.onAddItem}
           disabled={saving}
-          className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2 uppercase"
+          className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2"
         >
           {ADD_ITEM_CTA}
         </button>
@@ -257,7 +257,7 @@ export function ReviewStage(props: ReviewStageProps) {
         */}
         <details className="mt-5 rounded-card bg-card px-3 py-2" open={showRaw}>
           <summary
-            className="flex min-h-touch cursor-pointer list-none items-center text-action text-ink-2 uppercase"
+            className="flex min-h-touch cursor-pointer list-none items-center text-action text-ink-2"
             onClick={(event) => {
               // Controlled, so the disclosure state survives a re-render of the list above it.
               event.preventDefault()

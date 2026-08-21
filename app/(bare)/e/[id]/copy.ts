@@ -19,21 +19,21 @@ export const BACK_LABEL = 'Kembali ke daftar bulan'
 
 export const TITLE_LABEL = 'Judul'
 export const DATE_LABEL = 'Tanggal'
-export const NOTE_LABEL = 'Catatan (opsional)'
+export const NOTE_LABEL = 'Catatan (Opsional)'
 export const ITEM_HEADING = 'Item'
 export const TOTAL_LABEL = 'Total'
 
-export const ADD_ITEM_CTA = '+ Tambah item'
+export const ADD_ITEM_CTA = '+ Tambah Item'
 /**
  * The collapsed note affordance. Deliberately shaped on `ADD_ITEM_CTA` — same glyph, same
- * position in the sentence, same mono-uppercase row — because they are the same gesture two
+ * position in the sentence, same Title Case row — because they are the same gesture two
  * screens apart, and R-40's whole point is that one action does not get two vocabularies.
  *
- * `NOTE_LABEL` still says `Catatan (opsional)` and is still the field's label once the field
+ * `NOTE_LABEL` still says `Catatan (Opsional)` and is still the field's label once the field
  * exists. The optionality moved from a parenthesis into the interaction: a note you have to
  * ask for cannot be mistaken for one you were supposed to fill in.
  */
-export const ADD_NOTE_CTA = '+ Tambah catatan'
+export const ADD_NOTE_CTA = '+ Tambah Catatan'
 export const SAVE_CTA = 'Simpan'
 export const CANCEL_CTA = 'Batal'
 export const DELETE_CTA = 'Hapus'

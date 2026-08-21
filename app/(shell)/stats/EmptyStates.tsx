@@ -28,7 +28,7 @@ export function SingleMonthState({ month, totalIdr }: { month: MonthKey; totalId
   return (
     <section className="rounded-card bg-card p-4">
       <h2 className="sticker" style={INK_STICKER}>
-        Tren bulanan
+        Tren Bulanan
       </h2>
       <p className="mt-2">
         <Money value={totalIdr} size="lg" />

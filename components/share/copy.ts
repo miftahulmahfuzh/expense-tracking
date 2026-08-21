@@ -13,7 +13,7 @@
 
 export const SHARE_CTA = 'Bagikan'
 
-export const SHARE_PANEL_HEADING = 'Tautan publik'
+export const SHARE_PANEL_HEADING = 'Tautan Publik'
 export const SHARE_PANEL_ACTIVE =
   'Tautan aktif. Siapa pun yang punya tautan ini bisa melihat pengeluaran ini tanpa masuk.'
 

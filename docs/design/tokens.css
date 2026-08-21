@@ -106,11 +106,11 @@
      15 / 600              item name, item amount    → --text-item / money-sm
      15 / 500              prose                     → --text-body
      14 / 700              chip label                → --text-chip
-     12 / 900 / 0.12em     month pill, tagline       → .sticker-lg
-     11 / 800 / 0.10em     tab label, small caps     → --text-action
-     11 / 700 / 0.06em     row meta                  → --text-meta
-     10 / 800 / 0.14em     eyebrow, field label      → --text-label
-     10 / 900 / 0.12em     day heading, section head → .sticker
+     13 / 900 / 0.005em    month pill, tagline       → .sticker-lg
+     12 / 800 / 0.005em    tab label, small labels   → --text-action
+     11 / 700 / 0.01em     row meta                  → --text-meta
+     11 / 800 / 0.005em    eyebrow, field label      → --text-label
+     11 / 900 / 0.005em    day heading, section head → .sticker
       9 / 900              the two-letter disc mark  → .disc
 
    Money is `font-variant-numeric: tabular-nums` at every size. Archivo is

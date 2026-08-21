@@ -161,20 +161,20 @@ export function Lightbox({
               {/*
                 Not the design-system <Button>: every variant there is coloured for `paper`,
                 and this footer floats over a true-black photo surround. Same geometry
-                (h-touch, mono, uppercase, tracked) with the two colours this context needs.
+                (h-touch, 12px/800 Title Case) with the two colours this context needs.
               */}
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={pending}
-                className="h-touch press rounded-field bg-red px-5 text-action tracking-[0.14em] text-white uppercase disabled:opacity-60"
+                className="h-touch press rounded-field bg-red px-5 text-action text-white disabled:opacity-60"
               >
-                {pending ? 'Menghapus…' : 'Hapus foto ini'}
+                {pending ? 'Menghapus…' : 'Hapus Foto Ini'}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="h-touch press rounded-field bg-white/15 px-5 text-action tracking-[0.14em] text-white uppercase"
+                className="h-touch press rounded-field bg-white/15 px-5 text-action text-white"
               >
                 Batal
               </button>
@@ -183,7 +183,7 @@ export function Lightbox({
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="h-touch press rounded-field bg-white/15 px-5 text-action tracking-[0.14em] text-white uppercase"
+              className="h-touch press rounded-field bg-white/15 px-5 text-action text-white"
             >
               Hapus
             </button>

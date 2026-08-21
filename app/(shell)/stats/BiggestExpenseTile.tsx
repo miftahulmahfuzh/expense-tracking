@@ -23,7 +23,7 @@ export default function BiggestExpenseTile({ item }: { item: BiggestExpense | nu
   return (
     <section className="rounded-card bg-card p-4" aria-labelledby="stats-big-title">
       <h2 className="sticker" style={INK_STICKER} id="stats-big-title">
-        Pengeluaran terbesar
+        Pengeluaran Terbesar
       </h2>
 
       <Link

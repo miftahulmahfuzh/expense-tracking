@@ -31,7 +31,7 @@ export default function CategoryBreakdown({
   return (
     <section className="rounded-card bg-card p-4" aria-labelledby="stats-cat-title">
       <h2 className="sticker" style={INK_STICKER} id="stats-cat-title">
-        Rincian kategori
+        Rincian Kategori
       </h2>
 
       {rows.length === 0 ? (

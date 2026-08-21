@@ -67,7 +67,7 @@ export default async function Page({ searchParams }: PageProps<'/'>) {
           Tracking
         </h1>
 
-        <p className="mt-3.5 sticker-lg">Catat sekali tempel</p>
+        <p className="mt-3.5 sticker-lg">Catat Sekali Tempel</p>
 
         {params.error ? (
           <p role="alert" className="mt-7 text-meta text-red-ink">
@@ -96,7 +96,7 @@ export default async function Page({ searchParams }: PageProps<'/'>) {
          * on the screen that carries no information the user needs — the wordmark above it
          * already says what the app is, and the privacy line below it is `ink-2`.
          */}
-        <p className="mt-4.5 text-label text-ink-3 uppercase">expensetracking.online</p>
+        <p className="mt-4.5 text-label text-ink-3">expensetracking.online</p>
         <p className="mt-2 text-meta text-ink-2">Datamu privat. Cuma kamu yang lihat.</p>
       </div>
     </main>

@@ -80,7 +80,7 @@ export function PasteStage({
             <button
               type="button"
               onClick={onDiscardRestored}
-              className="min-h-touch press px-2 text-action text-ink-2 uppercase"
+              className="min-h-touch press px-2 text-action text-ink-2"
             >
               {RESTORED_DISCARD}
             </button>
@@ -165,7 +165,7 @@ export function PasteStage({
           <button
             type="button"
             onClick={onManual}
-            className="min-h-touch press px-3 text-action text-ink-3 uppercase"
+            className="min-h-touch press px-3 text-action text-ink-3"
           >
             {MANUAL_CTA}
           </button>

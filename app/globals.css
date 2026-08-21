@@ -306,19 +306,25 @@
      call site is how it drifts. Nothing below 16px is ever used on an input:
      see THE 17px RULE in the base layer. */
 
-  --text-label: 0.625rem; /* 10 · eyebrows, field labels, day pill      */
-  --text-label--line-height: 0.875rem;
-  --text-label--letter-spacing: 0.14em;
+  /* The three small tiers are TITLE CASE, not caps — see THE CASING RULE below.
+     Their tracking is near-zero because wide letter-spacing is a caps
+     convention; and each sits a step above where it sat under caps, because
+     caps carry more optical presence at a given size and dropping them
+     without the step makes a label read quieter than it is. */
+
+  --text-label: 0.6875rem; /* 11 · eyebrows, field labels, day pill      */
+  --text-label--line-height: 1rem;
+  --text-label--letter-spacing: 0.005em;
   --text-label--font-weight: 800;
 
   --text-meta: 0.6875rem; /* 11 · row meta, "6 item · 3 foto"           */
   --text-meta--line-height: 1rem;
-  --text-meta--letter-spacing: 0.06em;
+  --text-meta--letter-spacing: 0.01em;
   --text-meta--font-weight: 700;
 
-  --text-action: 0.6875rem; /* 11 · tab label, toast action, month pill   */
+  --text-action: 0.75rem; /* 12 · tab label, toast action, month pill   */
   --text-action--line-height: 1rem;
-  --text-action--letter-spacing: 0.1em;
+  --text-action--letter-spacing: 0.005em;
   --text-action--font-weight: 800;
 
   --text-btn: 1.0625rem; /* 17 · full-width button. Sentence case.     */
@@ -510,6 +516,28 @@
     overscroll-behavior-y: none;
   }
 
+  /* ---- THE CASING RULE -------------------------------------------------
+     No `text-transform` anywhere in this stylesheet, and no `uppercase`
+     class in a component. What a string looks like is decided by how it is
+     WRITTEN, in the copy file, in one of three tiers:
+
+       Labels, headings, nav   Title Case    Judul · Item · Tautan Publik ·
+                                             Bulan Ini · Agustus 2026
+       Sentences and prose     sentence      Pengeluaran tidak ditemukan.
+                                             Gagal menyimpan. Coba lagi ya.
+       Data phrases            lowercase     3 catatan · 12 item · ⧉ 2 foto
+
+     Indonesian Title Case leaves function words lowercase — `dari`, `di`,
+     `ke`, `dan`, `atau`, `yang`, `untuk`. So `Ulangi dari Teks`, never
+     `Ulangi Dari Teks`.
+
+     Casing used to be a function of SIZE: everything at 10–11px was capsed by
+     `eyebrow` / `sticker` / `sticker-lg`, everything 14px and up was not. F11
+     removed that split. The two exceptions are not text: the two-letter
+     category glyphs (`MJ`, `BH` — codes, see `lib/categories.ts` and design
+     R-34) and `expensetracking.online` (a domain, lowercase).
+     ---------------------------------------------------------------------- */
+
   /* ---- THE 17px RULE ---------------------------------------------------
      Safari zooms the entire page when a text field smaller than 16px takes
      focus, and then leaves you zoomed. There is no CSS that prevents the zoom
@@ -615,41 +643,41 @@
 }
 
 /*
- * The eyebrow: section heads, field labels, small captions. 10px/800 at 0.14em
- * uppercase — the ticket-stub voice. Frequent enough across five features that
- * spelling out `text-label uppercase text-ink-3` every time invites drift.
+ * The eyebrow: section heads, field labels, small captions. 11px/800 at 0.005em
+ * Title Case — the ticket-stub voice, set in words rather than caps. Frequent
+ * enough across five features that spelling out `text-label text-ink-3` every
+ * time invites drift.
  */
 @utility eyebrow {
   font-size: var(--text-label);
-  line-height: 0.875rem;
+  line-height: 1rem;
   font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.005em;
   color: var(--ink-3);
 }
 
 /*
- * THE STICKER. A flat block of colour carrying tiny loud uppercase type — the
+ * THE STICKER. A flat block of colour carrying tiny loud Title Case type — the
  * month pill, the day heading, the chart caption. `--sticker-bg` /
  * `--sticker-fg` default to the yellow highlighter; override inline for the
  * ink and red variants. 2px corners, never rounded-full: this is a printed
- * label, not a badge.
+ * label, not a badge. Loudness comes from weight 900 and the block of colour,
+ * not from caps.
  */
 @utility sticker {
   display: inline-block;
   border-radius: var(--radius-chip);
   padding: 0.25rem 0.625rem;
   font-size: var(--text-label);
-  line-height: 0.875rem;
+  line-height: 1rem;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.005em;
   background-color: var(--sticker-bg, var(--yellow));
   color: var(--sticker-fg, #0d0d0d);
 }
 
 /*
- * The 12px sticker: the month pill and the sign-in tagline, which are the two the design
+ * The 13px sticker: the month pill and the sign-in tagline, which are the two the design
  * sets a step larger. A separate utility rather than `sticker text-action`, because both
  * would be setting font-size and letter-spacing in the same cascade layer and which one won
  * would come down to declaration order in the generated stylesheet.
@@ -658,11 +686,10 @@
   display: inline-block;
   border-radius: var(--radius-chip);
   padding: 0.3125rem 0.75rem;
-  font-size: 0.75rem;
-  line-height: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.005em;
   background-color: var(--sticker-bg, var(--yellow));
   color: var(--sticker-fg, #0d0d0d);
 }

@@ -22,9 +22,9 @@ export interface TabBarProps {
  * everything else scrolls behind it. Its palette is its own three tokens (`tab-bg`,
  * `tab-ink`, `tab-ink-3`) so nothing here has to reason about light and dark.
  *
- * No icons. The label is 11px/800 uppercase and that is the whole affordance — an icon set
- * would be three more drawings to keep consistent, and at that tracking the word is faster
- * to read than a glyph you have to learn. The active tab goes YELLOW and gains a dot.
+ * No icons. The label is 12px/800 Title Case and that is the whole affordance — an icon set
+ * would be three more drawings to keep consistent, and the word is faster to read than a
+ * glyph you have to learn. The active tab goes YELLOW and gains a dot.
  *
  * Tambah is the app's reason to exist, so it is the one raised element: a red circle
  * punching through the bar's top edge like a stopwatch crown. Still shadowless — it reads
@@ -85,7 +85,7 @@ export function TabBar({ monthHref }: TabBarProps) {
           aria-current={onMonth ? 'page' : undefined}
           className={cn(
             'flex min-h-tab press flex-col items-center gap-1.5 pt-3.5 pb-1.5',
-            'text-action uppercase',
+            'text-action',
             onMonth ? 'text-tab-ink' : 'text-tab-ink-3',
           )}
         >
@@ -109,9 +109,7 @@ export function TabBar({ monthHref }: TabBarProps) {
           >
             +
           </span>
-          <span
-            className={cn('mt-9 text-action uppercase', onNew ? 'text-tab-ink' : 'text-tab-ink-3')}
-          >
+          <span className={cn('mt-9 text-action', onNew ? 'text-tab-ink' : 'text-tab-ink-3')}>
             Tambah
           </span>
         </Link>
@@ -121,7 +119,7 @@ export function TabBar({ monthHref }: TabBarProps) {
           aria-current={onStats ? 'page' : undefined}
           className={cn(
             'flex min-h-tab press flex-col items-center gap-1.5 pt-3.5 pb-1.5',
-            'text-action uppercase',
+            'text-action',
             onStats ? 'text-tab-ink' : 'text-tab-ink-3',
           )}
         >

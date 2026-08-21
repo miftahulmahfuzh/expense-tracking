@@ -353,7 +353,7 @@ export function ExpenseEditor({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2 uppercase"
+          className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2"
         >
           {ADD_ITEM_CTA}
         </button>
@@ -531,10 +531,10 @@ function NoteField({ value, onCommit }: { value: string; onCommit: (next: string
           )
         }}
         /* The `+ Tambah item` row, verbatim, minus the `mt-1` its own list wanted. Same
-           height, same mono uppercase, same ink — because it is the same kind of thing, and
+           height, same 12px/800 Title Case, same ink — because it is the same kind of thing, and
            two different-looking "add a thing" rows on one screen is how a design starts
            drifting. min-h-12 keeps the 44px target the 15px type does not fill on its own. */
-        className="flex min-h-12 w-full press items-center text-left text-action text-ink-2 uppercase"
+        className="flex min-h-12 w-full press items-center text-left text-action text-ink-2"
       >
         {ADD_NOTE_CTA}
       </button>

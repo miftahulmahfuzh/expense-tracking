@@ -25,9 +25,9 @@ export const SUBHEADING = 'Tempel catatan belanjamu apa adanya. Biar kami yang r
 
 export const PARSE_CTA = 'Rapikan'
 export const PARSE_BUSY = 'Merapikan catatanmu…'
-export const MANUAL_CTA = 'isi manual'
-export const REPARSE_CTA = 'Ulangi dari teks'
-export const ADD_ITEM_CTA = '+ Tambah item'
+export const MANUAL_CTA = 'Isi Manual'
+export const REPARSE_CTA = 'Ulangi dari Teks'
+export const ADD_ITEM_CTA = '+ Tambah Item'
 export const SAVE_CTA = 'Simpan'
 export const SAVE_WAITING_PHOTOS = 'Menunggu foto…'
 
@@ -50,11 +50,11 @@ export const SAVE_FAILED = 'Gagal menyimpan. Cek koneksi lalu coba lagi.'
 export const SLOW_HINT = 'masih diproses…'
 
 export const RESTORED_NOTICE = 'Draf sebelumnya dipulihkan.'
-export const RESTORED_DISCARD = 'Mulai baru'
+export const RESTORED_DISCARD = 'Mulai Baru'
 
 export const REPARSE_CONFIRM = 'Perubahan manual di tabel akan tertimpa. Lanjut?'
 export const REPARSE_CONFIRM_YES = 'Ya, ulangi'
 export const REPARSE_CONFIRM_NO = 'Batal'
 
-export const RAW_DISCLOSURE = 'Teks asli'
+export const RAW_DISCLOSURE = 'Teks Asli'
 export const SIGN_IN_AGAIN = 'Masuk lagi'

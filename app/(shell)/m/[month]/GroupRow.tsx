@@ -29,7 +29,7 @@ export function GroupRow({ group }: { group: MonthGroupRow }) {
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-row">{group.title}</span>
-          <span className="mt-1 block tabular text-meta text-ink-3 uppercase">
+          <span className="mt-1 block tabular text-meta text-ink-3">
             {group.itemCount} item
             {group.photoCount > 0 && (
               <>
