@@ -135,3 +135,84 @@ describe('the floating chrome (card 1a–1e)', () => {
     expect(code).toMatch(/onPointerDown=\{warmShare\}/)
   })
 })
+
+describe('viewport geometry — why the controls were invisible on an iPhone', () => {
+  /*
+   * The bug this pins: the cluster rendered, in the right DOM position, with correct CSS, and
+   * was still off-screen on an XS Max while being perfectly fine in desktop Chrome.
+   *
+   * `position: fixed` on iOS Safari resolves against the LAYOUT viewport, whose bottom edge is
+   * underneath Safari's toolbar. A `fixed inset-0` overlay is therefore taller than the visible
+   * band, and anything pinned to its bottom renders behind browser chrome. The counter pinned to
+   * the TOP was visible the whole time, which is what made it look like the buttons had never
+   * shipped.
+   *
+   * Nothing in lint, typecheck, vitest or `next build` can see this. Only a phone can. So what
+   * is asserted here is that the component still USES the mechanism that fixes it.
+   */
+
+  it('publishes the visual viewport while it is open', () => {
+    expect(code).toContain('useVisualViewport()')
+  })
+
+  it('sizes itself from --app-h, with 100dvh only as a fallback', () => {
+    expect(code).toContain("height: 'min(var(--app-h, 100dvh), 100dvh)'")
+  })
+
+  it('offsets by --vv-top, which is the other half of the same problem', () => {
+    // --app-h says how TALL the visible band is; --vv-top says WHERE it is. iOS slides the
+    // visual viewport down the layout one; 46px of it, measured on an XS Max.
+    expect(code).toContain("top: 'var(--vv-top, 0px)'")
+  })
+
+  it('uses inset-x-0, never inset-0, so top/height are not over-constrained', () => {
+    // top + bottom + height is three constraints for two degrees of freedom. The browser drops
+    // one silently, and this is not the property to leave to chance.
+    expect(code).toContain('fixed inset-x-0 z-50')
+    expect(code).not.toContain('fixed inset-0 z-50')
+  })
+
+  it('clears the home indicator: the cluster is a floating pill, not a full-bleed bar', () => {
+    /*
+     * `Toast` draws this distinction in globals.css: "a FLOATING pill, so the 8px edge rule
+     * applies to its own bottom edge rather than to a line of type inside a full-bleed bar:
+     * 22px keeps the whole capsule clear of the home indicator." Shipped as pb-2 (8px), which
+     * put three 44px circles onto the indicator rather than above it.
+     */
+    expect(code).toMatch(/inset-x-0 bottom-0[^"]*pb-5\.5/)
+    expect(code).not.toMatch(/inset-x-0 bottom-0[^"]*pb-2/)
+  })
+})
+
+describe('download: the share sheet is for fingers, not for laptops', () => {
+  it('gates the OS share sheet on a coarse pointer', () => {
+    /*
+     * Card 1a wants the photo in the gallery, and on iOS the share sheet is the only route a web
+     * page has to Photos. On a desktop it is a detour — and Chrome on Windows/ChromeOS
+     * implements `navigator.share({ files })`, so without this test the download arrow opened a
+     * share dialog instead of saving a file. Reported from desktop Chrome.
+     */
+    expect(code).toContain("window.matchMedia?.('(pointer: coarse)').matches")
+    expect(code).toMatch(/if \(\s*touchFirst &&/)
+  })
+
+  it('asks about the POINTER, not the user agent', () => {
+    // A UA test needs a list of platform strings kept up to date forever; `pointer: coarse` asks
+    // the question actually meant. iPadOS reporting MacIntel is the usual way UA tests rot.
+    expect(code).not.toMatch(/navigator\.(userAgent|platform)/)
+  })
+
+  it('keeps every capability test inside the handler, never at render', () => {
+    /*
+     * Branching rendered output on a navigator or media capability is a hydration mismatch. The
+     * glyph must be identical on the server, on a laptop and on an iPhone.
+     *
+     * Sliced at `role="dialog"` — the first line of the JSX — rather than at `return (`, which
+     * also matches the `return () =>` of every effect cleanup and so began the slice halfway up
+     * the component, inside the handlers this is trying to exclude.
+     */
+    const render = code.slice(code.indexOf('role="dialog"'))
+    expect(render).not.toContain('matchMedia')
+    expect(render).not.toContain('canShare')
+  })
+})

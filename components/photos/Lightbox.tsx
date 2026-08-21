@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 
 import { CloseIcon, DownloadIcon, ShareIcon, TrashIcon } from '@/components/ui'
+import { useVisualViewport } from '@/lib/hooks/useVisualViewport'
 import {
   isEager,
   isWrappable,
@@ -117,6 +118,28 @@ export function Lightbox({
    */
   onShare?: (photo: ViewablePhoto) => Promise<string>
 }) {
+  /*
+   * ════════════════════════════════════════════════════════════════════════
+   *  THE FLOATING CONTROLS WERE INVISIBLE ON AN iPHONE AND FINE ON DESKTOP, AND THIS IS WHY.
+   *
+   *  `position: fixed` on iOS Safari resolves against the LAYOUT viewport, whose bottom edge
+   *  sits UNDERNEATH Safari's bottom toolbar. So a `fixed inset-0` overlay is taller than the
+   *  band the user can see, and anything pinned to its bottom — the whole download/share/delete
+   *  cluster — renders below the fold, behind browser chrome. The counter at the top was
+   *  visible the entire time, which is what made it look like the buttons had not shipped.
+   *
+   *  `AddExpenseClient` already solved exactly this for /new's Simpan bar, measured on this
+   *  same device: "--app-h says how TALL the visible band is; --vv-top says WHERE it is … 46px
+   *  of it, measured on an XS Max." This is that pattern, second consumer. Note that hook is
+   *  now ref-counted precisely because there are two of us.
+   *
+   *  `min()` rather than a bare var, for that file's reason: a browser reporting a visual
+   *  viewport TALLER than the layout one (mid-scroll, collapsing URL bar) must not stretch the
+   *  overlay past the screen. 100dvh remains the first-paint and no-visualViewport fallback.
+   * ════════════════════════════════════════════════════════════════════════
+   */
+  useVisualViewport()
+
   const trackRef = useRef<HTMLDivElement>(null)
   const count = photos.length
   const wrap = isWrappable(count)
@@ -340,12 +363,33 @@ export function Lightbox({
     try {
       const file = await fileFor(current)
       /*
-       * `canShare({ files })` inside the HANDLER, never at render. Branching what is RENDERED
-       * on a navigator capability is a hydration mismatch — the same trap `ShareButton`
-       * documents — so the glyph is identical on the server, on a desktop browser and on an
-       * iPhone, and only the behaviour differs.
+       * ════════════════════════════════════════════════════════════════════════
+       *  THE SHEET IS FOR TOUCH DEVICES ONLY, and the `pointer: coarse` test is the whole
+       *  reason. Card 1a asks to "save the image to user's gallery", and on iOS the OS share
+       *  sheet is the ONLY route a web page has to the Photos library — `<a download>` there
+       *  lands in Files, not Photos. So on a phone the sheet is not a detour, it is the feature.
+       *
+       *  On a DESKTOP it is a detour, and shipping it there was a real bug: Chrome on
+       *  Windows/ChromeOS implements `navigator.share({ files })` perfectly well, so a download
+       *  button opened a share dialog instead of saving a file. Someone pressing a download
+       *  arrow on a laptop wants the file on disk, full stop.
+       *
+       *  `(pointer: coarse)` rather than a user-agent test: it asks the question we actually
+       *  mean — is the primary input a finger — and it needs no list of platform strings to keep
+       *  up to date. A phone and a tablet are coarse; a mouse or trackpad is fine.
+       *
+       *  BOTH CHECKS STAY INSIDE THE HANDLER, never at render. Branching what is RENDERED on a
+       *  navigator or media capability is a hydration mismatch — the trap `ShareButton`
+       *  documents — so the glyph is identical on the server, on a laptop and on an iPhone, and
+       *  only the behaviour differs.
+       * ════════════════════════════════════════════════════════════════════════
        */
-      if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+      const touchFirst = window.matchMedia?.('(pointer: coarse)').matches ?? false
+      if (
+        touchFirst &&
+        typeof navigator !== 'undefined' &&
+        navigator.canShare?.({ files: [file] })
+      ) {
         try {
           await navigator.share({ files: [file] })
           // The OS sheet already gave feedback. A pill on top of it is noise.
@@ -419,13 +463,22 @@ export function Lightbox({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-photo-void"
+      /*
+       * `inset-x-0`, NOT `inset-0`: `top` and `height` are both set below, and adding `bottom: 0`
+       * would over-constrain the box — the browser then silently drops one of the three, which
+       * is not a thing to leave to chance on the property that decides whether the controls are
+       * on screen.
+       */
+      className="fixed inset-x-0 z-50 bg-photo-void"
       role="dialog"
       aria-modal="true"
       aria-label={`Foto ${index + 1} dari ${count}`}
-      /* 100dvh, not 100vh: on iOS Safari 100vh is the URL-bar-collapsed height, so a 100vh
-         overlay is ~80px too tall and pushes its own footer under the browser chrome. */
-      style={{ height: '100dvh' }}
+      /* See the docblock at the top of this component. 100dvh is the fallback, never the answer:
+         it tracks the layout viewport, which iOS does not shrink for browser chrome. */
+      style={{
+        top: 'var(--vv-top, 0px)',
+        height: 'min(var(--app-h, 100dvh), 100dvh)',
+      }}
     >
       <div
         ref={trackRef}
@@ -482,10 +535,18 @@ export function Lightbox({
 
       {/* Unconditional: `download` needs no prop, so every caller gets at least one control. */}
       <footer
-        /* `pb-2`, no safe inset — the 8px edge rule (globals.css). The size-touch buttons
-             carry the rest of the 22px themselves. RIGHT-aligned, per the card: on a 414px
-             screen the bottom-right corner is where a right thumb already rests. */
-        className="absolute inset-x-0 bottom-0 flex flex-col items-end gap-2 px-3 pt-3 pb-2"
+        /*
+         * `pb-5.5` (22px), NOT the `pb-2` this shipped with. `Toast` draws the distinction and I
+         * had it backwards: "a FLOATING pill, so the 8px edge rule applies to its own bottom
+         * edge rather than to a line of type inside a full-bleed bar: 22px keeps the whole
+         * capsule clear of the home indicator." This cluster is a floating pill, not a bar —
+         * nothing here bleeds to the edge — so 8px put three 44px circles down onto the XS Max's
+         * home indicator instead of clear of it.
+         *
+         * RIGHT-aligned, per the card: on a 414px screen the bottom-right corner is where a
+         * right thumb already rests.
+         */
+        className="absolute inset-x-0 bottom-0 flex flex-col items-end gap-2 px-3 pt-3 pb-5.5"
       >
         {status && <StatusSlot status={status} onDismiss={() => setStatus(null)} />}
 
@@ -969,9 +1030,12 @@ function downloadNameFor(photo: ViewablePhoto): string {
 }
 
 /**
- * The no-share-sheet path: desktop, Android without Web Share Level 2, or an expired
- * activation. On iOS this lands in Files › Downloads rather than Photos, which is the honest
- * degradation — it is why the sheet is tried first.
+ * The direct path: every desktop browser, plus a touch device whose share sheet refused or
+ * whose activation expired.
+ *
+ * On a desktop this is the CORRECT primary behaviour, not a fallback — see the pointer test in
+ * `handleDownload`. On iOS, reached only after the sheet declined, it lands in Files › Downloads
+ * rather than Photos, which is the honest degradation.
  */
 function saveByAnchor(file: File): void {
   const url = URL.createObjectURL(file)

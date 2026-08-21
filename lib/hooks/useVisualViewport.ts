@@ -97,8 +97,26 @@ export function viewportGeometry({
   }
 }
 
+/**
+ * How many mounted consumers are publishing right now.
+ *
+ * REF-COUNTED FROM F12, because there are now two. `AddExpenseClient` holds these vars for the
+ * whole /new flow, and F06's Lightbox — reachable from the PhotoPicker on that very screen —
+ * needs them too while it is open. Without the count, closing the Lightbox ran ITS cleanup and
+ * removed `--app-h` from under /new, whose effect has an empty dependency array and would not
+ * re-publish until the next resize or scroll. The sticky Simpan bar would jump behind the
+ * keyboard again, and only sometimes, which is the worst kind.
+ *
+ * Module scope rather than a context: the vars live on `document.documentElement`, so the thing
+ * being counted is genuinely global. Under React StrictMode's double-invoke the count goes
+ * 1 → 0 → 1 and the second mount's `apply()` republishes immediately, so the transient removal
+ * is invisible.
+ */
+let consumers = 0
+
 export function useVisualViewport(): void {
   useEffect(() => {
+    consumers += 1
     const root = document.documentElement
     const viewport = window.visualViewport
 
@@ -132,11 +150,19 @@ export function useVisualViewport(): void {
       viewport?.removeEventListener('scroll', apply)
       window.removeEventListener('orientationchange', apply)
       window.removeEventListener('resize', apply)
-      // Remove rather than leave behind: the next route may not be a fixed-height screen,
-      // and a stale --app-h would silently constrain it.
-      root.style.removeProperty('--app-h')
-      root.style.removeProperty('--vv-top')
-      root.style.removeProperty('--kb-inset')
+      /*
+       * Remove rather than leave behind: the next route may not be a fixed-height screen, and a
+       * stale --app-h would silently constrain it.
+       *
+       * ONLY WHEN THE LAST CONSUMER GOES, though — see `consumers` above. Removing while another
+       * mounted consumer still depends on these would break that one silently.
+       */
+      consumers -= 1
+      if (consumers === 0) {
+        root.style.removeProperty('--app-h')
+        root.style.removeProperty('--vv-top')
+        root.style.removeProperty('--kb-inset')
+      }
     }
   }, [])
 }

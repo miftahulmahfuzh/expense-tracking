@@ -1,5 +1,9 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
+import { repoRoot } from '../../../tests/support/importGraph'
 import { viewportGeometry } from '../useVisualViewport'
 
 /**
@@ -80,5 +84,34 @@ describe('viewportGeometry', () => {
   it('rounds to whole pixels', () => {
     const g = viewportGeometry({ innerHeight: 896, height: 505.7, offsetTop: 45.8, scale: 1 })
     expect(g).toEqual({ appHeight: 506, top: 46, keyboardInset: 345 })
+  })
+})
+
+describe('the ref count (F12) — two consumers now share these vars', () => {
+  /*
+   * `AddExpenseClient` holds the vars for the whole /new flow; the Lightbox needs them while it
+   * is open, and is reachable from the PhotoPicker on that very screen. Before the count, the
+   * Lightbox's cleanup removed `--app-h` from under /new — whose effect has an empty dependency
+   * array and would not republish until the next resize or scroll, so the sticky Simpan bar
+   * would jump back behind the keyboard, intermittently.
+   *
+   * Asserted on the source because the counter is module state behind a hook, and this suite has
+   * no React renderer: `environment: 'node'`, no jsdom.
+   */
+  const src = readFileSync(resolve(repoRoot, 'lib/hooks/useVisualViewport.ts'), 'utf8')
+
+  it('counts consumers rather than assuming there is one', () => {
+    expect(src).toMatch(/let consumers = 0/)
+    expect(src).toMatch(/consumers \+= 1/)
+    expect(src).toMatch(/consumers -= 1/)
+  })
+
+  it('removes the custom properties ONLY when the last consumer unmounts', () => {
+    expect(src).toMatch(/if \(consumers === 0\) \{/)
+    // Every removal must sit inside that guard, or the count is decorative.
+    const guarded = src.slice(src.indexOf('if (consumers === 0)'))
+    for (const prop of ['--app-h', '--vv-top', '--kb-inset']) {
+      expect(guarded, prop).toContain(`removeProperty('${prop}')`)
+    }
   })
 })
