@@ -63,7 +63,9 @@ export interface SheetProps {
  *    React, `open` stays `true`, and the sheet can never be reopened. Open → Escape → open
  *    again is the regression test.
  *  - **The safe-area padding is on the footer, not the panel.** The home indicator sits
- *    under the bottom ~34px; a button flush to the panel edge is physically unreachable.
+ *    under the bottom ~34px; a filled button that ends inside that band comes back from the
+ *    device with the system's pill drawn across it. The footer is the one place in the app
+ *    that pads past the inset — see the note on the footer wrapper below.
  *  - **`scroll-pane` is on the body, not the panel.** The panel is a flex column with a
  *    fixed head and foot; only the middle scrolls, and its overscroll is contained so the
  *    page behind never rubber-bands.
@@ -168,10 +170,31 @@ export function Sheet({
 
         <div className="min-h-0 flex-1 scroll-pane px-4 pt-3.5">{children}</div>
 
-        {/* `pb-2`, no safe inset — the 8px edge rule (globals.css). A docked sheet owns the
-            bottom edge exactly like `/new`'s footer does, and its button's 44px tap target
-            supplies the remaining slack that puts the label 22px up. */}
-        <div className="shrink-0 px-4 pt-2 pb-2">{footer}</div>
+        {/*
+         * THE ONE DELIBERATE EXCEPTION TO THE 8px EDGE RULE (globals.css), and it is a
+         * hardware finding rather than a preference. Everywhere else the last row measures its
+         * 8px from the PHYSICAL edge and rides level with the home indicator, which is right
+         * for a bare link or a single flat CTA — nothing of the control is under the pill but
+         * empty space.
+         *
+         * A docked sheet footer is not that. It is a row of 44px buttons with a FILLED
+         * background, and at 8px from the physical edge the indicator pill is drawn on top of
+         * that fill: `Hapus` and `Simpan` come back from an edge-to-edge iPhone with the
+         * system's own bar across them.
+         *
+         * `/new`'s StickyBar is the same shape and still carries the old ruling — its own note
+         * argues that a tap inside the indicator's band is deliberate, and it has not been
+         * re-checked on the device. The two footers therefore no longer match. If StickyBar
+         * turns out to read the same way on hardware, move it here rather than reverting this.
+         *
+         * So this footer, and only this footer, pads by the inset PLUS the 8px: the buttons
+         * clear the 34px reserved band and sit 8px above it. `env()` resolves to 0 on a flat
+         * phone and in the desktop column, where this collapses back to the plain 8px and
+         * nothing moves.
+         */}
+        <div className="shrink-0 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
+          {footer}
+        </div>
       </div>
     </dialog>
   )
