@@ -9,10 +9,12 @@ import { cn } from '@/lib/cn'
  * bottom on a short page and floats it over the content on a long one, with no
  * `position: fixed` and therefore nothing to manually offset.
  *
- * NO SAFE-AREA PADDING HERE, deliberately. The `(bare)` layout already wraps every screen
- * in `pb-safe`, and the scroller ends above that padding — so the bar clears the home
- * indicator by construction. Adding `env(safe-area-inset-bottom)` again would double it and
- * leave a visible gap under the button on a notched device.
+ * `pb-safe-bar` rather than a flat `pb-3`, and the column it lives in now runs to the true
+ * bottom of the screen (see AddExpenseClient). The bar used to stop at the top of the
+ * `(bare)` layout's `pb-safe`, which left a ~34px strip of page background below an
+ * otherwise full-bleed white footer — the bar read as a floating slab rather than as the
+ * bottom of the screen. Now the white goes all the way down and the utility keeps "isi
+ * manual" one home-indicator's height clear of the edge, without stacking the two.
  *
  * OPAQUE `bg-card`, and the blur is gone. The previous system floated a 95%-alpha bar with
  * a backdrop-blur so content receded under it; this design has no glass anywhere, and a
@@ -37,7 +39,7 @@ export function StickyBar({
     <div
       ref={ref}
       className={cn(
-        'sticky bottom-0 z-20 mt-auto border-t border-rule bg-card px-gutter pt-3 pb-3',
+        'sticky bottom-0 z-20 mt-auto border-t border-rule bg-card px-gutter pt-3 pb-safe-bar',
         className,
       )}
     >

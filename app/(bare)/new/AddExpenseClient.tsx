@@ -215,19 +215,25 @@ export function AddExpenseClient({
      * what keeps the sticky bar above it; 100dvh is only the fallback for the first paint and
      * for a browser with no visualViewport.
      *
-     * The env() subtraction matches the `pb-safe` the (bare) layout wraps every screen in.
-     * Without it this column would be app-h TALL INSIDE a container that adds the safe-area
-     * inset below it, and the document would scroll by exactly that inset — a ~34px wobble on
-     * a notched device. Subtracting the same value it is padded by is exact rather than a
-     * guess, whatever env() resolves to.
+     * THE COLUMN RUNS TO THE PHYSICAL BOTTOM OF THE SCREEN, home indicator included, and the
+     * negative bottom margin is what buys that. This used to end one safe-area inset short —
+     * height was `100dvh - env(safe-area-inset-bottom)` to match the `pb-safe` the (bare)
+     * layout wraps every screen in — which left the sticky footer's white block floating
+     * above a ~34px strip of page background. The footer is the bottom of this screen, so it
+     * has to paint down to the edge; `StickyBar`'s own `pb-safe-bar` is what keeps its label
+     * off the home indicator now.
      *
-     * min(), not a bare calc(), because that subtraction is only correct while the keyboard is
-     * CLOSED. Once it opens, --app-h is the visual viewport and already ends at the keyboard's
-     * top edge — there is no home indicator left to clear, the `pb-safe` below is off-screen
-     * behind the keys, and subtracting 34px again just parks Simpan 34px above the keyboard
-     * with a dead band of page background under it. 100dvh tracks the LAYOUT viewport, which
-     * the keyboard does not shrink, so the second term is the keyboard-closed ceiling and the
-     * first wins whenever the keyboard is up.
+     * The margin CANCELS the wrapper's padding rather than the layout dropping it: `/`,
+     * `/e/[id]` and `/s/[token]` are ordinary scrolling pages that still want it. Negative
+     * margin, not a taller height — height alone would overflow the padded parent and the
+     * document would scroll by exactly the inset, the ~34px wobble the old subtraction was
+     * there to avoid. Shrinking the parent's content box by the same amount it pads keeps the
+     * document exactly 100dvh, and stays exact whatever env() resolves to.
+     *
+     * min(), not a bare `var(--app-h)`, so a browser reporting a visual viewport TALLER than
+     * the layout one (mid-scroll, collapsing URL bar) cannot stretch the column past the
+     * screen. When the keyboard opens --app-h is the smaller of the two and wins, which is
+     * what keeps the bar above the keys.
      *
      * `relative` + `top: var(--vv-top)` is the other half of the same problem. --app-h says how
      * TALL the visible band is; --vv-top says WHERE it is. iOS reveals a focused field by
@@ -252,7 +258,8 @@ export function AddExpenseClient({
     <div
       className="relative flex flex-col"
       style={{
-        height: 'min(var(--app-h, 100dvh), calc(100dvh - env(safe-area-inset-bottom)))',
+        height: 'min(var(--app-h, 100dvh), 100dvh)',
+        marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
         top: 'var(--vv-top, 0px)',
       }}
     >
