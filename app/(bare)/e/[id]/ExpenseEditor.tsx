@@ -222,10 +222,17 @@ export function ExpenseEditor({
        *  label leaves room for two 44px boxes and no more.
        * ════════════════════════════════════════════════════════════════════════
        */}
-      {/* Back · label · actions, on a white band with a hairline under it — the design's
-          pushed-view header. The label stays a tiny eyebrow rather than becoming a screen
-          title, because the expense's own title is the 30px thing on this screen and two
-          large headings would fight. */}
+      {/* Back · title · actions, on a white band with a hairline under it — the design's
+          pushed-view header.
+
+          `text-title`, the SAME 30px/900 screen title `Tambah` wears on /new, and no longer an
+          11px eyebrow. The eyebrow was chosen when the reasoning was that "the expense's own
+          title is the 30px thing on this screen" — but it is not: the title is an editable
+          `Input` at `text-input`, so there was never a second large heading to fight, only a
+          chrome label two type steps below every other screen's title. /new and /e/[id] are
+          the two `(bare)` screens and both open with chevron · title · (actions); they now
+          typeset that title identically. Height is unchanged either way — the 44px icon
+          buttons set this band's height and 32px of line box fits inside them. */}
       <header className="flex items-center gap-1 border-b border-rule bg-card pt-safe-header px-safe pb-2">
         <Link
           href={backHref}
@@ -236,11 +243,11 @@ export function ExpenseEditor({
             ‹
           </span>
         </Link>
-        {/* Hard against the chevron, not centred. `mx-auto` pushed it to the middle of the
-            band, which read as a title competing with the expense's own 30px one below —
-            this is a chrome label, and a chrome label belongs beside the control it labels
-            the way back from. `ml-auto` on the action group still pins both icons right. */}
-        <h1 className="eyebrow">{DETAIL_LABEL}</h1>
+        {/* Hard against the chevron, not centred — the same left-aligned title-beside-chevron
+            arrangement /new uses. `mx-auto` pushed it to the middle of the band, which is an
+            iOS convention this design does not otherwise follow. `ml-auto` on the action group
+            still pins both icons right. */}
+        <h1 className="text-title">{DETAIL_LABEL}</h1>
         {/* `-mr-2.5` on the GROUP, mirroring the chevron's `-ml-2.5`: each 44px box overhangs
             the gutter by the same 10px, so the two outermost glyphs are optically flush with
             the column while their touch targets stay full size. `gap-0.5` and not more —

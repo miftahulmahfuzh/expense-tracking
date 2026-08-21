@@ -13,7 +13,9 @@ export default function DetailLoading() {
     <main aria-busy="true">
       <div className="flex items-center gap-2 border-b border-rule bg-card pt-safe-header px-safe pb-2">
         <span className="skeleton -ml-2.5 size-touch rounded-field" />
-        <span className="skeleton h-3 w-16" />
+        {/* Sized for the 30px/900 `Detail` title, not the 11px eyebrow it used to be — the
+            band's own height is still set by the 44px squares either side of it. */}
+        <span className="skeleton h-7 w-24" />
         <span className="-mr-2.5 ml-auto flex items-center gap-0.5">
           <span className="skeleton size-touch rounded-field" />
           <span className="skeleton size-touch rounded-field" />
