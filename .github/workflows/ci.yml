@@ -1,0 +1,125 @@
+name: CI
+
+# The gate from docs/plans/F12-image-features-insights.md §11, run by a machine instead of by
+# whoever remembered. Nothing here is new: it is `lint`, `typecheck`, `test` and `build`, which
+# is exactly what the plan required before a card could move to Completed.
+#
+# WHAT THIS CANNOT DO, stated here so nobody trusts a green tick further than it deserves. F12
+# shipped a photo carousel whose swipe had never worked since F06 — `touch-action: none` on the
+# image meant a one-finger drag never reached the scroll-snap track. Every check below passed on
+# that commit, and would pass on it again: `vitest` runs on `environment: 'node'`, and jsdom has
+# no scroll-snap, no momentum and no touch-action either. A green run means the code compiles,
+# the pure logic holds and the routes render. It does not mean anyone touched it.
+#
+# WHAT THIS DOES NOT DO YET, and it is the more useful gap: it does not GATE the deploy. The
+# Vercel project has been connected to this repo since 19 August and auto-deploys every push to
+# `main` to production — so today a commit with failing tests ships anyway, and this workflow
+# merely reports that it did, in parallel. Closing that needs branch protection requiring this
+# check, plus using pull requests into `main` rather than pushing to it. See §16 of
+# docs/plans/F12-image-features-insights.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Lets a red run be re-tried from the UI without an empty commit.
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run's answer worthless, so stop paying for it.
+# Never cancel on main: those runs are the record of what the default branch actually does.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # ════════════════════════════════════════════════════════════════════════
+    #  NO SECRETS. NOT AN OVERSIGHT — A PROPERTY, AND IT IS WORTH KEEPING.
+    #
+    #  `lib/env.ts` parses the environment EAGERLY at import, so `next build` genuinely needs
+    #  these set or it aborts. But every rule in that schema is a SHAPE rule: non-empty, a
+    #  `postgres` prefix, a parseable URL. None of them dials anything. So shape-valid dummies
+    #  build the app exactly as real credentials would.
+    #
+    #  Verified, not assumed: `.env.local` was moved aside and `npm run build` was run with
+    #  precisely these values. It compiled and listed all 17 routes.
+    #
+    #  Consequences worth having: a fork's pull request runs the full gate (no secret is
+    #  withheld from it), a compromised action cannot exfiltrate a credential this repo never
+    #  gave it, and nothing here can touch the production database or spend z.ai tokens.
+    #
+    #  The two live LLM suites skip themselves unless `LLM_LIVE_TEST=1`, which is deliberately
+    #  never set here — they cost real money per run. See lib/llm/COST.md.
+    #
+    #  `.invalid` is reserved by RFC 2606 and can never resolve, so a bug that tried to connect
+    #  fails as DNS rather than reaching a real host that happens to own the name.
+    # ════════════════════════════════════════════════════════════════════════
+    env:
+      LLM_API_KEY: ci-dummy-not-a-credential
+      LLM_BASE_URL: https://example.invalid/api
+      LLM_MODEL: glm-5.2
+      DATABASE_URL: postgresql://u:p@ep-ci-dummy-pooler.example.invalid/db?sslmode=require
+      # No `-pooler` in this host: drizzle.config.ts refuses a pooled URL outright, and that
+      # guard runs before anything else it does.
+      DATABASE_URL_UNPOOLED: postgresql://u:p@ep-ci-dummy.example.invalid/db?sslmode=require
+      AUTH_SECRET: ci-dummy-secret-not-a-credential
+      AUTH_GOOGLE_ID: ci-dummy-id
+      AUTH_GOOGLE_SECRET: ci-dummy-secret-not-a-credential
+      BLOB_READ_WRITE_TOKEN: vercel_blob_rw_cidummy_cidummynotacredential
+      # Turbopack and vitest both read this; it keeps the log free of progress spinners.
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          # 24, MATCHING VERCEL, not the 22 that `engines.node: >=22` merely permits. The Vercel
+          # project builds on `nodeVersion: 24.x` (checked via the project API), and CI testing a
+          # runtime production does not use is CI that can be green on a build that breaks. The
+          # floor in package.json stays >=22 because that is the real minimum for local work.
+          #
+          # A major rather than `latest`, so a Node release cannot turn a green branch red
+          # overnight; a major rather than an exact patch, so security fixes arrive without a PR.
+          node-version: '24'
+          cache: npm
+
+      # `npm ci`, never `npm install`: it installs the lockfile exactly and fails if
+      # package.json and package-lock.json disagree. Every dependency in this repo is pinned to
+      # an exact version, and this is what makes that pinning mean something in CI.
+      - run: npm ci
+
+      # Four separate steps, deliberately — GitHub names the failing step in the run list, so a
+      # red tick says "typecheck" rather than "build" and nobody opens the log to find out.
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Migration files vs the journal. Cheap, needs no database, and catches a hand-edited or
+      # half-committed migration — which after F12 added two tables is a live concern.
+      - name: Check migrations
+        run: npm run db:check
+
+      # LAST, because it is the slowest and because the three above localise a failure better.
+      # This is also the step that would catch a route losing `requireUserId()`: the plan's gate
+      # requires /stats and both /[token] routes to be listed as `ƒ`, never `○`.
+      - name: Build
+        run: npm run build
+
+      # Prettier is not part of `npm run lint` (eslint-config-prettier only DISABLES conflicting
+      # rules; it checks nothing). `format:check` is the only thing that actually reads the
+      # formatting, and without it the repo's style is a convention rather than a rule.
+      - name: Check formatting
+        run: npm run format:check

@@ -150,7 +150,9 @@ describe('the public PHOTO route carries no mutation (F12)', () => {
     expect(code(PHOTO_PAGE)).toContain("export const dynamic = 'force-dynamic'")
     // A loading.tsx would stream a 200 before notFound() ran, freezing a soft 404 (R-98).
     expect(() => source('app/(bare)/f/[token]/loading.tsx')).toThrow()
-    expect(code(PHOTO_PAGE)).not.toMatch(/unstable_cache|'use cache'|generateStaticParams|revalidate =/)
+    expect(code(PHOTO_PAGE)).not.toMatch(
+      /unstable_cache|'use cache'|generateStaticParams|revalidate =/,
+    )
   })
 
   it('is a server component, and passes NO function prop across the boundary', () => {

@@ -44,7 +44,7 @@ export function TitlePresets({
       // gutter — otherwise the last chip appears to stop short of the edge and reads as the end
       // of the list when it is not.
       className={cn(
-        'flex gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
+        'flex [scrollbar-width:none] gap-2 overflow-x-auto [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
       // Not a listbox, not a radiogroup: nothing here is selected state that persists, and the

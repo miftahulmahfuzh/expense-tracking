@@ -70,9 +70,7 @@ export default function DeltaTile({ delta }: { delta: Delta }) {
   return (
     <Wrap basis={basisLabel}>
       <span className={cn('tabular font-extrabold', tone)}>
-        <Glyph size="inline" />
-        {' '}
-        {word}
+        <Glyph size="inline" /> {word}
         {delta.direction === 'flat'
           ? ' dengan'
           : ` ${Math.abs(delta.pct).toLocaleString('id-ID')}% dari`}

@@ -683,3 +683,72 @@ how it lasted this long.
 **The standing lesson for this plan:** §11's gate — lint, typecheck, tests, build — cannot see a
 gesture. Nothing in it could ever have caught this. A touch feature is not verified until it has
 been touched.
+
+---
+
+## 16. CI, and the deploy gate that does not exist yet
+
+Added after the fact, when the icons turned out to be missing from the phone rather than from
+the code.
+
+### 16.1 What was actually wrong, and what I got wrong about it
+
+The icons were in `d5b8bd9`. A probe of `https://expensetracking.online/f/aaaaaaaaaaaa` returned
+Next's generic *"This page could not be found"* rather than our `Foto tidak ditemukan`, and I
+read that as "the push never deployed". **That diagnosis was wrong.** The Vercel project has been
+git-connected since 19 August, `productionBranch: main`, and the deployment list shows a `git`
+deploy for every push including that one, READY twelve minutes before I probed.
+
+The likelier cause is a **CDN-cached static 404**. Before that deploy `/f/*` matched no route, so
+it fell to Next's `/_not-found` — which `next build` lists as `○ (Static)` and is therefore
+cacheable at the edge. After the deploy the path matches a dynamic route carrying `no-store`.
+The manual `vercel --prod` did not supply a missing deploy; it invalidated a stale edge entry.
+
+Worth keeping because it generalises: **a 404 from a path that did not exist yet is not evidence
+about what is deployed.** Probe something the new build serves with `no-store`, or read the
+deployment list.
+
+### 16.2 What genuinely did not exist: any CI at all
+
+No `.github` directory. Every check in §11 was run by whoever remembered to run it — and one of
+them never was, which §16.3 covers.
+
+`.github/workflows/ci.yml` now runs `lint`, `typecheck`, `test`, `db:check`, `build` and
+`format:check` on every push to `main`, every pull request, and on demand.
+
+**It needs no secrets, and that is a property rather than an oversight.** `lib/env.ts` parses the
+environment eagerly at import, so `next build` genuinely aborts without those variables — but
+every rule in that schema is a SHAPE rule: non-empty, a `postgres` prefix, a parseable URL. None
+dials anything. Verified rather than assumed: `.env.local` was moved aside and `npm run build`
+run with exactly the dummy values in the workflow; it compiled and listed all 17 routes. So a
+fork's PR runs the full gate, nothing can reach the production database, and nothing can spend
+z.ai tokens — the two live suites skip themselves without `LLM_LIVE_TEST=1`.
+
+Node is pinned to **24** to match the Vercel project's `nodeVersion: 24.x`, not the 22 that
+`engines.node: >=22` merely permits. CI on a runtime production does not use can be green on a
+build that breaks.
+
+### 16.3 `format:check` was never in the gate, and it was already failing
+
+`npm run lint` does not check formatting. `eslint-config-prettier` only *disables* rules that
+would conflict with Prettier — it asserts nothing. So §11's gate never read formatting, and
+adding `format:check` to CI immediately found **seven files** left unformatted by this very
+feature, all of them ones edited by script rather than by hand.
+
+The gate had a hole the whole time. It cost nothing to close and it was red before it ever ran.
+
+### 16.4 The deploy is not gated, and that is the remaining gap
+
+Every push to `main` deploys to production, in parallel with CI rather than after it. A commit
+with failing tests ships and the workflow reports the failure afterwards.
+
+Closing it is two settings and a habit, none of which this plan changes unilaterally because they
+alter how the repo is worked in day to day:
+
+1. **Branch protection** on `main` requiring the `lint · typecheck · test · build` check.
+2. **Pull requests into `main`** instead of pushing to it — which is also what makes the preview
+   deployment per PR worth anything.
+3. Optionally Vercel's *Ignored Build Step* to skip a production build whose commit is red.
+
+Until then CI is a smoke alarm, not a lock: it tells you the branch is broken, it does not stop
+the broken branch reaching the phone.

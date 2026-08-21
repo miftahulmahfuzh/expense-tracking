@@ -37,8 +37,7 @@ export function GroupRow({ group }: { group: MonthGroupRow }) {
                 {/* The glyph is decorative; the count needs the word to make sense spoken.
                     F12: was `⧉` (U+29C9), which is outside Archivo's coverage and fell back to
                     whatever the system had — a box on some Androids. */}
-                <PhotoStackIcon size="inline" />{' '}
-                {group.photoCount}
+                <PhotoStackIcon size="inline" /> {group.photoCount}
                 <span className="sr-only"> foto</span>
               </>
             )}

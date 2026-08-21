@@ -11,9 +11,10 @@ describe('TITLE_PRESETS', () => {
   it('every preset is saveable — non-empty and within MAX_TITLE', () => {
     for (const preset of TITLE_PRESETS) {
       expect(preset.trim(), preset).not.toBe('')
-      expect(preset.length, `${preset} is ${preset.length} chars, max ${MAX_TITLE}`).toBeLessThanOrEqual(
-        MAX_TITLE,
-      )
+      expect(
+        preset.length,
+        `${preset} is ${preset.length} chars, max ${MAX_TITLE}`,
+      ).toBeLessThanOrEqual(MAX_TITLE)
     }
   })
 

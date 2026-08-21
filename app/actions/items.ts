@@ -86,10 +86,7 @@ const IdZ = z.string().min(1).max(64)
  * ════════════════════════════════════════════════════════════════════════════
  */
 async function touchGroup(groupId: string): Promise<void> {
-  await db
-    .update(expenseGroups)
-    .set({ updatedAt: new Date() })
-    .where(eq(expenseGroups.id, groupId))
+  await db.update(expenseGroups).set({ updatedAt: new Date() }).where(eq(expenseGroups.id, groupId))
 }
 
 async function nextSortOrder(groupId: string): Promise<number> {

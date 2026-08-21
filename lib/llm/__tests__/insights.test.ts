@@ -33,9 +33,10 @@ const GOOD = {
 }
 
 /** A fake `messages.create` that returns whatever content blocks the test wants. */
-function client(
-  message: Partial<Anthropic.Message> & { content: Anthropic.Message['content'] },
-): { client: LlmClientLike; create: ReturnType<typeof vi.fn> } {
+function client(message: Partial<Anthropic.Message> & { content: Anthropic.Message['content'] }): {
+  client: LlmClientLike
+  create: ReturnType<typeof vi.fn>
+} {
   const create = vi.fn().mockResolvedValue({
     stop_reason: 'tool_use',
     usage: { input_tokens: 60, cache_read_input_tokens: 4352, output_tokens: 190 },
@@ -123,18 +124,19 @@ describe('writeInsightsWith — the request surface', () => {
 })
 
 describe('writeInsightsWith — every failure returns null, none throws', () => {
-  const cases: Array<[string, Partial<Anthropic.Message> & { content: Anthropic.Message['content'] }]> =
+  const cases: Array<
+    [string, Partial<Anthropic.Message> & { content: Anthropic.Message['content'] }]
+  > = [
+    ['prose instead of a tool call', { content: [{ type: 'text', text: 'hi' } as never] }],
     [
-      ['prose instead of a tool call', { content: [{ type: 'text', text: 'hi' } as never] }],
-      [
-        'a tool call under the wrong name',
-        { content: [{ type: 'tool_use', id: 'x', name: 'other', input: GOOD } as never] },
-      ],
-      ['a truncated response', { stop_reason: 'max_tokens', content: toolUse(GOOD) }],
-      ['a missing field', { content: toolUse({ minggu: 'a', bulan: 'b' }) }],
-      ['an empty string where prose was required', { content: toolUse({ ...GOOD, bulan: '   ' }) }],
-      ['a non-string field', { content: toolUse({ ...GOOD, bulan: 42 }) }],
-    ]
+      'a tool call under the wrong name',
+      { content: [{ type: 'tool_use', id: 'x', name: 'other', input: GOOD } as never] },
+    ],
+    ['a truncated response', { stop_reason: 'max_tokens', content: toolUse(GOOD) }],
+    ['a missing field', { content: toolUse({ minggu: 'a', bulan: 'b' }) }],
+    ['an empty string where prose was required', { content: toolUse({ ...GOOD, bulan: '   ' }) }],
+    ['a non-string field', { content: toolUse({ ...GOOD, bulan: 42 }) }],
+  ]
 
   for (const [name, message] of cases) {
     it(`returns null on ${name}`, async () => {
