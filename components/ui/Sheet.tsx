@@ -171,9 +171,7 @@ export function Sheet({
         {/* `pb-2`, no safe inset — the 8px edge rule (globals.css). A docked sheet owns the
             bottom edge exactly like `/new`'s footer does, and its button's 44px tap target
             supplies the remaining slack that puts the label 22px up. */}
-        <div className="shrink-0 px-4 pt-2 pb-2">
-          {footer}
-        </div>
+        <div className="shrink-0 px-4 pt-2 pb-2">{footer}</div>
       </div>
     </dialog>
   )
