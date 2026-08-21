@@ -805,7 +805,13 @@
    this rule replaced: it left every footer floating ~26px too high.
 
    So: do NOT add `env(safe-area-inset-bottom)` to anything that sits at the bottom of the
-   screen. The old instinct is wrong here and the symptom only shows on real hardware. */
+   screen. The old instinct is wrong here and the symptom only shows on real hardware.
+
+   ONE CARVE-OUT, also from real hardware: a docked SHEET FOOTER. Riding level with the pill
+   is right when what sits there is a bare link or a flat CTA, because the pill then lands on
+   empty space. A sheet footer is a row of 44px buttons with a filled background, and the pill
+   is drawn ON that fill — see `Sheet.tsx`'s footer wrapper, which pads by the inset plus the
+   8px. That is the exception, not the new default; every other bottom row stays as above. */
 
 /* A sticky header: the notch, plus 8px. The floor is for a flat phone and the desktop
    column, where env() is 0 and 8px from the window edge reads as broken. */
