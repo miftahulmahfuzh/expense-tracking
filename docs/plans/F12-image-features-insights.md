@@ -752,3 +752,35 @@ alter how the repo is worked in day to day:
 
 Until then CI is a smoke alarm, not a lock: it tells you the branch is broken, it does not stop
 the broken branch reaching the phone.
+
+---
+
+## 17. Closing: four bugs, none of which any check could see
+
+F12 passed its §11 gate on the day it merged, and then needed four fixes. Every one was found by
+a person holding a phone, and not one of them could have been caught by lint, typecheck, 907
+unit tests, `next build` or the CI workflow added in §16.
+
+| # | Bug | Only visible |
+| - | --- | ------------ |
+| R12-12 | `touch-action: none` — swiping never paged, since F06 | on a touchscreen |
+| §16.1 | a CDN-cached static 404 read as "not deployed" | over HTTP, not in the repo |
+| R12-13 | `fixed` anchors to the layout viewport; the cluster sat under Safari's toolbar | on iOS, in a browser with chrome |
+| R12-14 | `pb-2` on a floating pill put the cluster on the home indicator | on a device with one |
+| R12-15 | `navigator.share({files})` on desktop turned Download into a share sheet | with a mouse |
+| R12-16 | a 15% white scrim under white glyphs is invisible over white paper | with a real receipt open |
+
+Three of those were *my* new code. Two — the swipe and the geometry — were latent from F06 and
+F10 and were merely uncovered by putting controls where nobody had put controls before.
+
+**The pattern is not "test more".** Each of these is a property that no assertion available in
+this repo can express: whether a finger can page a scroller, whether a fixed element's bottom
+edge is on screen, whether a white mark is legible on a white photograph. What the test suite
+CAN do — and now does, in `tests/photos.lightbox.contract.test.ts` — is pin the *values* that
+were wrong, so the next person who "tidies" `bg-black/60` back to something translucent, or
+restores `inset-0`, gets told which bug they are re-opening and why.
+
+**What to actually take from this.** The §11 gate is necessary and it is not sufficient. For a
+touch feature, the last line of the gate is a phone. Every one of these six was reported in
+under a minute by someone looking at the screen, and every one of them cost a deploy cycle to
+find because nobody looked before merging.
