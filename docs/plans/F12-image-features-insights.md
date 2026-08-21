@@ -642,3 +642,44 @@ asked for: an `○` on `/stats` would mean the `requireUserId()` call had been l
 `drizzle/0001_tricky_young_avengers.sql`, two `CREATE TABLE`s, two cascading foreign keys, one
 unique index, no destructive statement. §12.3 stands: the summaries' tone and length are unseen
 until the first live call.
+
+---
+
+## 15. R12-12 · The swipe never worked, and F12 sat on top of it
+
+Found by the user testing on a phone, after everything above had shipped and passed.
+
+`Slide`'s `<img>` carried `touch-action: none` from F06, under the comment *"hands every touch
+to the handlers above; without it Safari claims the pinch for the page."* The second clause is
+true. The first is the bug.
+
+Per spec, `touch-action: none` means the browser performs **no default touch behaviour for a
+touch starting on that element — including scrolling an ancestor scroll container.** The
+scroll-snap track is an ancestor. So a one-finger horizontal swipe beginning on the photo never
+paged, and had never paged since F06.
+
+**Why five months of use did not surface it.** The image is `object-contain`. A portrait receipt
+on a wider viewport leaves letterbox bars, and a swipe on *those* lands on the host `div`, which
+sets no `touch-action`, and pages perfectly. It is broken only where it matters: a phone held in
+portrait, where the photo fills nearly the whole width and there is almost no bar left to grab.
+
+**Why the F12 work did not surface it either.** §3's sentinel clones, `wrapTarget`, the settle
+handler and eighteen unit tests are all about *where the scroller goes when it settles*. Every
+one of them is correct. None of them can observe that nothing ever asked the scroller to move —
+`lib/photos/carousel.ts` is pure arithmetic, and jsdom has no scroll-snap, no momentum and no
+`touch-action`. The plan verified the wrap and never verified the swipe.
+
+**The fix** is `pan-x` at rest, flipping to `none` while zoomed (written in `apply()`, beside the
+transform, so it stays off React during a 60 Hz gesture). `pan-x` permits exactly the one
+default behaviour wanted — horizontal panning, i.e. the snap track — and still withholds
+`pinch-zoom`, so Safari cannot page-zoom. That was the half of F06's reasoning that was right,
+and it is preserved.
+
+`tests/photos.lightbox.contract.test.ts` now pins this value and thirteen other things about the
+viewer that are invisible in review and invisible in CI. It is a source assertion, deliberately:
+a component test in jsdom would have reported the broken swipe as passing, which is precisely
+how it lasted this long.
+
+**The standing lesson for this plan:** §11's gate — lint, typecheck, tests, build — cannot see a
+gesture. Nothing in it could ever have caught this. A touch feature is not verified until it has
+been touched.

@@ -595,6 +595,16 @@ function Slide({
     if (!el) return
     const { scale, x, y } = state.current
     el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`
+    /*
+     * touch-action moves WITH the zoom, and getting this wrong breaks paging outright — see the
+     * note on the element below. At 1x the browser must be allowed to use a horizontal drag for
+     * the snap track; once zoomed, it must not, because we are panning the image ourselves.
+     *
+     * Written here rather than through React for the same reason as the transform: this runs
+     * inside a 60 Hz gesture, and a setState per frame is the difference between smooth and
+     * visibly laggy on an XS Max.
+     */
+    el.style.touchAction = scale > 1 ? 'none' : 'pan-x'
   }, [])
 
   // Reset zoom whenever this slide scrolls out of view, so coming back to it later starts
@@ -784,9 +794,33 @@ function Slide({
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
         className="max-h-full max-w-full object-contain will-change-transform select-none"
-        /* touch-action: none hands every touch to the handlers above; without it Safari
-           claims the pinch for the page. */
-        style={{ transformOrigin: 'center center', touchAction: 'none' }}
+        /*
+         * ════════════════════════════════════════════════════════════════════════
+         *  `pan-x`, NOT `none`. THIS ONE VALUE DECIDES WHETHER SWIPING WORKS AT ALL.
+         *
+         *  It was `none` from F06 until F12, with the comment "hands every touch to the
+         *  handlers above; without it Safari claims the pinch for the page". The second half is
+         *  true. The first half is the bug: per spec, `touch-action: none` means the browser
+         *  performs NO default touch behaviour for a touch starting on this element — and that
+         *  includes SCROLLING AN ANCESTOR SCROLL CONTAINER. The scroll-snap track is an
+         *  ancestor. So a one-finger horizontal swipe beginning on the photo never paged.
+         *
+         *  WHY NOBODY CAUGHT IT: the image is `object-contain`, so a portrait receipt on a
+         *  wider viewport leaves letterbox bars, and a swipe on THOSE hits the host div — which
+         *  sets no touch-action — and pages perfectly. It is only broken where it matters: a
+         *  phone held in portrait, where the photo fills nearly the full width and there is
+         *  almost no bar left to grab.
+         *
+         *  `pan-x` allows exactly the one default behaviour we want (horizontal panning, i.e.
+         *  the snap track) and still withholds `pinch-zoom`, so Safari does not page-zoom —
+         *  which is what the original comment was actually protecting against. The two-finger
+         *  handler calls preventDefault in a non-passive listener regardless.
+         *
+         *  It flips to `none` while zoomed, in `apply()` above: at >1x a one-finger drag is our
+         *  pan, and letting the track have it would flick to the next photo mid-inspection.
+         * ════════════════════════════════════════════════════════════════════════
+         */
+        style={{ transformOrigin: 'center center', touchAction: 'pan-x' }}
       />
     </div>
   )
