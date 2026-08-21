@@ -716,17 +716,6 @@
 @utility pt-safe-header {
   padding-top: calc(env(safe-area-inset-top) + 1.75rem);
 }
-/* A sticky FOOTER that paints all the way down to the bottom edge of the screen, so the
-   white block has no strip of page background left under it. max(), not a sum: the bar wants
-   12px of breathing room under its last control, and on a notched phone the home indicator's
-   own inset is already nearly three times that — adding the two would float the label ~46px
-   up and leave the bar looking bottom-heavy.
-   Minus --kb-inset because once the keyboard is open there is no home indicator left to
-   clear: the bar's bottom edge IS the top of the keys, and the inset would be a dead white
-   band above them. The subtraction goes negative there, which max() discards. */
-@utility pb-safe-bar {
-  padding-bottom: max(0.75rem, calc(env(safe-area-inset-bottom) - var(--kb-inset, 0px)));
-}
 /* Bottom of a scrolling page, so content clears the tab bar + home indicator. */
 @utility pb-tabbar {
   padding-bottom: calc(var(--spacing-tab) + env(safe-area-inset-bottom) + 2rem);

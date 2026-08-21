@@ -220,8 +220,8 @@ export function AddExpenseClient({
      * height was `100dvh - env(safe-area-inset-bottom)` to match the `pb-safe` the (bare)
      * layout wraps every screen in — which left the sticky footer's white block floating
      * above a ~34px strip of page background. The footer is the bottom of this screen, so it
-     * has to paint down to the edge; `StickyBar`'s own `pb-safe-bar` is what keeps its label
-     * off the home indicator now.
+     * has to paint down to the edge; `StickyBar`'s own bottom padding is what sets the
+     * label's clearance over the home indicator now.
      *
      * The margin CANCELS the wrapper's padding rather than the layout dropping it: `/`,
      * `/e/[id]` and `/s/[token]` are ordinary scrolling pages that still want it. Negative
