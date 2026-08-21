@@ -20,7 +20,11 @@ export default function DetailLoading() {
         </span>
       </div>
 
-      <div className="pt-4 px-safe">
+      {/* `pt-gutter`, matching the real screen exactly — see the note at `ExpenseEditor`'s
+          body div. This was `pt-4` while the real page had NO top padding at all, so the
+          handover shifted every block up by 16px; both are now the same token, which is the
+          only way this file keeps the promise in its own docblock. */}
+      <div className="pt-gutter px-safe">
         <span className="skeleton h-3 w-12" />
         <span className="skeleton mt-2 h-control w-full rounded-field" />
 

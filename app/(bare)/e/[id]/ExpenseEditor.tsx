@@ -260,7 +260,20 @@ export function ExpenseEditor({
         </div>
       </header>
 
-      <div className="px-safe">
+      {/*
+       * `pt-gutter` — the SAME 22px `px-safe` insets the column by, now applied to the top.
+       * Without it `JUDUL`'s box started at exactly 0px from the header's hairline, so the
+       * first eyebrow on the screen was welded to the chrome above it while every other
+       * block on the page floated clear of its neighbour.
+       *
+       * 22px is not a fresh number: it is `--spacing-gutter`, the page inset. It also lands
+       * the eyebrow's text 23.5px under the hairline, which is within 1.5px of the 22px
+       * between the item card's bottom edge and `+ TAMBAH ITEM` — the gap this was measured
+       * against, and the closest thing this screen has to a canonical block-to-label
+       * distance. `loading.tsx` carries the same token so the skeleton does not hand over to
+       * a page that jumps — it was `pt-4` against this div's zero, i.e. 16px of shift.
+       */}
+      <div className="pt-gutter px-safe">
         {/*
          * `key` is how the title and note fields resync after a commit, WITHOUT an effect.
          * Each holds its own in-progress text (an input the user is typing into is not server
