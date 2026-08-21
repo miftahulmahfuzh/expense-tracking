@@ -25,9 +25,25 @@ const MAX_DIGITS = 12
 const OWN_FORMATTING = /^[\d.\s]*$/
 
 /**
- * The amount field. `Rp` is a static span OUTSIDE the editable value, thousands dots are
- * inserted as you type — never typed — and a yellow IDR block tags the field so the currency
- * is legible at a glance in a column of otherwise identical white slabs (01 Components).
+ * The amount field. `Rp` is a static span OUTSIDE the editable value, and thousands dots are
+ * inserted as you type — never typed.
+ *
+ * F13 REVERSES R-34's yellow `IDR` block, which the canvas (`01 Components`) put on the right
+ * of this field to make the currency "legible at a glance in a column of otherwise identical
+ * white slabs". Two reasons, and the second is why it is a reversal rather than a compromise:
+ *
+ *  - It cost ~48px of a field that had 152 to spend. `/new`'s review row puts this component
+ *    in a fixed `w-[9.5rem]` column, and the badge plus `Rp` plus two `gap-2.5` plus the
+ *    padding and the 2px border came to ~110px of chrome, leaving the input 43 — measured at
+ *    414x896, not estimated. Every amount past four glyphs lost its tail: `4.500.000` wanted
+ *    81px and rendered `4.500.` (issue #3).
+ *  - The `Rp` prefix was already doing the badge's stated job. The two together stated the
+ *    currency TWICE on one control, so the badge was redundant before it was expensive.
+ *
+ * The widening it would have taken to keep it (152 → 190px) comes out of the category chip,
+ * and the chips were measured too: `Tempat Tinggal` is 171px and `Belanja Harian` 162, against
+ * the 150 a 190px column would leave them. That is a clipped category in place of a clipped
+ * amount. See docs/plans/F13-amount-field-clipping.md §2 for the whole budget.
  *
  * `inputMode="numeric"`, never `type="number"`: a number input rejects a pasted `45k` or
  * `1,5jt` outright, shows spinners nobody wants on a phone, and drops leading formatting.
@@ -97,6 +113,10 @@ export function MoneyInput({
     <div
       className={cn(
         'glass flex h-control items-center gap-2.5 rounded-field border border-transparent',
+        // Asymmetric, and it stays that way now the badge it was cut for is gone (F13): the
+        // value is left-aligned and grows rightward, so the right inset is whitespace it
+        // eats into. Matching it to `pl-3.5` would spend 8 real pixels of the field's 102 to
+        // pad empty space, and drop the input under the `min-w-[6rem]` floor below.
         'pr-1.5 pl-3.5',
         invalid && 'border-red-ink',
         className,
@@ -119,7 +139,22 @@ export function MoneyInput({
         aria-invalid={rest['aria-invalid'] ?? (invalid || undefined)}
         // 17px comes from the base layer's input rule, not from a class here, so it cannot
         // be overridden away. `tabular` keeps the digits in their columns.
-        className="h-full min-w-0 flex-1 border-0 bg-transparent tabular font-bold text-ink outline-none"
+        //
+        // `min-w-[6rem]`, NOT `min-w-0`, and that is the F13 fix rather than the F13 tidy-up.
+        // `min-w-0` is why #3 went a whole release unseen: it lets a flex child shrink below
+        // its content, so this input swallowed the entire 38px shortfall in silence — a clipped
+        // <input> throws no error, logs nothing, and reads as a smaller number. An explicit
+        // min-width overrides the automatic minimum exactly as `0` does, so the intrinsic width
+        // (an <input>'s `size` default, ~20 characters) never becomes the floor.
+        //
+        // 96px holds `999.999.999`, the realistic ceiling for an expense, and sits 4px under
+        // the 100 the `/new` column affords — measured, and note it is 100 rather than the 102
+        // the padding arithmetic gives, because the field's `border` costs 2px that is easy to
+        // forget. So it constrains nothing today. What it buys is
+        // the next narrow container OVERFLOWING this field visibly instead of quietly dropping
+        // digits. It does not raise the digit cap: past nine digits the text overflows. That is
+        // the intended failure, and `scripts/f05-audit.sh` guards the class name.
+        className="h-full min-w-[6rem] flex-1 border-0 bg-transparent tabular font-bold text-ink outline-none"
         onChange={(e) => handleChange(e.target.value)}
         onFocus={(e) => {
           // Select all, so the commonest edit — replacing a wrong amount — is one tap and
@@ -134,14 +169,6 @@ export function MoneyInput({
         }}
         {...rest}
       />
-      {/* Not a control — a printed tag. Yellow in both schemes, like every other sticker in
-          the app, so it never has to reason about the theme. */}
-      <span
-        aria-hidden="true"
-        className="inline-flex h-9.5 shrink-0 items-center rounded-field bg-yellow px-3 text-action text-[#0d0d0d]"
-      >
-        IDR
-      </span>
     </div>
   )
 }

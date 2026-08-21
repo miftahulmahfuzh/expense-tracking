@@ -10,6 +10,36 @@ the way it did; this file records only *what* landed. The two files collide acro
 `R-42…R-49` band and are deliberately not renumbered, so shipped comments cite the second
 as `design R-nn`.
 
+## [Unreleased]
+
+### Fixed
+
+- **The amount field on `/new`'s review table clipped its own value (F13, #3).** Every amount
+  past four glyphs lost its tail: `38.500` rendered `38.50`, `4.500.000` rendered `4.500.`. The
+  running Total was right the whole time, which is the worse way round — the row read as a
+  smaller number than it was and the total then looked like it disagreed with the rows it is
+  the sum of. `/new` puts `MoneyInput` in a fixed `w-[9.5rem]` column, and v0.2.0's design pull
+  added R-34's yellow `IDR` badge to a `9.5rem` measured before that badge existed: ~110px of
+  the 152 went on chrome, leaving the input 43 against the 81 `4.500.000` needs. The badge is
+  gone — the static `Rp` prefix was already doing its stated job, so the field had been stating
+  the currency twice on one control — and the input measures **100px** on the row, with the
+  column, the row's geometry and the category chip's full label all untouched. Keeping the badge
+  would have needed a 190px column, leaving the chip 150 against the 171 `Tempat Tinggal` and
+  162 `Belanja Harian` actually measure: a clipped category in place of a clipped amount.
+
+### Changed
+
+- **`MoneyInput`'s input carries `min-w-[6rem]` rather than `min-w-0` (F13).** `min-w-0` is why
+  the clipping above went a release unseen: it lets a flex child shrink below its content, so
+  the input absorbed the whole 38px shortfall in silence, and a clipped `<input>` throws no
+  error, logs nothing and looks like a smaller number. An explicit `min-width` overrides the
+  automatic minimum exactly as `0` does, so an `<input>`'s intrinsic ~20-character width never
+  becomes the floor; 96px sits 4px under the 100 the column affords, so it constrains nothing
+  today and makes the next too-narrow container overflow visibly instead. `scripts/f05-audit.sh`
+  holds the floor in place with the width budget written out above the check — and note that
+  none of the `f0X-audit.sh` sweeps run in CI, which is the other half of why the guard had to
+  be CSS rather than a grep.
+
 ## [v0.2.0] - 2026-08-21
 
 One feature card (F11, F12) and one design revamp, on top of v0.1.0's ten features. The

@@ -43,4 +43,32 @@ check "Button uses fullWidth/destructive, not full/danger" \
 check "F05 imports no db, blob or attachPhoto" \
   "$(grep -rnE "^import .*(@/lib/db|@/lib/blob)|attachPhoto\(" "$FEATURE" || true)"
 
+# ─── F13, and read the arithmetic rather than the conclusion ──────────────────────────────
+# `/new`'s review row puts MoneyInput in a fixed `w-[9.5rem]` column. At a 414px viewport the
+# row has 340px for chip + amount (414 − 44 `px-safe` − 22 `Card padded="rows"` − 8 `gap-2`),
+# the column takes 152, and MoneyInput's own chrome takes 50 of that:
+#
+#     pl-3.5 + pr-1.5 .... 20      → input = 152 − 52 = 100px, measured at 414x896
+#     border ............. 2         `4.500.000` needs 81. Headroom: 19px.
+#     static `Rp` span ... 20        `999.999.999` needs ~100. Headroom: ~0.
+#     one gap-2.5 ........ 10
+#
+# Mind the border: the padding alone says 102, and the field is 100. It was ~110px of chrome
+# until F13 dropped R-34's `IDR` badge, leaving the input 43 — and
+# `min-w-0` meant it absorbed the whole 38px shortfall SILENTLY. That is the class of bug this
+# check exists for: a clipped <input> throws no error, logs nothing, and looks like a smaller
+# number, so `4.500.000` read `4.500.` on the screen the product exists for, in production,
+# for a whole release (issue #3).
+#
+# So the floor is the guard, and this only holds the floor in place. A grep cannot measure a
+# rendered width; an explicit `min-width` makes the next too-narrow container overflow where
+# somebody sees it. Note that nothing here runs in CI — ci.yml is lint · typecheck · test ·
+# db:check · build · format:check — which is the other half of why the guard has to be CSS.
+#
+# Comment lines are excluded, because the component explains this fix at length and would
+# otherwise trip its own guard. A reintroduction lands inside a `className="…"` string, which
+# carries no `//` or `*`, so the exclusion costs the check nothing.
+check "MoneyInput keeps its width floor (never min-w-0)" \
+  "$(grep -n 'min-w-0' components/ui/MoneyInput.tsx | grep -vE ':[[:space:]]*(//|\*)' || true)"
+
 exit $fail
