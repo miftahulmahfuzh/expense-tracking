@@ -34,15 +34,16 @@ import { revalidateGroup } from './_revalidate'
 
 /**
  * F03a publishes `CreateExpenseInput`; it is reused rather than redeclared (R-77) and
- * tightened in exactly two places, both for reasons F03a structurally cannot encode:
+ * restated in exactly two places, both for reasons F03a structurally cannot encode:
  *
  *  - `blobPathname` must match what Vercel actually stores. F03a keeps it a loose
  *    `string().max(500)` because importing F06's constants would give a pure wave-1 module
  *    an edge into wave-3 code; this is the same tightening `attachPhoto` applies, and for
  *    the same reason — only F06 knows what a blob pathname looks like.
- *  - the array is capped at `MAX_PHOTOS_PER_GROUP` (10), not F03a's 20. Ten is the
- *    per-group cap the picker enforces (F06 OQ-3); accepting 20 here would let a crafted
- *    request walk straight past it.
+ *  - the array is capped at `MAX_PHOTOS_PER_GROUP`, which is the per-group cap the picker
+ *    enforces. It currently equals F03a's own 20, but it is spelled as the constant on
+ *    purpose: the day the picker's cap drops again, a crafted request must not be able to
+ *    walk past it just because the two numbers happened to agree.
  *
  * What is deliberately NOT checked: whether a `blobPathname` is already referenced by some
  * other group's row. `attachPhoto` does not check it either, and a second, divergent copy

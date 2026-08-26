@@ -40,6 +40,21 @@ as `design R-nn`.
   none of the `f0X-audit.sh` sweeps run in CI, which is the other half of why the guard had to
   be CSS rather than a grep.
 
+- **A group takes 20 photos, up from 10 (F06).** `MAX_PHOTOS_PER_GROUP` was 10 on a guess —
+  "ten photos is already a lot for one meal" — and real use disagrees: a shopping trip's worth
+  of receipts routinely runs past it, and the cap is a hard stop, not a nudge. 20 is not a new
+  number, it is the one `lib/schema/expense.ts` has allowed at `CreateExpenseInput` since F03a;
+  the 10 was a tightening `app/actions/expenses.ts` layered on top, so this deletes a
+  disagreement rather than raising a ceiling. One constant moves and both ends follow — the
+  picker's default `max` and the server-side `.max()` on the photo array read the same export,
+  which is the whole reason the tightening was spelled as the constant and not as a literal.
+  That spelling is now load-bearing in the other direction and is commented as such: the two
+  numbers agreeing today is a coincidence, and the day the picker's cap drops again a crafted
+  request must not walk past it because someone inlined the 20. The storage note the constants
+  file exists to make: at the ~300 KB compression target a full group doubles to ~6 MB against
+  the 1 GB `BLOB_FREE_TIER_BYTES` the usage report tracks, which is a real change to the budget
+  and not merely a number.
+
 ## [v0.2.0] - 2026-08-21
 
 One feature card (F11, F12) and one design revamp, on top of v0.1.0's ten features. The

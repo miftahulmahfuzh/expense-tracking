@@ -25,7 +25,7 @@ import { usePhotoUploads } from './usePhotoUploads'
  */
 
 type CommonProps = {
-  /** Default MAX_PHOTOS_PER_GROUP (10). */
+  /** Default MAX_PHOTOS_PER_GROUP. */
   max?: number
   disabled?: boolean
   className?: string

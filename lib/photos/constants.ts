@@ -8,8 +8,8 @@
  * running app instead of re-declaring them.
  */
 
-/** Hard cap per expense group. Ten photos is already a lot for one meal (plan OQ-3). */
-export const MAX_PHOTOS_PER_GROUP = 10
+/** Hard cap per expense group. Matches the ceiling F03a's CreateExpenseInput allows. */
+export const MAX_PHOTOS_PER_GROUP = 20
 
 /** Reject before we even try to decode: a 25 MB "image" is a mistake, not a photo. */
 export const MAX_SOURCE_BYTES = 25 * 1024 * 1024
