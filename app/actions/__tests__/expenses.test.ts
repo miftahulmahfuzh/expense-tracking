@@ -13,14 +13,16 @@
  *      commit is an expense whose total is wrong, or a gallery missing the photo
  *      the user watched upload.
  *   4. sort_order follows the reviewed order, for items and photos both.
- *   5. The caps are the tightened ones — 10 photos, not F03a's 20 — and a
- *      pathname that is not the shape Vercel stores is refused.
+ *   5. The cap is the effective one — `PHOTO_MAX_PER_GROUP` if set, else the default —
+ *      and a pathname that is not the shape Vercel stores is refused.
  *
  *  `@/auth` is mocked so F02's real requireUserId runs; `@/lib/db` is the probe
  *  client so the real emitted SQL is observable; only revalidatePath is stubbed.
  * ════════════════════════════════════════════════════════════════════════════
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { maxPhotosPerGroup } from '@/lib/photos/cap'
 
 const authMock = vi.hoisted(() => vi.fn())
 vi.mock('@/auth', () => ({ auth: authMock }))
@@ -43,6 +45,7 @@ const { calls, normalise, reset } = await import('../../../tests/support/probeDb
 const USER = 'usr000000001'
 const PATHNAME = 'photos/Uk-igSGzS6rpPd1sRM9iz-yLUxdLWq3Zqn5lg62luYDWXkeAHvwn.jpg'
 const OTHER_PATHNAME = 'photos/Ak-igSGzS6rpPd1sRM9iz-bLUxdLWq3Zqn5lg62luYDWXkeAHvwn.jpg'
+const THIRD_PATHNAME = 'photos/Bk-igSGzS6rpPd1sRM9iz-cLUxdLWq3Zqn5lg62luYDWXkeAHvwn.jpg'
 const blobUrl = (p: string) => `https://s.public.blob.vercel-storage.com/${p}`
 
 /** The roadmap §1 canonical paste, after review. */
@@ -141,12 +144,46 @@ describe('createExpense', () => {
     expect(calls).toHaveLength(0)
   })
 
-  it('caps photos at MAX_PHOTOS_PER_GROUP rather than F03a s 20', async () => {
-    const eleven = Array.from({ length: 11 }, (_, i) =>
-      photo(`photos/Uk-igSGzS6rpPd1sRM9i${i}-yLUxdLWq3Zqn5lg62luYDWXkeAHvwn.jpg`),
+  /*
+   * The end-to-end assertion for PHOTO_MAX_PER_GROUP: not "the resolver returns the env
+   * value" (tests/photos.cap.test.ts owns that) but "the action enforces the CONFIGURED
+   * number". Without this the knob can be wired to a resolver nobody consults, and every
+   * other test in both files still passes.
+   *
+   * The whole module graph is re-imported under the stubbed env because `lib/env` validates
+   * once at module load — which is the correct production behaviour (an env var is fixed for
+   * the life of a deployment) and the reason a plain `process.env` poke here would not work.
+   */
+  it('enforces the CONFIGURED cap, not the compiled-in default', async () => {
+    const REAL = process.env.PHOTO_MAX_PER_GROUP
+    process.env.PHOTO_MAX_PER_GROUP = '2'
+    vi.resetModules()
+    try {
+      const { createExpense: fresh } = await import('../expenses')
+      const three = [PATHNAME, OTHER_PATHNAME, THIRD_PATHNAME].map(photo)
+
+      await expect(fresh({ ...canonical, photos: three })).rejects.toThrow()
+      expect(calls).toHaveLength(0)
+
+      await fresh({ ...canonical, photos: three.slice(0, 2) })
+      expect(calls).toHaveLength(3)
+    } finally {
+      if (REAL === undefined) delete process.env.PHOTO_MAX_PER_GROUP
+      else process.env.PHOTO_MAX_PER_GROUP = REAL
+      vi.resetModules()
+    }
+  })
+
+  it('caps photos at the effective per-group cap', async () => {
+    // The id must stay exactly 21 chars or the pathname regex rejects it first and the
+    // test passes for the wrong reason — so pad the index rather than appending it.
+    const tooMany = Array.from({ length: maxPhotosPerGroup() + 1 }, (_, i) =>
+      photo(
+        `photos/UkigSGzS6rpPd1sRM${String(i).padStart(4, '0')}-yLUxdLWq3Zqn5lg62luYDWXkeAHvwn.jpg`,
+      ),
     )
 
-    await expect(createExpense({ ...canonical, photos: eleven })).rejects.toThrow()
+    await expect(createExpense({ ...canonical, photos: tooMany })).rejects.toThrow()
     expect(calls).toHaveLength(0)
   })
 

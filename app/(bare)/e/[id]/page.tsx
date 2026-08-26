@@ -6,6 +6,7 @@ import { ShareButton, ShareLinkPanel } from '@/components/share'
 import { requireUserId } from '@/lib/auth/requireUserId'
 import { getGroupDetail } from '@/lib/db/queries'
 import { isValidId } from '@/lib/id'
+import { maxPhotosPerGroup } from '@/lib/photos/cap'
 import { shareOrigin } from '@/lib/share/origin'
 
 import { ExpenseEditor } from './ExpenseEditor'
@@ -78,7 +79,7 @@ export default async function ExpenseDetailPage({ params }: PageProps<'/e/[id]'>
        * R-80 decides which gallery: `PhotoManager` (carries deletePhoto) on the owner's page,
        * `PhotoGallery` on /s/[token] so the public bundle ships no Server Action id. F07 does
        * not implement thumbnails, a lightbox, compression, upload progress or blob deletion —
-       * all of it is F06's, and the picker owns the "Foto" heading and the n/10 counter too.
+       * all of it is F06's, and the picker owns the "Foto" heading and the n/max counter too.
        */
       photoSlot={
         <>
@@ -86,6 +87,7 @@ export default async function ExpenseDetailPage({ params }: PageProps<'/e/[id]'>
             mode="attached"
             groupId={detail.id}
             existingCount={detail.photos.length}
+            max={maxPhotosPerGroup()}
             className="px-safe"
           />
           <PhotoManager photos={detail.photos} className="mt-2 px-safe" />

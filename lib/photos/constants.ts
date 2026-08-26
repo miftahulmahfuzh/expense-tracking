@@ -8,8 +8,22 @@
  * running app instead of re-declaring them.
  */
 
-/** Hard cap per expense group. Ten photos is already a lot for one meal (plan OQ-3). */
-export const MAX_PHOTOS_PER_GROUP = 10
+/**
+ * Per-group cap when `PHOTO_MAX_PER_GROUP` is unset — the value every environment gets
+ * until someone deliberately overrides it. NOT the number to read when enforcing: the
+ * effective cap is `maxPhotosPerGroup()` in ./cap, which is this unless the env says
+ * otherwise. This module stays pure (see the header) precisely so the client can import
+ * the default without dragging `lib/env` — and therefore `server-only` — into its bundle.
+ */
+export const DEFAULT_MAX_PHOTOS_PER_GROUP = 20
+
+/**
+ * Absolute ceiling on `PHOTO_MAX_PER_GROUP`. An env var is a number a tired person types
+ * into a web form at midnight; 500 there should fail at boot with a legible message, not
+ * quietly authorise a 150 MB expense group against a 1 GB free tier. 50 is chosen to match
+ * the bound `discardStagedPhotos` already puts on a pathname batch, so the two agree.
+ */
+export const PHOTO_CAP_CEILING = 50
 
 /** Reject before we even try to decode: a 25 MB "image" is a mistake, not a photo. */
 export const MAX_SOURCE_BYTES = 25 * 1024 * 1024

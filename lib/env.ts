@@ -1,6 +1,8 @@
 import 'server-only'
 import { z } from 'zod'
 
+import { DEFAULT_MAX_PHOTOS_PER_GROUP, PHOTO_CAP_CEILING } from '@/lib/photos/constants'
+
 /**
  * Environment contract for expensetracking.online.
  *
@@ -33,6 +35,23 @@ const coreSchema = z.object({
   // (drizzle-kit migrate/studio only).
   DATABASE_URL: postgresUrl('DATABASE_URL'),
   DATABASE_URL_UNPOOLED: postgresUrl('DATABASE_URL_UNPOOLED'),
+
+  /*
+   * F06 — how many photos one expense group takes. OPTIONAL, unlike everything above it:
+   * an unset value is the documented default, so adding this variable does not break a
+   * deployment that has never heard of it.
+   *
+   * `z.coerce` because process.env is strings; `.int()` because "20.5 photos" is a typo,
+   * not a cap; the 1..PHOTO_CAP_CEILING range because the failure mode of a bad number here
+   * is a storage bill, and failing at boot with the message `fail()` prints beats failing
+   * at upload time in front of a user.
+   */
+  PHOTO_MAX_PER_GROUP: z.coerce
+    .number()
+    .int('PHOTO_MAX_PER_GROUP must be a whole number of photos')
+    .min(1, 'PHOTO_MAX_PER_GROUP must be at least 1')
+    .max(PHOTO_CAP_CEILING, `PHOTO_MAX_PER_GROUP must not exceed ${PHOTO_CAP_CEILING}`)
+    .default(DEFAULT_MAX_PHOTOS_PER_GROUP),
 })
 
 /** F02 owns these. Validated on first call, which F02's auth.ts makes module-scope. */

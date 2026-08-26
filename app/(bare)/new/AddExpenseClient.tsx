@@ -33,10 +33,13 @@ export function AddExpenseClient({
   userId,
   todayISO,
   backHref,
+  maxPhotos,
 }: {
   userId: string
   todayISO: string
   backHref: string
+  /** Resolved from `PHOTO_MAX_PER_GROUP` by the Server Component; drilled to PhotoPicker. */
+  maxPhotos: number
 }) {
   const router = useRouter()
   const [state, dispatch] = useReducer(reducer, todayISO, initialState)
@@ -274,6 +277,7 @@ export function AddExpenseClient({
         ) : (
           <ReviewStage
             draft={draft}
+            maxPhotos={maxPhotos}
             errors={state.errors}
             focus={state.focus}
             save={state.save}

@@ -40,6 +40,45 @@ as `design R-nn`.
   none of the `f0X-audit.sh` sweeps run in CI, which is the other half of why the guard had to
   be CSS rather than a grep.
 
+- **The per-group photo cap is configuration, not a constant (F06).** `MAX_PHOTOS_PER_GROUP`
+  was 10 on a guess — "ten photos is already a lot for one meal" — and real use disagrees: a
+  shopping trip's worth of receipts routinely runs past it, and the cap is a hard stop rather
+  than a nudge. The default is now **20**, and `PHOTO_MAX_PER_GROUP` moves it without a commit.
+
+  Optional, so a deployment that has never heard of the variable keeps working; a whole number
+  in `1..PHOTO_CAP_CEILING` (50), validated in `lib/env.ts` alongside everything else, because
+  the failure mode of a too-large cap is a storage bill and the failure mode of `0` is an
+  upload button nobody can use — both cheaper to hit at boot than in front of a user.
+
+  **It needs a redeploy, not a commit.** Vercel applies an environment change only to *new*
+  deployments, never retroactively to a running one, so the loop is Project Settings >
+  Environment Variables, then Redeploy (or `vercel --prod`).
+
+  The number is **server-only and reaches the browser as a prop**. `@/lib/env` is `server-only`
+  and `lib/photos/constants.ts` is imported by client components, so the resolver lives in a
+  third module, `lib/photos/cap.ts`, and `/new` and `/e/[id]` read it in their Server
+  Components and hand it to `PhotoPicker` — `/new` drilling it through `AddExpenseClient` and
+  `ReviewStage`. The `NEXT_PUBLIC_` alternative was rejected twice over: it inlines the value
+  at BUILD time, and `.env.example` rules out that prefix without exception.
+
+  Enforcement is two layers, and the split is the point. `.max(PHOTO_CAP_CEILING)` is
+  structural and static, so a malformed variable cannot widen the action's input; the product
+  cap is a `.refine()` that reads the env at PARSE time, i.e. per request. A `.max()` there
+  would freeze the value into the schema at module load — which happens to work while the cap
+  is per-deployment and would silently stop the day it becomes per-user. The picker's cap is
+  UX; this is the boundary.
+
+  One bound had to move with it: `CreateExpenseInput` in `lib/schema/expense.ts` capped the
+  photos array at 20, which would have become the *real* ceiling and made the env var stop
+  working above 20 with every test about the cap still green. It is now 50 — deliberately a
+  literal, since importing F06's constants would give that wave-1 module an edge into wave-3
+  code — and `tests/photos.cap.test.ts` asserts it never undercuts `PHOTO_CAP_CEILING`.
+
+  Storage, since the constants file exists to make this argument: at the ~300 KB compression
+  target a full 20-photo group is ~6 MB against the 1 GB `BLOB_FREE_TIER_BYTES` that
+  `npm run blob:usage` reports. Raising the variable raises that number linearly.
+
+
 ## [v0.2.0] - 2026-08-21
 
 One feature card (F11, F12) and one design revamp, on top of v0.1.0's ten features. The

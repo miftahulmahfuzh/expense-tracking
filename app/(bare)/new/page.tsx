@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { requireUserId } from '@/lib/auth/requireUserId'
 import { currentMonthKey, todayJakartaISO } from '@/lib/format'
+import { maxPhotosPerGroup } from '@/lib/photos/cap'
 
 import { AddExpenseClient } from './AddExpenseClient'
 
@@ -32,11 +33,18 @@ export default async function NewExpensePage() {
    * accepted: the date field is visible and editable, and a client clock ticking in the
    * background to fix it would be a worse trade than an off-by-one a user can see.
    */
+  /*
+   * The photo cap is read on the SERVER too, for the same reason as the dates: it is
+   * configuration (`PHOTO_MAX_PER_GROUP`) held in `@/lib/env`, which is `server-only`.
+   * It reaches the picker as a prop through AddExpenseClient — never as an import — so the
+   * number stays out of the client bundle and out of a `NEXT_PUBLIC_` build-time inline.
+   */
   return (
     <AddExpenseClient
       userId={userId}
       todayISO={todayJakartaISO()}
       backHref={`/m/${currentMonthKey()}`}
+      maxPhotos={maxPhotosPerGroup()}
     />
   )
 }

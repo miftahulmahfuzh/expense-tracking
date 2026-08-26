@@ -50,6 +50,8 @@ import {
  */
 export type ReviewStageProps = {
   draft: DraftExpense
+  /** `PHOTO_MAX_PER_GROUP`, resolved server-side and drilled down to PhotoPicker. */
+  maxPhotos: number
   errors: FieldErrors
   focus: FocusRequest
   save: SaveStatus
@@ -350,6 +352,7 @@ export function ReviewStage(props: ReviewStageProps) {
         <PhotoPicker
           mode="staged"
           className="mt-5"
+          max={props.maxPhotos}
           value={draft.photos}
           onChange={props.onPhotosChange}
           onBusyChange={props.onPhotosBusyChange}
