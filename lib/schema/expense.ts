@@ -65,7 +65,15 @@ export type NewPhotoInputSchema = z.infer<typeof NewPhotoInputSchema>
 export const CreateExpenseInput = ParsedExpense.extend({
   note: NoteSchema.optional(),
   rawText: z.string().max(20_000).optional(),
-  photos: z.array(NewPhotoInputSchema).max(20).optional(),
+  /*
+   * A STRUCTURAL bound, not the product cap. The per-group cap is configuration
+   * (`PHOTO_MAX_PER_GROUP`) and `app/actions/expenses.ts` enforces it per request; 50 here
+   * is only "no sane payload is longer than this", and must stay >= PHOTO_CAP_CEILING or
+   * this schema silently becomes the real cap and the env var stops working above 20.
+   * Spelled as a literal on purpose: importing F06's constants would give this wave-1
+   * module an edge into wave-3 code, which is the tightening expenses.ts documents.
+   */
+  photos: z.array(NewPhotoInputSchema).max(50).optional(),
 })
 export type CreateExpenseInput = z.infer<typeof CreateExpenseInput>
 

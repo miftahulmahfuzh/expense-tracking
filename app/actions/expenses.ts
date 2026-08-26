@@ -14,7 +14,8 @@ import { getOwnedGroupAnchor } from '@/lib/db/queries'
 import { expenseGroups, expenseItems, expensePhotos } from '@/lib/db/schema'
 import { isValidDateISO, monthKey } from '@/lib/format'
 import { newGroupId, newItemId, newPhotoId } from '@/lib/id'
-import { MAX_PHOTOS_PER_GROUP, PHOTO_STORED_PATHNAME_RE } from '@/lib/photos/constants'
+import { maxPhotosPerGroup } from '@/lib/photos/cap'
+import { PHOTO_CAP_CEILING, PHOTO_STORED_PATHNAME_RE } from '@/lib/photos/constants'
 import { CreateExpenseInput as CreateExpenseInputBase } from '@/lib/schema/expense'
 
 import { revalidateGroup } from './_revalidate'
@@ -40,10 +41,17 @@ import { revalidateGroup } from './_revalidate'
  *    `string().max(500)` because importing F06's constants would give a pure wave-1 module
  *    an edge into wave-3 code; this is the same tightening `attachPhoto` applies, and for
  *    the same reason — only F06 knows what a blob pathname looks like.
- *  - the array is capped at `MAX_PHOTOS_PER_GROUP`, which is the per-group cap the picker
- *    enforces. It currently equals F03a's own 20, but it is spelled as the constant on
- *    purpose: the day the picker's cap drops again, a crafted request must not be able to
- *    walk past it just because the two numbers happened to agree.
+ *  - the array is capped at the per-group cap the picker enforces, which is configuration
+ *    (`PHOTO_MAX_PER_GROUP`) and not a constant. The cap is enforced in TWO layers on
+ *    purpose:
+ *      `.max(PHOTO_CAP_CEILING)` is structural and static — the largest array this action
+ *        will ever consider, whatever the env says, so a malformed variable cannot widen it.
+ *      `.refine(...)` is the product cap, and reads `maxPhotosPerGroup()` at PARSE time,
+ *        i.e. per request. A `.max()` here would freeze the env value into the schema at
+ *        module load, which happens to work today (env is fixed per deployment) and would
+ *        silently stop working the moment the cap becomes per-user.
+ *    The picker enforcing a cap is UX; this is the boundary. A crafted request must not be
+ *    able to walk past the picker just because the browser was told a smaller number.
  *
  * What is deliberately NOT checked: whether a `blobPathname` is already referenced by some
  * other group's row. `attachPhoto` does not check it either, and a second, divergent copy
@@ -62,7 +70,10 @@ const CreateExpenseInput = CreateExpenseInputBase.extend({
         sizeBytes: z.number().int().positive().max(50_000_000),
       }),
     )
-    .max(MAX_PHOTOS_PER_GROUP)
+    .max(PHOTO_CAP_CEILING)
+    .refine((photos) => photos.length <= maxPhotosPerGroup(), {
+      error: () => `at most ${maxPhotosPerGroup()} photos per expense`,
+    })
     .optional(),
 })
 export type CreateExpenseInput = z.infer<typeof CreateExpenseInput>

@@ -195,7 +195,15 @@ describe('CreateExpenseInput (reconciliation R-2)', () => {
     expect(withIds).not.toHaveProperty('photoIds')
   })
 
-  it('caps the gallery at 20 photos', () => {
+  /*
+   * This bound is STRUCTURAL, and is no longer the number a user meets. The per-group cap
+   * became configuration (`PHOTO_MAX_PER_GROUP`, default 20) and is enforced per request in
+   * app/actions/expenses.ts; 50 here is only the outer edge of a sane payload, and exists so
+   * a malformed env var cannot widen this schema. tests/photos.cap.test.ts asserts the
+   * relationship between the two — that this bound never undercuts PHOTO_CAP_CEILING, which
+   * is the way the env var silently stops working above 20.
+   */
+  it('bounds the gallery structurally at 50 photos, above any configured cap', () => {
     const photo = {
       blobUrl: 'https://example.public.blob.vercel-storage.com/photos/a.jpg',
       blobPathname: 'photos/a.jpg',
@@ -204,10 +212,10 @@ describe('CreateExpenseInput (reconciliation R-2)', () => {
       sizeBytes: 1,
     }
     expect(
-      CreateExpenseInput.safeParse({ ...CANONICAL, photos: Array(20).fill(photo) }).success,
+      CreateExpenseInput.safeParse({ ...CANONICAL, photos: Array(50).fill(photo) }).success,
     ).toBe(true)
     expect(
-      CreateExpenseInput.safeParse({ ...CANONICAL, photos: Array(21).fill(photo) }).success,
+      CreateExpenseInput.safeParse({ ...CANONICAL, photos: Array(51).fill(photo) }).success,
     ).toBe(false)
   })
 })

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { discardStagedPhotos } from '@/app/actions/photos'
 import { CloseIcon } from '@/components/ui'
 import { cn } from '@/lib/cn'
-import { MAX_PHOTOS_PER_GROUP } from '@/lib/photos/constants'
+import { DEFAULT_MAX_PHOTOS_PER_GROUP } from '@/lib/photos/constants'
 import type { StagedPhoto } from '@/lib/photos/types'
 
 import { UploadTile } from './UploadTile'
@@ -25,7 +25,12 @@ import { usePhotoUploads } from './usePhotoUploads'
  */
 
 type CommonProps = {
-  /** Default MAX_PHOTOS_PER_GROUP. */
+  /**
+   * The per-group cap. Both routes pass it explicitly, resolved from `PHOTO_MAX_PER_GROUP`
+   * by their Server Component — this component cannot read it itself, because `@/lib/env`
+   * is `server-only` and importing it here would put `server-only` in the browser bundle.
+   * The default is the fallback for a caller that has no server to ask.
+   */
   max?: number
   disabled?: boolean
   className?: string
@@ -56,7 +61,7 @@ export type PhotoPickerProps = CommonProps &
   )
 
 export function PhotoPicker(props: PhotoPickerProps) {
-  const { max = MAX_PHOTOS_PER_GROUP, disabled = false, className, onBusyChange } = props
+  const { max = DEFAULT_MAX_PHOTOS_PER_GROUP, disabled = false, className, onBusyChange } = props
 
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
