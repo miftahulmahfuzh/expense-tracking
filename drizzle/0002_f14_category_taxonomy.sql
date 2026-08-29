@@ -1,0 +1,19 @@
+-- F14 (card #6): the category taxonomy went from 8 slugs to 17.
+--
+-- `expense_items.category` is `text`, not a PG enum, so NOTHING structural changes here —
+-- this migration is data only, and drizzle-kit generates no DDL for it. It exists so that
+-- no row is left holding a slug the application no longer defines.
+--
+-- WHY EVERYTHING GOES TO 'other' AND NOT TO A SPECIFIC NEW CATEGORY: the user asked for
+-- exactly this. `food` split five ways (meals / jajan / dining / snacks / drinks) and no
+-- rule on the stored row can tell which — the item name is free text and the amount does
+-- not separate a warung lunch from a treat. A wrong auto-assignment is worse than 'other',
+-- because 'other' is visibly unsorted and a wrong guess is not. The user reassigns by hand
+-- after this ships.
+--
+-- `groceries` ("Belanja Harian") is deleted outright as unused, and its rows go the same way.
+--
+-- SAFE TO RUN LATE. `toCategory()` in lib/categories.ts degrades any unknown string to
+-- 'other' and never throws, so a row still holding 'food' RENDERS as Lainnya either way.
+-- Running this makes the stored value agree with what the app already displays.
+UPDATE "expense_items" SET "category" = 'other' WHERE "category" IN ('food', 'groceries');

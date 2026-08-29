@@ -15,12 +15,20 @@ export interface CategoryPickerProps {
 }
 
 /**
- * The 2×4 grid, inside the standard Sheet.
+ * The two-column grid, inside the standard Sheet.
  *
- * Two columns, not four: "Tempat Tinggal" and "Belanja Harian" do not fit an 84px cell at
- * 414px without truncating, and a truncated label defeats the point of having one. Two
- * columns give ~180px per cell, and eight 52px cells fit on screen without scrolling — so
- * the picker never scrolls and every category is one tap away.
+ * Two columns, not four: the longest labels — "Listrik & Air Apart", "Fancy Makan Berat",
+ * "Sewa Parkir Motor" — do not fit an 84px cell at 414px without truncating, and a truncated
+ * label defeats the point of having one. Two columns give ~180px per cell.
+ *
+ * THIS SHEET NOW SCROLLS, AND THAT INVARIANT IS RETIRED ON PURPOSE. It used to read "eight
+ * 52px cells fit on screen without scrolling — so the picker never scrolls and every category
+ * is one tap away". F14 (card #6) took the set to 17, and no column count puts 17 tappable,
+ * untruncated cells on a phone screen: four columns truncate the labels above, and the labels
+ * F14 deleted ("Makan & Jajan", "Belanja Harian") were SHORTER than the ones it added, so the
+ * four-column option got worse rather than better. Scrolling is the honest cost of a taxonomy
+ * the user asked to be finer. Family section headers would cut the scroll roughly in half and
+ * are the obvious follow-up; they are not this card.
  *
  * `CATEGORY_LIST` is `CATEGORY_META` in `CATEGORIES` order (F03a), which is also F08's chart
  * series order. Keeping them identical means a colour always means the same thing in the

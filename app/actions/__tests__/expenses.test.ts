@@ -53,8 +53,8 @@ const canonical = {
   title: 'bakar duit tuesday',
   occurred_on: '2026-08-18',
   items: [
-    { name: 'roti buaya', amount_idr: 38_500, category: 'food' },
-    { name: 'ayam sambal hitam', amount_idr: 45_000, category: 'food' },
+    { name: 'roti buaya', amount_idr: 38_500, category: 'meals' },
+    { name: 'ayam sambal hitam', amount_idr: 45_000, category: 'meals' },
     { name: 'perumahan laddaland', amount_idr: 49_000, category: 'entertainment' },
   ],
 }

@@ -20,7 +20,7 @@ import { ParsedExpense, ParsedItem } from '@/lib/schema/expense'
 const ok = {
   title: 'bakar duit tuesday',
   occurred_on: '2026-08-18',
-  items: [{ name: 'roti buaya', amount_idr: 38500, category: 'food' }],
+  items: [{ name: 'roti buaya', amount_idr: 38500, category: 'meals' }],
 }
 
 describe('ParsedExpense contract', () => {
@@ -69,11 +69,11 @@ describe('ParsedItem contract', () => {
     expect(() => ParsedItem.parse({ ...item, amount_idr: 1_000_000_001 })).toThrow()
   })
 
-  it('accepts exactly the eight categories and nothing else', () => {
+  it('accepts exactly the 17 categories and nothing else', () => {
     for (const c of CATEGORIES) {
       expect(ParsedItem.parse({ ...item, category: c }).category).toBe(c)
     }
-    expect(CATEGORIES.length).toBe(8)
+    expect(CATEGORIES.length).toBe(17)
     for (const bad of ['Food', 'FOOD', 'makanan', 'travel', '', null]) {
       expect(() => ParsedItem.parse({ ...item, category: bad }), String(bad)).toThrow()
     }

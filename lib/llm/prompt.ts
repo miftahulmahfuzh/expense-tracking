@@ -80,7 +80,7 @@ export const RECORD_EXPENSE_TOOL: Anthropic.Tool = {
             category: {
               type: 'string',
               enum: [...CATEGORIES],
-              description: 'Exactly one of the eight allowed category slugs.',
+              description: `Exactly one of the ${CATEGORIES.length} allowed category slugs.`,
             },
           },
         },
@@ -105,7 +105,7 @@ Never reply with prose. Never ask a question. Never call the tool more than once
 - \`amount_idr\` is ALWAYS a whole-rupiah JSON integer. Never a string. Never a decimal. Never with separators.
   Correct: 45000    Wrong: "45000", 45.000, "Rp 45.000", 45000.0, 45.0
 - \`occurred_on\` is ALWAYS \`YYYY-MM-DD\`.
-- \`category\` is ALWAYS exactly one of: food, groceries, transport, bills, housing, entertainment, health, other. Lowercase. No other value exists.
+- \`category\` is ALWAYS exactly one of: ${CATEGORIES.join(', ')}. Lowercase. No other value exists.
 - Between 1 and 50 items. \`name\` and \`title\` are at most 120 characters.
 - Items appear in the same order as in the text.
 
@@ -232,28 +232,60 @@ NAMES: keep the user's original wording. Do not translate to English, do not exp
 
 ## CATEGORIES
 
-Assign the best of the eight. When genuinely unsure, use \`other\` — the user can retag with one tap, and a confidently wrong guess is worse than \`other\`.
+Assign the best of the ${CATEGORIES.length}. When genuinely unsure, use \`other\` — the user can retag with one tap, and a confidently wrong guess is worse than \`other\`.
 
-**food** — Makan & Jajan. Warung, restoran, kopi, snack, delivery.
-pak gembus · ayam sambal hitam · roti buaya · fan fries plaza blok m · nasi padang · nasi goreng · mie ayam · bakso · sate ayam · seblak · cireng · gorengan · martabak · dimsum · ayam geprek · kopi kenangan · es teh manis · es jeruk · es cendol · boba · gofood ayam geprek · makan siang kantin · kopi susu · permen
+**meals** — Makan Harian. The everyday meal: warung, kantin, nasi padang, a gofood lunch. The default for a normal savoury meal with no signal that it was fancy.
+pak gembus · ayam sambal hitam · nasi padang · nasi goreng · mie ayam · bakso · sate ayam · ayam geprek · soto ayam · gofood ayam geprek · makan siang kantin · warteg · lalapan · bubur ayam
 
-**groceries** — Belanja Harian. Minimarket, supermarket, bahan masak, kebutuhan rumah tangga.
-jajanan indomaret · indomaret · alfamart · superindo · hypermart · transmart · belanja bulanan · beras 5kg · telur 1kg · minyak goreng 2L · gula · sabun cuci · tisu · galon aqua · deterjen
+**jajan** — Jajan. Street food and small treats bought out — the thing you buy walking past, not a meal and not a packet off a shelf.
+gorengan · martabak · cireng · seblak · cilok · batagor · roti buaya · kue cubit · pisang goreng · es krim · dimsum pinggir jalan · fan fries plaza blok m
 
-**transport** — bensin motor · pertamax · pertalite · parkir · parkir motor · e-toll · tol dalam kota · gojek · grab · grabbike · grab ke kantor · grab pulang · maxim · ojek · angkot · busway · krl · mrt · tiket kereta · tiket pesawat · service motor · ganti oli · tambal ban
+**dining** — Fancy Makan Berat. A restaurant meal that was an occasion: steak, all-you-can-eat, hotpot, a sit-down dinner. The price is usually well above a warung meal — that, or an explicit restaurant name, is the signal.
+steak · wagyu · all you can eat · shabu shabu · hotpot · sushi · pizza hut · kfc besar · makan di resto · dinner ulang tahun · buffet · korean bbq
 
-**bills** — Tagihan. internet · indihome · biznet · wifi · listrik · token listrik · pln · pulsa · pulsa xl · paket data · IPL · IPL 3 bulan · iuran warga · iuran sampah · air pdam · bpjs · bpjs mandiri · asuransi
+**snacks** — Snack. PACKAGED snacks off a shelf, not street food. If it comes in a wrapper from a minimarket, it is here; if it was cooked in front of you, it is \`jajan\`.
+keripik · chitato · biskuit · oreo · permen · cokelat · silverqueen · wafer · kacang · snack indomaret
 
-**housing** — Tempat Tinggal. sewa apartemen · sewa apartemen bulan september · sewa kos · kontrakan · service charge · deposit sewa · cicilan rumah · biaya pindahan · perabot untuk tempat tinggal
+**drinks** — Beverage. Anything drunk, bought on its own. A drink that came WITH a meal is part of that meal's item, not a separate one.
+kopi kenangan · kopi susu · es teh manis · es jeruk · es cendol · boba · chatime · starbucks · jus alpukat · air mineral · aqua botol · teh pucuk
 
-**entertainment** — Hiburan. Film titles, games, subscriptions, outings.
-kungfu soccer (this is a film) · perumahan laddaland (also a film — "Laddaland"; the word "perumahan" here is part of the TITLE, not a housing payment) · bioskop · xxi · cgv · tiket konser · netflix · spotify · disney+ · youtube premium · steam · top up ml · top up genshin · game · karaoke · billiard
+**transport** — Transport. Getting somewhere. NARROWED by F14: fuel and parking now have their own categories and must NOT come here.
+gojek · grab · grabbike · grab ke kantor · grab pulang · maxim · ojek · angkot · busway · krl · mrt · tiket kereta · tiket pesawat · e-toll · tol dalam kota · service motor · ganti oli · tambal ban
 
-**health** — Kesehatan. obat · tebus obat · apotek · kimia farma · vitamin · vitamin c 1000mg · konsul dokter umum · klinik · rumah sakit · lab · vaksin · masker · plester · grab ke klinik is transport, not health
+**fuel** — Bensin. Filling the tank, and nothing else.
+bensin · bensin motor · pertamax · pertalite · isi bensin · isi full tank · shell · spbu
 
-**other** — Lainnya. Everything that fits none of the above: kado · sumbangan · amplop kondangan · transfer · biaya admin bank · tarik tunai · laundry · potong rambut · servis laptop · tip · elektronik (laptop, laptop bekas, headset, mouse, mousepad, kabel usb) · deposit galon
+**parking** — Sewa Parkir Motor. The monthly motorbike parking rental, and ordinary parking fees.
+sewa parkir motor · parkir bulanan · parkir motor · parkir mall · parkir · karcis parkir
 
-Ambiguity rule: a proper noun that could be a film, game, restaurant, or place is often NOT what its literal words suggest. Judge from context — the surrounding lines and the price. Two adjacent lines at an identical ticket-like price (e.g. two lines at 49k next to each other) are usually two cinema tickets, not one housing payment: \`perumahan laddaland 49k\` next to \`kungfu soccer 49k\` is two movie tickets, both \`entertainment\`. Rent and service charges are monthly amounts in the hundreds of thousands or millions, not 49 ribu. When you cannot tell, use \`other\`.
+**bills** — Tagihan. Recurring bills that are NOT internet and NOT electricity/water — those two have their own categories now (F14).
+pulsa · pulsa xl · paket data · IPL · IPL 3 bulan · iuran warga · iuran sampah · bpjs · bpjs mandiri · asuransi · cicilan
+
+**internet** — Internet. The home/apartment internet subscription.
+internet · indihome · biznet · wifi · wifi bulanan · myrepublic · first media · tagihan internet
+
+**utilities** — Listrik & Air Apart. Electricity and water for the apartment.
+listrik · token listrik · pln · tagihan listrik · air pdam · air apart · tagihan air · listrik apart
+
+**housing** — Tempat Tinggal. The roof itself — rent and what the building charges for it. These are monthly amounts in the hundreds of thousands or millions, never 49 ribu.
+sewa apartemen · sewa apartemen bulan september · sewa kos · kontrakan · service charge · deposit sewa · cicilan rumah · biaya pindahan
+
+**entertainment** — Hiburan. Leisure that is not the cinema — games, subscriptions, going out. NARROWED by F14: bioskop is its own category now.
+netflix · spotify · disney+ · youtube premium · steam · top up ml · top up genshin · game · karaoke · billiard · bowling · kolam renang · tiket konser · main futsal
+
+**cinema** — Bioskop. The cinema, and film titles. A proper noun that is a FILM belongs here even when its words look like something else: \`perumahan laddaland\` is the film "Laddaland", not a housing payment, and \`kungfu soccer\` is a film, not sport. Two adjacent lines at an identical ticket-like price (e.g. two at 49k) are two cinema tickets.
+bioskop · xxi · cgv · cinepolis · tiket film · kungfu soccer · perumahan laddaland · nonton · popcorn xxi
+
+**health** — Kesehatan. obat · tebus obat · apotek · kimia farma · vitamin · vitamin c 1000mg · konsul dokter umum · klinik · rumah sakit · lab · vaksin · masker · plester · pijat refleksi · pijat · grab ke klinik is transport, not health
+
+**grooming** — Pangkas Rambut. Hair and personal grooming as a SERVICE.
+pangkas rambut · potong rambut · cukur · barbershop · salon · creambath · gunting rambut
+
+**other** — Lainnya. Everything that fits none of the above: kado · sumbangan · amplop kondangan · transfer · biaya admin bank · tarik tunai · laundry · servis laptop · tip · elektronik (laptop, laptop bekas, headset, mouse, mousepad, kabel usb) · deposit galon · galon aqua · belanja indomaret · alfamart · beras · telur · minyak goreng · sabun · deterjen · tisu
+
+Ambiguity rule: a proper noun that could be a film, game, restaurant, or place is often NOT what its literal words suggest. Judge from context — the surrounding lines and the price. \`perumahan laddaland 49k\` next to \`kungfu soccer 49k\` is two movie tickets, both \`cinema\`, NOT one housing payment: rent and service charges are monthly amounts in the hundreds of thousands or millions, not 49 ribu. When you cannot tell, use \`other\`.
+
+Eating is split five ways, so decide in this order: was it drunk (\`drinks\`) → was it a packet off a shelf (\`snacks\`) → was it street food bought out (\`jajan\`) → was it an occasion or a restaurant (\`dining\`) → otherwise it is an ordinary meal (\`meals\`). When two of these genuinely fit, prefer \`meals\`; it is the common case and the one the user retags least.
 
 ## CONTEXT
 
@@ -267,7 +299,7 @@ Read your own output back and confirm:
 3. No amount looks like it was divided by 1000 (38.5 instead of 38500).
 4. \`occurred_on\` matches YYYY-MM-DD, and the day and month are not swapped.
 5. No total / subtotal / jumlah line became an item.
-6. Every \`category\` is one of the eight lowercase slugs.
+6. Every \`category\` is one of the ${CATEGORIES.length} lowercase slugs.
 7. The item count matches the number of priced lines in the text.
 
 Now call \`record_expense\`.`

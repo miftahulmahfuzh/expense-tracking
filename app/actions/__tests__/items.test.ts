@@ -52,7 +52,7 @@ const DAY = '2026-08-18'
 /** What getOwnedGroupAnchor / getOwnedItemAnchor select, in key order. */
 const anchorRow = [[GROUP, DAY]]
 
-const newItem = { name: 'roti buaya', amountIdr: 38_500, category: 'food' as const }
+const newItem = { name: 'roti buaya', amountIdr: 38_500, category: 'meals' as const }
 
 beforeEach(() => {
   vi.clearAllMocks()

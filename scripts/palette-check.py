@@ -9,7 +9,7 @@ arriving from a later Claude Design pull, edit the two dicts and re-run rather t
 the result. This is a hard gate: every "AMENDED"/"ADDED" note in globals.css cites a number
 that comes from here, and an un-run check is an unverified claim.
 
-CURRENT SYSTEM: the 2026-08-21 "flat, loud, graphic" pull (Archivo, cool grey paper, red
+CATEGORY SET: the seventeen of F14 (card #6). CURRENT SYSTEM: the 2026-08-21 "flat, loud, graphic" pull (Archivo, cool grey paper, red
 brand, yellow highlighter). Three things it checks that a generic contrast tool would not:
 
   1. THE DISC MARK. A category colour is a FILL now, not text — the pictogram is a solid
@@ -20,9 +20,10 @@ brand, yellow highlighter). Three things it checks that a generic contrast tool 
   2. SURFACES THAT DO NOT FLIP. Yellow, the tab-bar trio and the disc mark are the same
      value in both schemes by design, so they are checked in both rather than once.
 
-  3. Pairwise separation in Oklab, because eight hues that each pass contrast against the
+  3. Pairwise separation in Oklab, because hues that each pass contrast against the
      background can still be indistinguishable from each other, which is the failure R-3
-     caught in the original donut.
+     caught in the original donut. Reported, never enforced: since F14 took the set to 17
+     the 0.10 floor is unreachable at all — see WAIVER.
 
   4. THE FROSTED SURFACES. Since R-137 no surface in the app is a flat colour: every box that
      was white is now a translucent tint over a 14px blur of the cut-out wallpaper, so "ink on
@@ -89,14 +90,25 @@ def delta_e(a: str, b: str) -> float:
 
 # ------------------------------------------------------------------------ tokens
 
+# F14 (card #6): 8 → 17, ordered by family. Must stay in step with lib/categories.ts
+# CATEGORIES — that order is the picker grid and F08's chart series.
 CATS = [
-    'food',
-    'groceries',
+    'meals',
+    'jajan',
+    'dining',
+    'snacks',
+    'drinks',
     'transport',
+    'fuel',
+    'parking',
     'bills',
+    'internet',
+    'utilities',
     'housing',
     'entertainment',
+    'cinema',
     'health',
+    'grooming',
     'other',
 ]
 
@@ -117,15 +129,19 @@ FIXED = {
 BAR_WAIVER = '''WAIVER — the category breakdown's bar-on-track pairing is below 3:1 in light mode.
 
 The bar list draws each category over a `rule` track. In LIGHT that track is #d7d7d3, and
-four of the eight fills land under 3:1 against it (bills 1.45, health 2.05, groceries 2.30,
-entertainment 2.68). Dark mode clears all eight.
+THIRTEEN of the seventeen fills land under 3:1 against it — worst are snacks 1.39, bills 1.45,
+jajan 1.61, drinks 1.73 — and entertainment 2.68 is the closest miss. Dark mode clears all 17.
 
-THERE IS NO TRACK COLOUR THAT FIXES IT, and that is why this is a waiver rather than a bug
-left open. The eight fills span L* 0.17 (food) to 0.45 (bills). A track dark enough for bills
-to clear would have to sit below L 0.025 — effectively black — and food would still fail
-against anything lighter than that; a track light enough for food would have to exceed L 1.0,
-which does not exist. Any single track fails at one end or the other. This is inherent to a
-bright eight-hue palette on a light page, not to this particular grey.
+F14 MADE THIS WORSE IN COUNT AND NOT IN KIND: it was four of eight, it is now thirteen of
+seventeen, because the palette grew toward the bright yellows and cyans that a light track
+cannot hold. The argument below is unchanged, and is why this stays a waiver and not a bug.
+
+THERE IS NO TRACK COLOUR THAT FIXES IT. The seventeen fills span L* 0.18 (meals) to 0.47
+(snacks). A track dark enough for snacks to clear would have to sit below L 0.025 —
+effectively black — and meals would still fail against anything lighter than that; a track
+light enough for meals would have to exceed L 1.0, which does not exist. Any single track
+fails at one end or the other. This is inherent to a bright multi-hue palette on a light
+page, not to this particular grey.
 
 What carries the information instead, on every single row, above the bar:
 
@@ -161,18 +177,25 @@ LIGHT = {
     'green-ink': '#12692f',
     # Added: the chart's completed-month bar, pushed off --rule (1.44:1) to clear 3:1.
     'chart-bar': '#8f8f8f',
-    # Amended from the design's #e0281e (4.49:1 under the black mark — one hundredth under).
-    # The BRAND red above keeps the design's exact value; only the disc moves.
-    'cat-food': '#e22c22',
-    'cat-groceries': '#1fa24a',
-    # Amended from the design's #1d6fe0 (4.18:1 under the black mark).
+    # F14: the 17. `meals` inherits the old `food` red (amended from the design's #e0281e,
+    # 4.49:1 under the black mark); transport/housing/other keep their own pre-F14
+    # amendments; `grooming` reuses the green freed by deleting `groceries`.
+    'cat-meals': '#e22c22',
+    'cat-jajan': '#f59220',
+    'cat-dining': '#f4632a',
+    'cat-snacks': '#d8b41a',
+    'cat-drinks': '#16b3d4',
     'cat-transport': '#2273e6',
+    'cat-fuel': '#6f8fe8',
+    'cat-parking': '#4aa8d8',
     'cat-bills': '#e8a800',
-    # Amended from the design's #7a44e0 (3.46:1 under the black mark).
+    'cat-internet': '#9d7bf0',
+    'cat-utilities': '#b06ae0',
     'cat-housing': '#8c5ae8',
     'cat-entertainment': '#e23da4',
+    'cat-cinema': '#f06fb0',
     'cat-health': '#0fa89a',
-    # Amended from the design's #6e6e6e (4.12:1 under the black mark).
+    'cat-grooming': '#1fa24a',
     'cat-other': '#767676',
 }
 
@@ -194,13 +217,22 @@ DARK = {
     'pink': '#2a1518',
     'green-ink': '#3ed874',
     'chart-bar': '#6e6e6e',
-    'cat-food': '#ff5a4e',
-    'cat-groceries': '#3ed874',
+    'cat-meals': '#ff5a4e',
+    'cat-jajan': '#ffb04a',
+    'cat-dining': '#ff8a5c',
+    'cat-snacks': '#f5d76b',
+    'cat-drinks': '#4ad9f0',
     'cat-transport': '#5b9cff',
+    'cat-fuel': '#8fb0ff',
+    'cat-parking': '#6fc8ea',
     'cat-bills': '#ffd23f',
+    'cat-internet': '#bda6ff',
+    'cat-utilities': '#d09aff',
     'cat-housing': '#a98bff',
     'cat-entertainment': '#ff6fc4',
+    'cat-cinema': '#ffa0d8',
     'cat-health': '#3fe0cf',
+    'cat-grooming': '#3ed874',
     'cat-other': '#9e9e9e',
 }
 
@@ -267,9 +299,19 @@ than the sheep's wool without the tint being re-derived.'''
 
 WAIVER = '''WAIVER — categorical separation is knowingly below the 0.10 floor, in both themes.
 
-The eight hues are muted and earthy by design and sit as close as 0.042 apart in Oklab. That
-was the exact failure R-3 caught in the original eight-slice donut, and it is NOT a failure
-here, for one structural reason: in this design colour never carries a category on its own.
+The seventeen hues sit as close as 0.031 apart in Oklab — snacks/bills, then internet/utilities
+0.039 and drinks/parking 0.047 (those are dark; light is 0.036 / 0.050 / 0.038). That was the
+exact failure R-3 caught in the original eight-slice donut, and it is NOT a failure here, for
+one structural reason: in this design colour never carries a category on its own.
+
+F14 TOOK THE SET FROM 8 TO 17, AND THE FLOOR IS NOW UNREACHABLE BY CONSTRUCTION — worth stating
+plainly rather than leaving as an accident. Seventeen hues that are each ≥0.10 apart in Oklab
+AND each ≥4.5:1 under a black disc mark do not fit in sRGB: the contrast gate confines every
+fill to a bright band, and seventeen points spread through that band land inside 0.10 of a
+neighbour. So the hues are assigned by FAMILY instead — eating red→orange→yellow, transport
+blue, bills/home violet, leisure pink, health teal, grooming green — and the closest pairs are
+the ones INSIDE a family, where the confusion is between two categories the user already reads
+as related. The two-letter code is what separates them.
 
   · Every chip, picker cell, item row, bar-list head, tooltip and legend entry renders the
     disc's two-letter code and, wherever there is room, the Indonesian label. `Chip`,
@@ -278,12 +320,13 @@ here, for one structural reason: in this design colour never carries a category 
   · The 12-month chart has no categorical series at all — the current month is `red` and
     every other month is `chart-bar`.
   · The category breakdown is a bar list, not a donut, so each colour is attached to its own
-    labelled row rather than competing with seven neighbours around a ring.
+    labelled row rather than competing with sixteen neighbours around a ring.
 
 THIS WAIVER EXPIRES the moment a view identifies a category by colour alone. If F08 (or
 anyone) adds a legend without codes, a pie, a stacked bar, or a colour-keyed sparkline, the
-0.042 number becomes a real defect and the hues have to be re-spaced. Re-read this before
-adding any chart that is not the bar list.'''
+0.031 number becomes a real defect — and at 17 categories re-spacing the hues will not rescue
+it, so such a view has to carry the codes instead. Re-read this before adding any chart that
+is not the bar list.'''
 
 
 def glass_surfaces(t: dict[str, str], scheme: str) -> dict[str, str]:

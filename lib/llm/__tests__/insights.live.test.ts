@@ -81,9 +81,9 @@ function fixtureRows(): WindowItemRow[] {
       occurredOn: day,
       name: 'Nasi Cordoba',
       amountIdr: day >= '2026-08-19' ? 27000 : 25000,
-      category: 'food',
+      category: 'meals',
     })
-    rows.push({ occurredOn: day, name: 'Trikayo', amountIdr: 38000, category: 'food' })
+    rows.push({ occurredOn: day, name: 'Trikayo', amountIdr: 38000, category: 'meals' })
   }
   rows.push({
     occurredOn: '2026-08-10',

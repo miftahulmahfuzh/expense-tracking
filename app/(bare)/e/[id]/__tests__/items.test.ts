@@ -17,7 +17,7 @@ import { nextSortOrder, reduceItems, totalOf, type EditableItem, type EditableMe
 import type { GroupDetail } from '@/lib/db/queries'
 
 const items: EditableItem[] = [
-  { id: 'itm000000001', name: 'roti buaya', amountIdr: 38_500, category: 'food', sortOrder: 0 },
+  { id: 'itm000000001', name: 'roti buaya', amountIdr: 38_500, category: 'meals', sortOrder: 0 },
   {
     id: 'itm000000002',
     name: 'kungfu soccer',
@@ -25,7 +25,7 @@ const items: EditableItem[] = [
     category: 'entertainment',
     sortOrder: 1,
   },
-  { id: 'itm000000003', name: 'pak gembus', amountIdr: 26_000, category: 'food', sortOrder: 2 },
+  { id: 'itm000000003', name: 'pak gembus', amountIdr: 26_000, category: 'meals', sortOrder: 2 },
 ]
 
 describe('reduceItems', () => {
@@ -74,7 +74,7 @@ describe('reduceItems', () => {
         id: 'optimistic_3_es teh',
         name: 'es teh',
         amountIdr: 6_000,
-        category: 'food',
+        category: 'meals',
         sortOrder,
       },
     })

@@ -131,10 +131,11 @@
   /*
    * ADDED, for the same reason and by the same method as `--red-ink`. The design has no
    * green: "spending less than last month" is expressed by FILLING the delta tile with
-   * `--cat-groceries` and setting black on it. Where that reading has to be type instead —
+   * `--cat-grooming` and setting black on it. Where that reading has to be type instead —
    * `Money tone="success"` is a published prop and four features can reach it — the disc
    * green measures 3.32:1 on card. This is that green darkened until it clears (6.80 card /
-   * 5.53 paper). Fills use `--cat-groceries`, type uses `--green-ink`.
+   * 5.53 paper). Fills use `--cat-grooming` — the same green, which F14 moved off the deleted
+   * `groceries` rather than dropping — and type uses `--green-ink`.
    */
   --green-ink: #12692f;
 
@@ -154,33 +155,46 @@
   --tab-ink: #ffe600; /* active label + dot — 15.4:1 on the bar   */
   --tab-ink-3: #8f8f8f; /* inactive label — 6.02:1 on the bar       */
 
-  /* -- the 8 categories ---------------------------------------------------
+  /* -- the 17 categories (F14) ---------------------------------------------------
      Pictogram discs: a solid colour circle carrying a bold BLACK two-letter
-     mark, in both schemes. That only works if every disc stays bright enough
-     for black type, which is why three of the light values below are nudged
-     off the design's. */
+     mark, in both schemes. That only works if EVERY disc stays bright enough for black
+     type at 4.5:1 — in both schemes — which is the hard gate scripts/palette-check.py
+     enforces, and which is why the values carrying an AMENDED note below sit off the
+     design's. F14 took this from 8 hues to 17: they are ordered and assigned by family
+     (eating red→orange→yellow, transport blue, bills/home violet, leisure pink, health
+     teal, grooming green) because seventeen mutually distinguishable hues do not exist.
+     The two-letter disc code, not the colour, is what makes a category unambiguous. */
   /*
-   * AMENDED: the design makes `food` the brand red exactly, and at #e0281e the black disc
-   * mark measures 4.49:1 — one hundredth under. Nudged until it clears (4.62). The BRAND
-   * red above is untouched: this moves the disc only, and the two differ by an amount no
-   * one can see next to each other.
+   * Inherited from F14's predecessor `food`, which was the brand red exactly at #e0281e —
+   * where the black disc mark measured 4.49:1, one hundredth under. Nudged until it cleared
+   * (4.62). The BRAND red is untouched: this moves the disc only.
    */
-  --cat-food: #e22c22;
-  --cat-groceries: #1fa24a;
-  /* AMENDED: design #1d6fe0 → 4.18:1 under the black mark. Now 4.66:1. */
+  --cat-meals: #e22c22;
+  --cat-jajan: #f59220;
+  --cat-dining: #f4632a;
+  --cat-snacks: #d8b41a;
+  --cat-drinks: #16b3d4;
+  /* AMENDED (pre-F14): design #1d6fe0 → 4.18:1 under the black mark. Now 4.66:1. */
   --cat-transport: #2273e6;
+  --cat-fuel: #6f8fe8;
+  --cat-parking: #4aa8d8;
   --cat-bills: #e8a800;
-  /* AMENDED: design #7a44e0 → 3.46:1 under the black mark. Now 4.74:1. */
+  --cat-internet: #9d7bf0;
+  --cat-utilities: #b06ae0;
+  /* AMENDED (pre-F14): design #7a44e0 → 3.46:1 under the black mark. Now 4.74:1. */
   --cat-housing: #8c5ae8;
-  --cat-entertainment: #e23da4; /* the design's `fun` */
+  --cat-entertainment: #e23da4;
+  --cat-cinema: #f06fb0;
   --cat-health: #0fa89a;
-  /* AMENDED: design #6e6e6e → 4.12:1 under the black mark. Now 4.62:1. */
+  /* F14: reuses the green freed by deleting `groceries`, unchanged in value. */
+  --cat-grooming: #1fa24a;
+  /* AMENDED (pre-F14): design #6e6e6e → 4.12:1 under the black mark. Now 4.62:1. */
   --cat-other: #767676;
 
   /*
    * The mark drawn ON a category disc. Pure black rather than the design's
    * #0d0d0d: at 9px/900 the mark is small text, and the extra 0.3 of contrast
-   * is what carries `--cat-food` over 4.5:1 without moving the brand red.
+   * is what carries `--cat-meals` over 4.5:1 without moving the brand red.
    * Never theme-reactive — the discs stay bright in dark mode, so the mark
    * stays black. "No recolouring of text, ever" (Foundations).
    */
@@ -194,13 +208,22 @@
    * and pointing that at a property of the same name would be a circular
    * reference that computes to nothing. Two names, one value, no cycle.
    */
-  --color-cat-food: var(--cat-food);
-  --color-cat-groceries: var(--cat-groceries);
+  --color-cat-meals: var(--cat-meals);
+  --color-cat-jajan: var(--cat-jajan);
+  --color-cat-dining: var(--cat-dining);
+  --color-cat-snacks: var(--cat-snacks);
+  --color-cat-drinks: var(--cat-drinks);
   --color-cat-transport: var(--cat-transport);
+  --color-cat-fuel: var(--cat-fuel);
+  --color-cat-parking: var(--cat-parking);
   --color-cat-bills: var(--cat-bills);
+  --color-cat-internet: var(--cat-internet);
+  --color-cat-utilities: var(--cat-utilities);
   --color-cat-housing: var(--cat-housing);
   --color-cat-entertainment: var(--cat-entertainment);
+  --color-cat-cinema: var(--cat-cinema);
   --color-cat-health: var(--cat-health);
+  --color-cat-grooming: var(--cat-grooming);
   --color-cat-other: var(--cat-other);
 
   /*
@@ -259,13 +282,22 @@
     --pink: #2a1518;
     --scrim: rgba(0, 0, 0, 0.65);
 
-    --cat-food: #ff5a4e;
-    --cat-groceries: #3ed874;
+    --cat-meals: #ff5a4e;
+    --cat-jajan: #ffb04a;
+    --cat-dining: #ff8a5c;
+    --cat-snacks: #f5d76b;
+    --cat-drinks: #4ad9f0;
     --cat-transport: #5b9cff;
+    --cat-fuel: #8fb0ff;
+    --cat-parking: #6fc8ea;
     --cat-bills: #ffd23f;
+    --cat-internet: #bda6ff;
+    --cat-utilities: #d09aff;
     --cat-housing: #a98bff;
     --cat-entertainment: #ff6fc4;
+    --cat-cinema: #ffa0d8;
     --cat-health: #3fe0cf;
+    --cat-grooming: #3ed874;
     --cat-other: #9e9e9e;
 
     /* 3.48:1 on card. */
@@ -309,13 +341,22 @@
   --pink: #2a1518;
   --scrim: rgba(0, 0, 0, 0.65);
 
-  --cat-food: #ff5a4e;
-  --cat-groceries: #3ed874;
+  --cat-meals: #ff5a4e;
+  --cat-jajan: #ffb04a;
+  --cat-dining: #ff8a5c;
+  --cat-snacks: #f5d76b;
+  --cat-drinks: #4ad9f0;
   --cat-transport: #5b9cff;
+  --cat-fuel: #8fb0ff;
+  --cat-parking: #6fc8ea;
   --cat-bills: #ffd23f;
+  --cat-internet: #bda6ff;
+  --cat-utilities: #d09aff;
   --cat-housing: #a98bff;
   --cat-entertainment: #ff6fc4;
+  --cat-cinema: #ffa0d8;
   --cat-health: #3fe0cf;
+  --cat-grooming: #3ed874;
   --cat-other: #9e9e9e;
 
   --chart-bar: #6e6e6e;
@@ -503,13 +544,22 @@
   --color-disc-ink: var(--disc-ink);
   --color-photo-void: var(--photo-void);
 
-  --color-cat-food: var(--cat-food);
-  --color-cat-groceries: var(--cat-groceries);
+  --color-cat-meals: var(--cat-meals);
+  --color-cat-jajan: var(--cat-jajan);
+  --color-cat-dining: var(--cat-dining);
+  --color-cat-snacks: var(--cat-snacks);
+  --color-cat-drinks: var(--cat-drinks);
   --color-cat-transport: var(--cat-transport);
+  --color-cat-fuel: var(--cat-fuel);
+  --color-cat-parking: var(--cat-parking);
   --color-cat-bills: var(--cat-bills);
+  --color-cat-internet: var(--cat-internet);
+  --color-cat-utilities: var(--cat-utilities);
   --color-cat-housing: var(--cat-housing);
   --color-cat-entertainment: var(--cat-entertainment);
+  --color-cat-cinema: var(--cat-cinema);
   --color-cat-health: var(--cat-health);
+  --color-cat-grooming: var(--cat-grooming);
   --color-cat-other: var(--cat-other);
 
   /* Three radii, and that is the entire vocabulary. `chip` is the 2px

@@ -86,19 +86,32 @@ Every feature plan must build against exactly this. If a plan needs to change so
 
 ```ts
 export const CATEGORIES = [
-  'food',          // Makan & Jajan — warung, resto, kopi, snack
-  'groceries',     // Belanja Harian — Indomaret, Alfamart, supermarket
-  'transport',     // Transport — bensin, parkir, tol, ojek, grab
-  'bills',         // Tagihan — internet, listrik, pulsa, IPL, iuran
-  'housing',       // Tempat Tinggal — sewa apartemen, kos, service charge
-  'entertainment', // Hiburan — bioskop, game, langganan streaming
-  'health',        // Kesehatan — obat, dokter, vitamin
-  'other',         // Lainnya
+  'meals',           // Makan Harian — warung, kantin, nasi padang, gofood harian
+  'jajan',           // Jajan — gorengan, martabak, cireng, seblak
+  'dining',          // Fancy Makan Berat — restoran, steak, all-you-can-eat
+  'snacks',          // Snack — keripik, biskuit, permen, cokelat
+  'drinks',          // Beverage — kopi, boba, es teh, jus
+  'transport',       // Transport — gojek, grab, krl, tol, service motor
+  'fuel',            // Bensin — pertamax, pertalite
+  'parking',         // Sewa Parkir Motor — sewa bulanan, parkir harian
+  'bills',           // Tagihan — pulsa, paket data, IPL, iuran, BPJS
+  'internet',        // Internet — indihome, biznet, wifi
+  'utilities',       // Listrik & Air Apart — token listrik, PLN, air PDAM
+  'housing',         // Tempat Tinggal — sewa apartemen, kos, service charge
+  'entertainment',   // Hiburan — game, top up, streaming, karaoke, billiard
+  'cinema',          // Bioskop — xxi, cgv, tiket film
+  'health',          // Kesehatan — obat, dokter, vitamin, pijat refleksi
+  'grooming',        // Pangkas Rambut — potong rambut, barbershop
+  'other',           // Lainnya
 ] as const
 export type Category = (typeof CATEGORIES)[number]
 ```
 
-Each category has a `label` (Indonesian), a two-letter `code` (`MJ`, `BH`, `TR`, `TG`, `TT`, `HB`, `KS`, `LN`), and a `color` CSS custom-property name. Exactly 8 — fits a 2×4 tap grid in a bottom sheet.
+Each category has a `label` (Indonesian), a unique two-letter `code` (`MH`, `JJ`, `FM`, `SN`, `BV`, `TR`, `BN`, `PK`, `TG`, `IN`, `LA`, `TT`, `HB`, `BS`, `KS`, `PR`, `LN`), and a `color` CSS custom-property name.
+
+> **F14 (card #6) replaced the original eight.** `food` ("Makan & Jajan") was too generic and split into five; `groceries` ("Belanja Harian") was deleted unused. `transport`, `bills` and `entertainment` survive but NARROWED — bensin/parkir, internet/listrik-air, and bioskop now have their own categories, so each generic keeps only the remainder. The order above is by FAMILY and is load-bearing: it is the picker's grid order and F08's chart series order.
+>
+> **The 2×4 grid is gone with it.** Seventeen cells do not fit a phone sheet at any column count, so the picker scrolls; see `components/ui/CategoryPicker.tsx`. The palette gate is unchanged and still absolute — every category colour clears 4.5:1 under the black disc mark in both schemes, proved by `scripts/palette-check.py`. See `docs/plans/F14-category-taxonomy.md`.
 
 > **R-34** — the code replaces the emoji originally specified here. It renders identically on every device, tints with the category colour, and sets in the mono column. See `docs/design/DESIGN_INTEGRATION.md`.
 

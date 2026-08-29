@@ -30,14 +30,14 @@ type DbModule = typeof import('@/lib/db')
 /* ── the canonical example from roadmap §1 ─────────────────────────────────── */
 
 const CANONICAL_ITEMS = [
-  { name: 'roti buaya', amountIdr: 38_500, category: 'food' },
-  { name: 'ayam sambal hitam', amountIdr: 45_000, category: 'food' },
+  { name: 'roti buaya', amountIdr: 38_500, category: 'meals' },
+  { name: 'ayam sambal hitam', amountIdr: 45_000, category: 'meals' },
   // "perumahan laddaland" is deliberately 'other': reconciliation Open question 1 is
   // still open, and a test is not the place to guess an answer the user owes us.
   { name: 'perumahan laddaland', amountIdr: 49_000, category: 'other' },
   { name: 'kungfu soccer', amountIdr: 49_000, category: 'entertainment' },
-  { name: 'fan fries plaza blok m', amountIdr: 58_850, category: 'food' },
-  { name: 'pak gembus', amountIdr: 26_000, category: 'food' },
+  { name: 'fan fries plaza blok m', amountIdr: 58_850, category: 'meals' },
+  { name: 'pak gembus', amountIdr: 26_000, category: 'meals' },
 ] as const
 
 const CANONICAL_TOTAL = 266_350
@@ -119,8 +119,14 @@ describe.skipIf(!TEST_URL)('lib/db/queries against a real database', () => {
     await db.insert(expenseItems).values([...itemRows].reverse())
 
     await db.insert(expenseItems).values([
-      { id: newId(), groupId: ids.gJun, name: 'kopi', amountIdr: 50_000, category: 'food' },
-      { id: newId(), groupId: ids.gU2Aug, name: 'rahasia u2', amountIdr: 12_345, category: 'food' },
+      { id: newId(), groupId: ids.gJun, name: 'kopi', amountIdr: 50_000, category: 'meals' },
+      {
+        id: newId(),
+        groupId: ids.gU2Aug,
+        name: 'rahasia u2',
+        amountIdr: 12_345,
+        category: 'meals',
+      },
     ])
 
     await db.insert(expensePhotos).values([
@@ -308,7 +314,7 @@ describe.skipIf(!TEST_URL)('lib/db/queries against a real database', () => {
   it('breaks the month down per category, biggest first, summing to the month total', async () => {
     const rows = await q.getCategoryBreakdown(ids.u1, '2026-08')
 
-    expect(rows[0]).toEqual({ category: 'food', totalIdr: FOOD_TOTAL, itemCount: 4 })
+    expect(rows[0]).toEqual({ category: 'meals', totalIdr: FOOD_TOTAL, itemCount: 4 })
     expect(rows.reduce((s, r) => s + r.totalIdr, 0)).toBe(CANONICAL_TOTAL)
     const amounts = rows.map((r) => r.totalIdr)
     expect([...amounts].sort((a, b) => b - a)).toEqual(amounts)
@@ -321,7 +327,7 @@ describe.skipIf(!TEST_URL)('lib/db/queries against a real database', () => {
     expect(biggest).toMatchObject({
       name: 'fan fries plaza blok m',
       amountIdr: 58_850,
-      category: 'food',
+      category: 'meals',
       groupId: ids.gAug,
       groupTitle: 'bakar duit tuesday',
       occurredOn: '2026-08-18',

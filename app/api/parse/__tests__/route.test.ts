@@ -39,7 +39,7 @@ const GOOD_RESULT = {
   expense: {
     title: 'jajan',
     occurred_on: '2026-08-19',
-    items: [{ name: 'ayam geprek', amount_idr: 25000, category: 'food' }],
+    items: [{ name: 'ayam geprek', amount_idr: 25000, category: 'meals' }],
   },
   source: 'llm',
   degraded: false,
