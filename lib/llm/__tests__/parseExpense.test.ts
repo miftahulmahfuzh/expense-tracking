@@ -43,8 +43,8 @@ const GOOD = {
   title: 'bakar duit tuesday',
   occurred_on: '2026-08-18',
   items: [
-    { name: 'roti buaya', amount_idr: 38500, category: 'food' },
-    { name: 'ayam sambal hitam', amount_idr: 45000, category: 'food' },
+    { name: 'roti buaya', amount_idr: 38500, category: 'meals' },
+    { name: 'ayam sambal hitam', amount_idr: 45000, category: 'meals' },
   ],
 }
 

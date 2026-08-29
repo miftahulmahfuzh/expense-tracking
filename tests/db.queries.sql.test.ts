@@ -163,7 +163,7 @@ describe('getGroupDetail', () => {
       ],
     ])
     queueRows([
-      ['itm000000001', 'roti buaya', '38500', 'food', 0],
+      ['itm000000001', 'roti buaya', '38500', 'meals', 0],
       ['itm000000002', 'perumahan laddaland', '49000', 'nonsense-from-the-llm', 1],
     ])
     queueRows([['pht000000001', 'https://blob/x.jpg', 'photos/x.jpg', 1200, 1600, 250000, 0]])
@@ -173,7 +173,7 @@ describe('getGroupDetail', () => {
 
     expect(detail).not.toBeNull()
     expect(detail!.totalIdr).toBe(87500)
-    expect(detail!.items.map((i) => i.category)).toEqual(['food', 'other'])
+    expect(detail!.items.map((i) => i.category)).toEqual(['meals', 'other'])
     expect(detail!.items[0]!.amountIdr).toBe(38500)
     expect(detail!.photos).toHaveLength(1)
     expect(detail!.shareToken).toBe('shr000000001')
@@ -237,7 +237,7 @@ describe('getGroupByShareToken — the one unscoped read', () => {
 
   it('exposes ownerName only — never rawText, userId or email', async () => {
     queueRows([['grp000000001', 'bakar duit tuesday', '2026-08-18', null, 'Miftah']])
-    queueRows([['itm000000001', 'roti buaya', '38500', 'food', 0]])
+    queueRows([['itm000000001', 'roti buaya', '38500', 'meals', 0]])
     queueRows([])
 
     const shared = await getGroupByShareToken('tok000000001')
@@ -344,12 +344,12 @@ describe('getCategoryBreakdown', () => {
 
   it('coerces totals to numbers and unknown categories to `other`', async () => {
     queueRows([
-      ['food', '133350', '4'],
+      ['meals', '133350', '4'],
       ['jajan-random', '49000', '1'],
     ])
     const rows = await getCategoryBreakdown('u1', '2026-08')
     expect(rows).toEqual([
-      { category: 'food', totalIdr: 133350, itemCount: 4 },
+      { category: 'meals', totalIdr: 133350, itemCount: 4 },
       { category: 'other', totalIdr: 49000, itemCount: 1 },
     ])
   })
@@ -378,7 +378,7 @@ describe('getBiggestExpense', () => {
         'itm000000006',
         'fan fries plaza blok m',
         '58850',
-        'food',
+        'meals',
         'grp000000001',
         'bakar duit tuesday',
         '2026-08-18',
@@ -388,7 +388,7 @@ describe('getBiggestExpense', () => {
       itemId: 'itm000000006',
       name: 'fan fries plaza blok m',
       amountIdr: 58850,
-      category: 'food',
+      category: 'meals',
       groupId: 'grp000000001',
       groupTitle: 'bakar duit tuesday',
       occurredOn: '2026-08-18',
@@ -511,10 +511,10 @@ describe('getItemsForWindow (F12) — the insight input', () => {
   it('sends merchant NAMES, which is what makes the summaries specific', async () => {
     // Decision D-F. Without expense_items.name the model can only talk about categories, and
     // none of the card's examples (cordoba, trikayo, bensin motor) are answerable.
-    queueRows([['2026-08-18', 'Nasi Cordoba', '25000', 'food']])
+    queueRows([['2026-08-18', 'Nasi Cordoba', '25000', 'meals']])
     const rows = await getItemsForWindow('u1', '2026-06-21', '2026-08-21')
     expect(rows).toEqual([
-      { occurredOn: '2026-08-18', name: 'Nasi Cordoba', amountIdr: 25000, category: 'food' },
+      { occurredOn: '2026-08-18', name: 'Nasi Cordoba', amountIdr: 25000, category: 'meals' },
     ])
   })
 

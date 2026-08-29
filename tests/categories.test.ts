@@ -22,19 +22,31 @@ import {
 } from '@/lib/categories'
 
 describe('CATEGORIES', () => {
-  it('has exactly the 8 roadmap §4.1 slugs, in picker order', () => {
+  it('has exactly the 17 roadmap §4.1 slugs, in picker order', () => {
+    // F14 (card #6) replaced the original eight. Order is by FAMILY — eating, transport,
+    // bills & home, leisure, health, other — and it is load-bearing twice over: it is the
+    // picker's grid order and F08's chart series order, so a colour means the same thing
+    // in the same place in both.
     expect(CATEGORIES).toEqual([
-      'food',
-      'groceries',
+      'meals',
+      'jajan',
+      'dining',
+      'snacks',
+      'drinks',
       'transport',
+      'fuel',
+      'parking',
       'bills',
+      'internet',
+      'utilities',
       'housing',
       'entertainment',
+      'cinema',
       'health',
+      'grooming',
       'other',
     ])
-    // Exactly 8 so the picker fits a 2×4 tap grid (F07/F10).
-    expect(CATEGORIES).toHaveLength(8)
+    expect(CATEGORIES).toHaveLength(17)
   })
 
   it('has no duplicates', () => {
@@ -66,9 +78,9 @@ describe('CATEGORY_META', () => {
     const labels = CATEGORIES.map((c) => CATEGORY_META[c].label)
     const codes = CATEGORIES.map((c) => CATEGORY_META[c].code)
     const colors = CATEGORIES.map((c) => CATEGORY_META[c].color)
-    expect(new Set(labels).size).toBe(8)
-    expect(new Set(codes).size).toBe(8)
-    expect(new Set(colors).size).toBe(8)
+    expect(new Set(labels).size).toBe(CATEGORIES.length)
+    expect(new Set(codes).size).toBe(CATEGORIES.length)
+    expect(new Set(colors).size).toBe(CATEGORIES.length)
   })
 
   it('names a --color-cat-* custom property matching the category id', () => {
@@ -86,15 +98,26 @@ describe('CATEGORY_META', () => {
     }
   })
 
-  it('maps each category to the code the design specified', () => {
+  it('maps each category to its two-letter code', () => {
+    // Unique across all 17 — the code, not the colour, is what makes a category
+    // unambiguous once the palette is past the number of tellable-apart hues.
     expect(CATEGORIES.map((c) => CATEGORY_META[c].code)).toEqual([
-      'MJ', // Makan & Jajan
-      'BH', // Belanja Harian
+      'MH', // Makan Harian
+      'JJ', // Jajan
+      'FM', // Fancy Makan Berat
+      'SN', // Snack
+      'BV', // Beverage
       'TR', // Transport
+      'BN', // Bensin
+      'PK', // Sewa Parkir Motor
       'TG', // Tagihan
+      'IN', // Internet
+      'LA', // Listrik & Air Apart
       'TT', // Tempat Tinggal
       'HB', // Hiburan
+      'BS', // Bioskop
       'KS', // Kesehatan
+      'PR', // Pangkas Rambut
       'LN', // Lainnya
     ])
   })
@@ -102,8 +125,8 @@ describe('CATEGORY_META', () => {
 
 describe('categoryStyle / categoryFill', () => {
   it('feeds .chip and .cell a single --c custom property', () => {
-    // globals.css reads exactly one property, so eight categories share one CSS rule.
-    expect(categoryStyle('food')).toEqual({ '--c': 'var(--color-cat-food)' })
+    // globals.css reads exactly one property, so all 17 categories share one CSS rule.
+    expect(categoryStyle('meals')).toEqual({ '--c': 'var(--color-cat-meals)' })
   })
 
   it('resolves through the alias globals.css declares at :root', () => {
@@ -135,7 +158,7 @@ describe('isCategory', () => {
     expect(isCategory(null)).toBe(false)
     expect(isCategory(undefined)).toBe(false)
     expect(isCategory(0)).toBe(false)
-    expect(isCategory(['food'])).toBe(false)
+    expect(isCategory(['meals'])).toBe(false)
   })
 
   it('does not match Object.prototype keys', () => {

@@ -21,8 +21,8 @@ import { writeInsightsWith } from '../insights'
 const WINDOWS = insightWindows('2026-08-21')
 
 const ROWS: WindowItemRow[] = [
-  { occurredOn: '2026-08-18', name: 'Nasi Cordoba', amountIdr: 25000, category: 'food' },
-  { occurredOn: '2026-08-18', name: 'Trikayo', amountIdr: 38000, category: 'food' },
+  { occurredOn: '2026-08-18', name: 'Nasi Cordoba', amountIdr: 25000, category: 'meals' },
+  { occurredOn: '2026-08-18', name: 'Trikayo', amountIdr: 38000, category: 'meals' },
   { occurredOn: '2026-08-19', name: 'bensin motor', amountIdr: 20000, category: 'transport' },
 ]
 

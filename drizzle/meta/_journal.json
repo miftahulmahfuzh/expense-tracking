@@ -15,6 +15,13 @@
       "when": 1787320461887,
       "tag": "0001_tricky_young_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787580000000,
+      "tag": "0002_f14_category_taxonomy",
+      "breakpoints": true
     }
   ]
 }

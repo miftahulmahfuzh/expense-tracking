@@ -31,12 +31,12 @@ const CANONICAL = {
   title: 'bakar duit tuesday',
   occurred_on: '2026-08-18',
   items: [
-    { name: 'roti buaya', amount_idr: 38500, category: 'food' },
-    { name: 'ayam sambal hitam', amount_idr: 45000, category: 'food' },
+    { name: 'roti buaya', amount_idr: 38500, category: 'meals' },
+    { name: 'ayam sambal hitam', amount_idr: 45000, category: 'meals' },
     { name: 'perumahan laddaland', amount_idr: 49000, category: 'entertainment' },
     { name: 'kungfu soccer', amount_idr: 49000, category: 'entertainment' },
-    { name: 'fan fries plaza blok m', amount_idr: 58850, category: 'food' },
-    { name: 'pak gembus', amount_idr: 26000, category: 'food' },
+    { name: 'fan fries plaza blok m', amount_idr: 58850, category: 'meals' },
+    { name: 'pak gembus', amount_idr: 26000, category: 'meals' },
   ],
 }
 
@@ -147,10 +147,10 @@ describe('primitives', () => {
     expect(AmountIdrSchema.safeParse(Number.NaN).success).toBe(false)
   })
 
-  it('CategorySchema is the 8 slugs', () => {
-    expect(CategorySchema.safeParse('food').success).toBe(true)
+  it('CategorySchema is the 17 slugs', () => {
+    expect(CategorySchema.safeParse('meals').success).toBe(true)
     expect(CategorySchema.safeParse('Food').success).toBe(false)
-    expect(CategorySchema.options).toHaveLength(8)
+    expect(CategorySchema.options).toHaveLength(17)
   })
 
   it('TitleSchema trims then bounds; NoteSchema allows empty but caps at 2000', () => {
@@ -261,10 +261,10 @@ describe('UpdateExpenseMetaInput', () => {
 
 describe('AddItemInput (reconciliation R-16)', () => {
   it('accepts the three required fields', () => {
-    expect(AddItemInput.parse({ name: 'kopi', amountIdr: 26000, category: 'food' })).toEqual({
+    expect(AddItemInput.parse({ name: 'kopi', amountIdr: 26000, category: 'meals' })).toEqual({
       name: 'kopi',
       amountIdr: 26000,
-      category: 'food',
+      category: 'meals',
     })
   })
 
@@ -272,22 +272,22 @@ describe('AddItemInput (reconciliation R-16)', () => {
     // Without it the restored row lands at the bottom of the list, which reads as a
     // second bug on top of the delete the user just undid.
     expect(
-      AddItemInput.parse({ name: 'kopi', amountIdr: 26000, category: 'food', sortOrder: 3 })
+      AddItemInput.parse({ name: 'kopi', amountIdr: 26000, category: 'meals', sortOrder: 3 })
         .sortOrder,
     ).toBe(3)
     expect(
-      AddItemInput.safeParse({ name: 'kopi', amountIdr: 26000, category: 'food', sortOrder: -1 })
+      AddItemInput.safeParse({ name: 'kopi', amountIdr: 26000, category: 'meals', sortOrder: -1 })
         .success,
     ).toBe(false)
     expect(
-      AddItemInput.safeParse({ name: 'kopi', amountIdr: 26000, category: 'food', sortOrder: 1.5 })
+      AddItemInput.safeParse({ name: 'kopi', amountIdr: 26000, category: 'meals', sortOrder: 1.5 })
         .success,
     ).toBe(false)
   })
 
   it('omitting sortOrder leaves it undefined — unchanged behaviour', () => {
     expect(
-      AddItemInput.parse({ name: 'kopi', amountIdr: 26000, category: 'food' }).sortOrder,
+      AddItemInput.parse({ name: 'kopi', amountIdr: 26000, category: 'meals' }).sortOrder,
     ).toBeUndefined()
   })
 })

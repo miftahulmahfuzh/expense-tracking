@@ -61,16 +61,20 @@ export const FIXTURES: Fixture[] = [
     amounts: [38500, 45000, 49000, 49000, 58850, 26000],
     total: 266350,
     categories: [
-      ['food'],
-      ['food'],
+      // F14 split `food` five ways, so several of these now allow more than one answer:
+      // the corpus cannot decide whether a warung item was an ordinary meal or a treat
+      // bought out, and both readings are correct. The tripwire this file exists for is
+      // `amounts`, not `categories`.
+      ['jajan', 'meals'],
+      ['meals', 'dining'],
       // "perumahan laddaland" is a FILM TITLE — the user confirmed it was a cinema
       // ticket (OQ-1, closed 2026-08-19). The literal word "perumahan" means housing,
-      // which is why GLM used to answer `housing` here and why the system prompt now
-      // names this exact title in its entertainment examples.
-      ['entertainment'],
-      ['entertainment'],
-      ['food'],
-      ['food'],
+      // which is why GLM used to answer `housing` here. F14 gave the cinema its own
+      // category, and the system prompt names this exact title in its `cinema` examples.
+      ['cinema'],
+      ['cinema'],
+      ['jajan', 'meals', 'dining'],
+      ['jajan', 'meals'],
     ],
   }),
 
@@ -80,7 +84,9 @@ export const FIXTURES: Fixture[] = [
     itemCount: 5,
     amounts: [385000, 200000, 50000, 25000, 150000],
     total: 810000,
-    categories: [['bills'], ['bills'], ['bills'], ['bills'], ['bills', 'health']],
+    // F14: indihome is now `internet` and token listrik is now `utilities`; only the
+    // remainder stays `bills`. This fixture is the one that proves that narrowing.
+    categories: [['internet'], ['utilities'], ['bills'], ['bills'], ['bills', 'health']],
   }),
 
   f('apartment-ipl', '03-apartment-ipl.txt', '2026-09-15', {
@@ -98,7 +104,7 @@ export const FIXTURES: Fixture[] = [
     itemCount: 5,
     amounts: [32000, 5000, 3000, 10000, 18000],
     total: 68000,
-    categories: [['food'], ['food'], ['transport'], ['food'], ['food']],
+    categories: [['meals'], ['drinks'], ['parking'], ['jajan'], ['drinks']],
   }),
 
   f('mixed-units', '05-mixed-units.txt', '2026-09-01', {
@@ -107,7 +113,8 @@ export const FIXTURES: Fixture[] = [
     itemCount: 7,
     amounts: [4500000, 1250000, 185000, 45000, 27500, 12000, 2000],
     total: 6021500,
-    categories: [[], [], [], [], [], ['groceries', 'other'], ['food', 'groceries']],
+    // `groceries` was deleted by F14 as unused: tisu falls to `other`, permen to `snacks`.
+    categories: [[], [], [], [], [], ['other'], ['snacks']],
   }),
 
   f('with-total', '06-with-total-line.txt', '2026-09-01', {
@@ -116,7 +123,7 @@ export const FIXTURES: Fixture[] = [
     itemCount: 3, // the `total 44000` line must NOT be an item
     amounts: [22000, 10000, 12000],
     total: 44000,
-    categories: [['food'], ['food'], ['food']],
+    categories: [['jajan'], ['jajan'], ['drinks']],
   }),
 
   f('id-month', '07-indonesian-month.txt', '2026-09-01', {
@@ -125,7 +132,9 @@ export const FIXTURES: Fixture[] = [
     itemCount: 4,
     amounts: [75000, 38000, 32000, 24500],
     total: 169500,
-    categories: [['groceries'], ['groceries'], ['groceries'], ['groceries']],
+    // Every item here was `groceries`, the category F14 deleted because the user never
+    // used it. They land in `other`, which is exactly where the migration puts them too.
+    categories: [['other'], ['other'], ['other'], ['other']],
   }),
 
   f('dayname-dash', '08-dayname-dash-date.txt', '2026-09-01', {
@@ -134,7 +143,7 @@ export const FIXTURES: Fixture[] = [
     itemCount: 4,
     amounts: [27000, 25000, 22000, 31000],
     total: 105000,
-    categories: [['transport'], ['food'], ['food'], ['transport']],
+    categories: [['transport'], ['meals'], ['drinks'], ['transport']],
   }),
 
   f('quantities', '09-quantities-and-notes.txt', '2026-09-01', {
@@ -143,7 +152,7 @@ export const FIXTURES: Fixture[] = [
     itemCount: 4, // "bayar pake qris" and "besok jangan jajan lagi" are dropped
     amounts: [60000, 50000, 8000, 5000],
     total: 123000,
-    categories: [['food'], ['food'], ['food'], []],
+    categories: [['meals'], ['meals'], ['drinks'], []],
   }),
 
   f('rp-prefixed', '10-rp-prefixed.txt', '2026-09-01', {
@@ -152,7 +161,8 @@ export const FIXTURES: Fixture[] = [
     itemCount: 4,
     amounts: [38500, 45000, 12500, 5000],
     total: 101000,
-    categories: [['food'], ['transport'], ['transport'], ['transport']],
+    // F14: bensin is `fuel` and parkir is `parking`; the tol keeps `transport`.
+    categories: [['jajan', 'meals'], ['fuel'], ['transport'], ['parking']],
   }),
 
   f('single-line', '11-single-line.txt', '2026-08-19', {
@@ -161,7 +171,7 @@ export const FIXTURES: Fixture[] = [
     itemCount: 1,
     amounts: [25000],
     total: 25000,
-    categories: [['food']],
+    categories: [['meals']],
   }),
 
   f('health', '12-health-transport.txt', '2026-10-01', {

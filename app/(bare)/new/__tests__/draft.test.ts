@@ -49,8 +49,8 @@ const parsed = {
   title: 'bakar duit tuesday',
   occurred_on: '2026-08-18',
   items: [
-    { name: 'roti buaya', amount_idr: 38_500, category: 'food' as const },
-    { name: 'ayam sambal hitam', amount_idr: 45_000, category: 'food' as const },
+    { name: 'roti buaya', amount_idr: 38_500, category: 'meals' as const },
+    { name: 'ayam sambal hitam', amount_idr: 45_000, category: 'meals' as const },
   ],
 }
 
@@ -60,7 +60,7 @@ function validDraft(): DraftExpense {
     ...initialDraft(TODAY),
     stage: 'review',
     title: 'bakar duit tuesday',
-    items: [{ ...emptyItem('food'), name: 'roti buaya', amountIdr: 38_500 }],
+    items: [{ ...emptyItem('meals'), name: 'roti buaya', amountIdr: 38_500 }],
   }
 }
 

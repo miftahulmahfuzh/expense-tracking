@@ -102,7 +102,7 @@ describe('the bounds agree with each other', () => {
     const base = {
       title: 'Belanja',
       occurred_on: '2026-08-26',
-      items: [{ name: 'roti', amount_idr: 38500, category: 'groceries' }],
+      items: [{ name: 'roti', amount_idr: 38500, category: 'snacks' }],
     }
 
     const atCeiling = CreateExpenseInput.safeParse({

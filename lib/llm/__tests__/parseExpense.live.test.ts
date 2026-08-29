@@ -92,12 +92,12 @@ d('GLM-5.2 live — canonical fixture must be exact', () => {
       // prompt names that title explicitly, and adds the magnitude tell — rent is
       // hundreds of thousands a month, not 49 ribu.
       const cats = r.expense.items.map((i) => i.category)
-      expect(cats[0]).toBe('food')
-      expect(cats[1]).toBe('food')
+      expect(cats[0]).toBe('meals')
+      expect(cats[1]).toBe('meals')
       expect(cats[2]).toBe('entertainment')
       expect(cats[3]).toBe('entertainment')
-      expect(cats[4]).toBe('food')
-      expect(cats[5]).toBe('food')
+      expect(cats[4]).toBe('meals')
+      expect(cats[5]).toBe('meals')
 
       // z.ai caches the prompt automatically, so `in` is only the uncached remainder on a
       // warm prompt; real input is in + cached. Refresh lib/llm/COST.md from this line.

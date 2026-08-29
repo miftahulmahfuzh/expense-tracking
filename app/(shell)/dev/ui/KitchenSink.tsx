@@ -33,7 +33,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function KitchenSink() {
   const toast = useToast()
   const [amount, setAmount] = React.useState<number | null>(38500)
-  const [category, setCategory] = React.useState<Category>('food')
+  const [category, setCategory] = React.useState<Category>('meals')
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [closeableOpen, setCloseableOpen] = React.useState(false)
@@ -157,9 +157,9 @@ export function KitchenSink() {
         <Card padded="rows">
           <ul className="divide-y divide-rule">
             {[
-              ['roti buaya', 38500, 'food'],
+              ['roti buaya', 38500, 'meals'],
               ['kungfu soccer', 49000, 'entertainment'],
-              ['fan fries plaza blok m', 58850, 'food'],
+              ['fan fries plaza blok m', 58850, 'meals'],
               ['sewa unit 12F yang judulnya sengaja dibuat sangat panjang', 2100000, 'housing'],
             ].map(([name, value, cat]) => (
               <li key={name as string} className="flex min-h-row items-center gap-2 py-1">
