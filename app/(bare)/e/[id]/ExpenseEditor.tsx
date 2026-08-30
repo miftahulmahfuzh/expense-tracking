@@ -345,10 +345,32 @@ export function ExpenseEditor({
               id={`item-${item.id}`}
               className="flex scroll-mt-24 items-stretch border-b border-rule last:border-b-0"
             >
+              {/*
+               * `min-w-0` IS LOAD-BEARING, and its absence is invisible in review.
+               *
+               * `truncate` sets `white-space: nowrap`, so the name span's min-content size is
+               * the WHOLE string — `min-w-0` on the span lets the span shrink, but it does not
+               * shrink the span's min-content CONTRIBUTION to this button. This button is both
+               * a flex item (of the row) and a flex container, so its own `min-width: auto`
+               * floors it at that full-string min-content: it refuses to shrink, overflows the
+               * row, and shoves the amount and the 44px delete target off the card's right
+               * edge. The span never ellipsises, because it was handed exactly the width it
+               * asked for.
+               *
+               * Measured in Chromium at a 370px content box with "tanamera draft white
+               * caramel": row scrollWidth 376 vs clientWidth 348 without this class, 348/348
+               * with it. A name that already fits is untouched — `mr. pho blok m` keeps every
+               * word either way (F15).
+               *
+               * The three other places this row shape appears — /s/[token], the KitchenSink
+               * gallery, GroupRow — are all FLAT, a block-level flex container with the name
+               * as a direct child, so nothing floors them and they have always truncated
+               * correctly. This is the only nested one, which is why it is the only broken one.
+               */}
               <button
                 type="button"
                 onClick={() => setEditing(item)}
-                className="flex min-h-row flex-1 press items-center gap-2.5 py-2 pr-1.5 text-left"
+                className="flex min-h-row min-w-0 flex-1 press items-center gap-2.5 py-2 pr-1.5 text-left"
               >
                 {/* The pictogram disc: colour AND identity, in a fixed 28px column so a
                     list of items scans as a table. */}
