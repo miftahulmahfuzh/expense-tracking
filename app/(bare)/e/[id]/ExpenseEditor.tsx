@@ -508,6 +508,24 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (next: strin
         type="text"
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
+        /*
+         * F18. Local `draft` only — no commit, no remount, so the `key` resync contract at the
+         * call site is untouched.
+         *
+         * THE OBJECTION, and why it is not one. This field commits on blur and `onBlur` below
+         * reverts silently on empty, so clearing and then tapping elsewhere restores the old
+         * title with no explanation. That state is not new: holding backspace over the title
+         * reaches it already, and the silent revert is the answer deliberately chosen for it
+         * (see the comment below). The ✕ is a faster route into a state the field already
+         * handles by design.
+         *
+         * And the bad path is the unlikely one, because `Input` `preventDefault`s the button's
+         * mousedown — the tap never blurs — and then refocuses with `preventScroll`. So a clear
+         * leaves the field focused, empty and with the keyboard up, which is the gesture saying
+         * *start retyping*; typing then commits normally.
+         */
+        onClear={() => setDraft('')}
+        clearLabel={`Kosongkan ${TITLE_LABEL.toLowerCase()}`}
         onBlur={() => {
           const trimmed = draft.trim()
           // An empty title is not a valid title, client-side or server-side. Revert silently
