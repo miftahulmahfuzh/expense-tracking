@@ -3,7 +3,9 @@
 import * as React from 'react'
 import { cn } from '@/lib/cn'
 import { formatIdrDigits, parseIdrLoose } from '@/lib/format'
+
 import { useFieldContext } from './Field'
+import { CloseIcon } from './Icon'
 
 export interface MoneyInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -15,6 +17,23 @@ export interface MoneyInputProps extends Omit<
   onValueChange: (value: number | null) => void
   /** Fires on blur when pasted text could not be parsed at all. */
   onParseError?: (rawText: string) => void
+  /**
+   * F18 — pass a label and the field gains a ✕. Absent, and this component is what it was.
+   *
+   * ONE PROP, and deliberately not `Input`'s `{ onClear, clearLabel }` union, which is the
+   * asymmetry to justify rather than tidy away. `Input` cannot clear itself: the caller owns
+   * `value` and only a real DOM event changes it, so there `onClear` IS the mutation and the
+   * union exists to stop it shipping unnamed. This component is fully controlled and already
+   * emits `onValueChange(null)` when the field is emptied by hand, so it can do the whole
+   * clear — including the `unparseable` escape hatch below, which nothing outside can reach.
+   * Splitting that across a caller callback would make "a ✕ that nulls the value and leaves
+   * unparseable text on screen" a thing a call site can ship. One optional prop cannot be
+   * half-wired, and its presence being the opt-in means clearable-but-unnamed does not exist.
+   *
+   * The 44px is NOT free on every surface. See the docblock's width budget: `/new`'s review
+   * row affords the input 100px and passes no label on purpose.
+   */
+  clearLabel?: string
   className?: string
 }
 
@@ -45,6 +64,14 @@ const OWN_FORMATTING = /^[\d.\s]*$/
  * the 150 a 190px column would leave them. That is a clipped category in place of a clipped
  * amount. See docs/plans/F13-amount-field-clipping.md §2 for the whole budget.
  *
+ * F18 ADDS AN OPT-IN ✕ (`clearLabel`) AND DOES NOT PUT IT ON `/new`. The same budget decides
+ * it: that row affords this input 100px, and `4.500.000` measures 81 while `45.000.000` and
+ * `999.999.999` measure 91 and 100 (Chromium 150, 414x896 DPR 2). A 44px button either
+ * reserves its gutter and shrinks the input to 62 — issue #3, re-shipped — or floats over the
+ * value, which is R-34's badge again under a new name. It ships on the sheet's `Jumlah` (274px)
+ * and in the gallery, and `/new`'s `ItemRow` passes no label, on purpose and under test. See
+ * docs/plans/F18-amount-field-clear-button.md.
+ *
  * `inputMode="numeric"`, never `type="number"`: a number input rejects a pasted `45k` or
  * `1,5jt` outright, shows spinners nobody wants on a phone, and drops leading formatting.
  * With the separator inserted for you there is nothing left to reach the decimal key for,
@@ -72,6 +99,7 @@ export function MoneyInput({
   value,
   onValueChange,
   onParseError,
+  clearLabel,
   className,
   id,
   onFocus,
@@ -79,11 +107,26 @@ export function MoneyInput({
   ...rest
 }: MoneyInputProps) {
   const field = useFieldContext()
+  /*
+   * F18. Clearing has to refocus (see the button), and the node was previously only ever
+   * spread through. No caller passes a `ref` to this component today — `rest` carries one if
+   * one ever arrives, and React 19 hands it to the `<input>` through the spread — so this ref
+   * is additive rather than a forwarding chain.
+   */
+  const inner = React.useRef<HTMLInputElement | null>(null)
   // Non-null ONLY while the field holds text no parser could read.
   const [unparseable, setUnparseable] = React.useState<string | null>(null)
 
   const text = unparseable ?? (value === null ? '' : formatIdrDigits(value))
   const invalid = unparseable !== null || field?.invalid
+
+  /*
+   * All three, and `text` rather than `value !== null` is the load-bearing choice: the state a
+   * user is most stuck in is a paste no parser could read, which HAS no value. `disabled` is
+   * not decoration either — a live ✕ on a disabled field edits a form the user has been told
+   * is busy saving.
+   */
+  const showClear = clearLabel !== undefined && !rest.disabled && text !== ''
 
   function handleChange(raw: string) {
     if (raw.trim() === '') {
@@ -112,12 +155,19 @@ export function MoneyInput({
   return (
     <div
       className={cn(
-        'glass flex h-control items-center gap-2.5 rounded-field border border-transparent',
+        'glass relative flex h-control items-center gap-2.5 rounded-field border border-transparent',
+        'pl-3.5',
         // Asymmetric, and it stays that way now the badge it was cut for is gone (F13): the
         // value is left-aligned and grows rightward, so the right inset is whitespace it
         // eats into. Matching it to `pl-3.5` would spend 8 real pixels of the field's 102 to
         // pad empty space, and drop the input under the `min-w-[6rem]` floor below.
-        'pr-1.5 pl-3.5',
+        //
+        // F18 buys the ✕'s gutter out of exactly that whitespace, and the TERNARY is the fix
+        // rather than the tidy-up: held as one string, a clearable well's class list would
+        // carry `pr-1.5` AND `pr-touch`, `lib/cn.ts` is a plain join with no tailwind-merge,
+        // and the GENERATED STYLESHEET's order would pick the winner — "neither the call
+        // site's order nor visible to the caller" (`Icon.tsx`). One declaration per side.
+        showClear ? 'pr-touch' : 'pr-1.5',
         invalid && 'border-red-ink',
         className,
       )}
@@ -127,6 +177,7 @@ export function MoneyInput({
       </span>
       <input
         id={id ?? field?.inputId}
+        ref={inner}
         type="text"
         inputMode="numeric"
         autoComplete="off"
@@ -169,6 +220,79 @@ export function MoneyInput({
         }}
         {...rest}
       />
+
+      {/*
+        F18's clear button, written from `Input`'s (Field.tsx) — same `w-touch` box, same
+        `justify-end pr-3.5`, same `xs` glyph.
+
+        It lands ONE PIXEL further in than `Input`'s, measured: 15px from the well's outer
+        right edge against 14. `Input` wraps its field in a `relative` div OUTSIDE the
+        input, so `right-0` resolves to the border box; here the `relative` element IS the
+        bordered well, so it resolves to the padding box, 1px in. That is left alone rather
+        than clawed back with a negative offset, because 15px is where this control's own
+        prefix already sits — `border 1 + pl-3.5` puts `Rp` 15px from the left edge — so the
+        ✕ and the `Rp` are mirror-inset, which is a better rule inside one field than a
+        pixel of parity with a different one.
+
+        ── `absolute`, and that is the design rather than a positioning habit ──────────────
+        The well is `relative` and this is out of flow, so the 38px the `pr-touch` gutter
+        costs is paid by the `flex-1` input. On a container too narrow to afford it the
+        input hits `min-w-[6rem]` and the WELL OVERFLOWS where somebody sees it — F13's
+        chosen failure mode — instead of the input quietly shrinking under its content,
+        which is issue #3. `/new`'s review row is that container: 100px of input, and
+        `4.500.000` needs 81. It passes no `clearLabel`, on measurement, and
+        docs/plans/F18-amount-field-clear-button.md §2 has the arithmetic.
+
+        ── NOT `touch-target`, and here it is barred on two axes ──────────────────────────
+        That utility centres a 44px `::after` on the button "without changing its painted
+        size". On a 14px glyph inset in a 50px well it overflows ~15px sideways past the
+        field AND ~15px vertically out of it. On `/new`'s row both directions land in the
+        `size-touch` DELETE button's hit area: it sits 8px to the right of the name field
+        on row 1, at the same x as this column, 8px above. Overlapping hit areas between a
+        harmless action and a destructive one, and nothing paints, so review never sees it.
+        A real `w-touch` box stops exactly where the well does.
+
+        ── no remount hazard, unlike `Input` ─────────────────────────────────────────────
+        F17 had to keep its wrapper `<div>` unconditional: gating it on the button's
+        visibility swaps `input` → `div` at that position, React remounts the field, and
+        focus and the keyboard go as the user types character one. This well is ALREADY an
+        unconditional div and the button is appended AFTER the input, so the input's index
+        among its siblings is 1 with or without it. Nothing can remount.
+      */}
+      {showClear && (
+        <button
+          type="button"
+          // The tap never moves focus off the input, which on iOS is what stops the keyboard
+          // closing and reopening under the user's thumb mid-edit.
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            /*
+             * BOTH HALVES, in `handleChange`'s own order. `unparseable` is component-local by
+             * construction — it holds text with no numeric value to derive from — so nothing
+             * outside could reset it, and a ✕ that only nulled the value would leave the
+             * unreadable paste on screen. Emitting `onValueChange(null)` from here is not a
+             * new behaviour: it is exactly what emptying the field by hand already does, so
+             * the reducer, the localStorage draft and `validate.ts` see a ✕ as a deletion
+             * typed by hand.
+             */
+            setUnparseable(null)
+            onValueChange(null)
+            /*
+             * For the case `onMouseDown` does not cover: typed, scrolled away, came back and
+             * tapped. `focus()` inside a click gesture raises the keyboard on iOS.
+             *
+             * `preventScroll` is load-bearing — `ReviewStage` records that a plain `focus()`
+             * "jumps the element to the nearest edge, and the nearest edge is frequently
+             * under the sticky bar".
+             */
+            inner.current?.focus({ preventScroll: true })
+          }}
+          className="absolute inset-y-0 right-0 flex w-touch press items-center justify-end pr-3.5 text-ink-3"
+          aria-label={clearLabel}
+        >
+          <CloseIcon size="xs" />
+        </button>
+      )}
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { DEFAULT_CATEGORY, type Category } from '@/lib/categories'
 
 import {
   DELETE_CTA,
+  ITEM_AMOUNT_CLEAR,
   ITEM_AMOUNT_INVALID,
   ITEM_AMOUNT_LABEL,
   ITEM_NAME_LABEL,
@@ -117,7 +118,16 @@ export function ItemSheet({
         >
           {/* MoneyInput carries `inputMode="numeric"`, the static Rp, and dots inserted as
               you type (design R-37). It also accepts a pasted `45k` / `1,5jt` via
-              parseIdrLoose, which is the whole reason this app exists. */}
+              parseIdrLoose, which is the whole reason this app exists.
+
+              F18's ✕ ships HERE and not on `/new`'s review row, because this Jumlah is
+              full-width in a sheet — 274px of input, 236 once the button's gutter is
+              reserved — against the 100px that row affords. The component clears both the
+              value and its own unparseable escape hatch, so `onValueChange(null)` arrives
+              through the handler below and `unparsed` goes with it.
+
+              The Nama field above stays non-clearable: that is F17's call on card #11 (it
+              starts empty when this sheet is an add), not this card's to reverse. */}
           <MoneyInput
             value={amountIdr}
             onValueChange={(value) => {
@@ -125,6 +135,7 @@ export function ItemSheet({
               setAmountIdr(value)
             }}
             onParseError={setUnparsed}
+            clearLabel={ITEM_AMOUNT_CLEAR}
             enterKeyHint="done"
             className="bg-paper"
           />
