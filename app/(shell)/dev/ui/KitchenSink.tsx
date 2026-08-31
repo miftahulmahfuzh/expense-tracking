@@ -38,6 +38,7 @@ export function KitchenSink() {
   const [sheetOpen, setSheetOpen] = React.useState(false)
   const [closeableOpen, setCloseableOpen] = React.useState(false)
   const [parseError, setParseError] = React.useState<string | null>(null)
+  const [clearable, setClearable] = React.useState('tanamera draft white caramel')
 
   return (
     <main className="px-gutter pt-safe-header">
@@ -192,6 +193,26 @@ export function KitchenSink() {
 
           <Field label="Nama item" error="Nama tidak boleh kosong">
             <Input defaultValue="" placeholder="mis. roti buaya" />
+          </Field>
+
+          {/*
+            F17's clearable input, exactly as /new's item rows ship it. The mark appears only
+            once there is text, and the field goes back to its normal 14px right inset when
+            emptied — measured at 414x896: a 44x50 button whose right edge lands ON the field's,
+            a 14px glyph 14px in. What this gallery CANNOT show is the pair that made it
+            delicate: the 22px destructive delete outside the well, which exists only on /new.
+          */}
+          <Field
+            label="Nama item, bisa dikosongkan"
+            hint="Tombol kosongkan muncul begitu ada teks, dan fokus tetap di field."
+          >
+            <Input
+              value={clearable}
+              placeholder="mis. roti buaya"
+              onChange={(event) => setClearable(event.target.value)}
+              onClear={() => setClearable('')}
+              clearLabel="Kosongkan nama item"
+            />
           </Field>
 
           <Field label="Jumlah" hint="45k, 1,5jt dan Rp 38.500 semuanya bisa ditempel.">

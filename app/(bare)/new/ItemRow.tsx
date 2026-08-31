@@ -71,6 +71,20 @@ export function ItemRow({
               value={item.name}
               disabled={disabled}
               onChange={(event) => onNameChange(event.target.value)}
+              /*
+               * F17. THIS is the field the clear button exists for: F04 writes the name here
+               * from the pasted receipt, so the common act on this screen is replacing a name
+               * the parse guessed — and replacing meant holding backspace over the whole
+               * string. `Input` renders the mark 14px inside the well; the ✕ below is 22px and
+               * outside it. Its docblock has the measurements and, more usefully, the hit-area
+               * trap that separating them by scale alone would have walked into.
+               *
+               * `Kosongkan`, deliberately NOT `Hapus`: the button 8px to the right is `Hapus
+               * ${label}`, and two buttons whose spoken names differ only in a trailing word is
+               * the same confusion, transposed to VoiceOver.
+               */
+              onClear={() => onNameChange('')}
+              clearLabel={`Kosongkan nama ${label}`}
             />
           </Field>
         </div>
