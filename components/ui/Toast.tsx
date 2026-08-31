@@ -1,6 +1,10 @@
 'use client'
 
 import * as React from 'react'
+
+// Sibling import rather than through the barrel, exactly as `Sheet.tsx` does it:
+// `index.ts` re-exports this file, so reaching the glyph through it would be a cycle.
+import { CloseIcon } from './Icon'
 import { cn } from '@/lib/cn'
 
 export interface ToastAction {
@@ -120,17 +124,54 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               {toast.message}
             </p>
+            {/*
+             * F16 — THE DISMISS CONTROL IS CONDITIONAL, AND ON THE ACTION RATHER THAN ON A PROP.
+             *
+             * Only a toast carrying an action is long-lived (`UNDO_DURATION_MS` is 7s against the
+             * 5s default) and only there is dismissing a DECISION: it closes the undo window
+             * early and means "I did mean to delete that". Every other toast in this app is a
+             * statement that expires by itself, and a dismiss control on it would spend 32px of a
+             * 382px row to save two seconds. `Sheet` makes the same call from the other
+             * direction — its `showCloseButton` defaults to false.
+             */}
             {toast.action && (
-              <button
-                type="button"
-                onClick={() => {
-                  toast.action?.onAction()
-                  dismiss()
-                }}
-                className="min-h-touch shrink-0 press px-3 text-chip font-black text-[#0d0d0d] underline underline-offset-[3px]"
-              >
-                {toast.action.label}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.action?.onAction()
+                    dismiss()
+                  }}
+                  className="min-h-touch shrink-0 press px-3 text-chip font-black text-[#0d0d0d] underline underline-offset-[3px]"
+                >
+                  {toast.action.label}
+                </button>
+                {/*
+                 * `shrink-0` is F15's lesson applied before it can bite: the message is the only
+                 * `min-w-0 flex-1` child, so it absorbs all the pressure by wrapping and neither
+                 * control can be pushed off the sticker by a long item name.
+                 *
+                 * `touch-target grid size-8`, NOT `Sheet`'s painted `size-touch`: the hit area
+                 * still reaches the 44px floor, but it costs 32px of a contested row instead of
+                 * 44. The colour is the literal near-black and never `text-ink*` — the sticker is
+                 * yellow in both schemes, so an inverting token would make this disappear in dark
+                 * mode. It stays near-black on a `danger` toast too: this is chrome, not the
+                 * message.
+                 *
+                 * No negative margin pulling it toward the label. 29px from the label's last
+                 * glyph looks loose in a screenshot and is right under a thumb — the two HIT
+                 * areas end up 6px apart (measured, F16 §4) — because a mistap here loses the
+                 * undo for good where a mistap the other way costs nothing.
+                 */}
+                <button
+                  type="button"
+                  onClick={dismiss}
+                  aria-label="Tutup"
+                  className="touch-target grid size-8 shrink-0 press place-items-center text-[#0d0d0d]"
+                >
+                  <CloseIcon />
+                </button>
+              </>
             )}
           </div>
         )}
