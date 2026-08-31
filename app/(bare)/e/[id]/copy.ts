@@ -44,6 +44,12 @@ export const ITEM_NAME_LABEL = 'Nama'
 export const ITEM_NAME_PLACEHOLDER = 'roti buaya'
 export const ITEM_AMOUNT_LABEL = 'Jumlah'
 export const ITEM_AMOUNT_INVALID = 'Jumlah tidak dikenali'
+/**
+ * F19's ✕. `Kosongkan`, matching the verb F17 chose for the item name and deliberately not
+ * `Hapus` — this sheet's footer holds a destructive `Hapus item`, and two buttons whose spoken
+ * names differ by one word is the confusion, transposed to VoiceOver.
+ */
+export const ITEM_AMOUNT_CLEAR = 'Kosongkan jumlah'
 
 export const ITEM_DELETED_TOAST = 'Item dihapus'
 export const UNDO_LABEL = 'Urungkan'

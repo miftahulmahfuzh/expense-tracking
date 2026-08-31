@@ -39,6 +39,7 @@ export function KitchenSink() {
   const [closeableOpen, setCloseableOpen] = React.useState(false)
   const [parseError, setParseError] = React.useState<string | null>(null)
   const [clearable, setClearable] = React.useState('tanamera draft white caramel')
+  const [clearableAmount, setClearableAmount] = React.useState<number | null>(45000000)
 
   return (
     <main className="px-gutter pt-safe-header">
@@ -230,6 +231,33 @@ export function KitchenSink() {
             {parseError !== null && ` · onParseError(${JSON.stringify(parseError)})`}
           </p>
 
+          {/*
+            F19's clearable Jumlah. The plain one above stays, and that is not duplication:
+            IT is the shape `/new`'s review row ships, which passes no `clearLabel` because
+            100px of input cannot afford a 44px gutter — see MoneyInput's docblock.
+
+            Seeded at 45.000.000 on purpose. That value measures 91px, and it is the number
+            that decided the design: with the button reserving its gutter here there is room
+            to spare, while overlaying it on `/new`'s 100px input would have put the ✕ on the
+            last digit. Clear it and watch the field go back to its 6px right inset.
+
+            Paste `abc` into it and the ✕ is STILL there — the gate is the displayed text, not
+            the value, and an unreadable paste is the state a user is most stuck in.
+          */}
+          <Field
+            label="Jumlah, bisa dikosongkan"
+            hint="Tombol kosongkan muncul begitu ada isi — termasuk tempelan yang tak terbaca."
+          >
+            <MoneyInput
+              value={clearableAmount}
+              onValueChange={setClearableAmount}
+              clearLabel="Kosongkan jumlah"
+            />
+          </Field>
+          <p className="text-meta text-ink-3">
+            value = {clearableAmount === null ? 'null' : clearableAmount}
+          </p>
+
           <Field label="Catatan" hideLabel>
             <TextArea
               className="font-medium"
@@ -243,7 +271,9 @@ export function KitchenSink() {
         <p className="mt-3 text-body text-ink-2">
           Focus every one of these on a real iPhone: the page must not zoom. Type 45000 into Jumlah
           and the dots appear as you go. Paste <code>1,5jt</code> and it becomes 1.500.000; type{' '}
-          <code>abc</code> and the border goes red without losing your text.
+          <code>abc</code> and the border goes red without losing your text. On the clearable one,
+          check the ✕ never sits on a digit: 999.999.999 measures 100px and the button reserves 44
+          of its own, which is the arithmetic that kept it off <code>/new</code>.
         </p>
       </Section>
 
