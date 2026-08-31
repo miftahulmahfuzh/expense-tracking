@@ -1,11 +1,14 @@
-# F18 — a ✕ in the Jumlah field, on the two surfaces where 44px exists, and measurably not on the third
+# F19 — a ✕ in the Jumlah field, on the two surfaces where 44px exists, and measurably not on the third
 
 **Card:** [#15](https://github.com/miftahulmahfuzh/expense-tracking/issues/15) · **Round 1** · 2026-08-31
 **Branch:** `task/15-tombol-clear-text-di-field-harga-jumlah` off `4719e11`
 
-> Third in the series after F17 (#11, item `Nama`) and #14 (`Judul`, in flight in a parallel
-> session as this is written). If #14 lands `F18` first, this plan is `F19` — same as F17's own
-> renumber. One counter, no lock.
+> **F19, not F18.** This was written and built as F18. Card #14's `Judul` clear button landed on
+> `main` under that same label while this branch was in the gate — parallel sessions, one counter,
+> no lock, and `F18-title-field-clear-button.md` merged first, so it keeps the number. Exactly what
+> happened to F17, which was built as F16. Nothing here changed but the label.
+>
+> Third in the series after F17 (#11, item `Nama`) and F18 (#14, `Judul`).
 
 ## 1. The ask
 
@@ -290,4 +293,4 @@ own verification rather than arriving attributed to a ✕. Filed separately.
 | `app/(bare)/e/[id]/ItemSheet.tsx` | one prop on the Jumlah field |
 | `app/(shell)/dev/ui/KitchenSink.tsx` | a clearable Jumlah demo |
 | `tests/money-input.clear.contract.test.ts` | new — the seven invariants |
-| `docs/plans/F18-amount-field-clear-button.md` | this file |
+| `docs/plans/F19-amount-field-clear-button.md` | this file |

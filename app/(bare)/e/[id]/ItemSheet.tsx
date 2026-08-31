@@ -120,7 +120,7 @@ export function ItemSheet({
               you type (design R-37). It also accepts a pasted `45k` / `1,5jt` via
               parseIdrLoose, which is the whole reason this app exists.
 
-              F18's ✕ ships HERE and not on `/new`'s review row, because this Jumlah is
+              F19's ✕ ships HERE and not on `/new`'s review row, because this Jumlah is
               full-width in a sheet — 274px of input, 236 once the button's gutter is
               reserved — against the 100px that row affords. The component clears both the
               value and its own unparseable escape hatch, so `onValueChange(null)` arrives

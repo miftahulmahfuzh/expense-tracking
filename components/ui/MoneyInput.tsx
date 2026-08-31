@@ -18,7 +18,7 @@ export interface MoneyInputProps extends Omit<
   /** Fires on blur when pasted text could not be parsed at all. */
   onParseError?: (rawText: string) => void
   /**
-   * F18 — pass a label and the field gains a ✕. Absent, and this component is what it was.
+   * F19 — pass a label and the field gains a ✕. Absent, and this component is what it was.
    *
    * ONE PROP, and deliberately not `Input`'s `{ onClear, clearLabel }` union, which is the
    * asymmetry to justify rather than tidy away. `Input` cannot clear itself: the caller owns
@@ -64,13 +64,13 @@ const OWN_FORMATTING = /^[\d.\s]*$/
  * the 150 a 190px column would leave them. That is a clipped category in place of a clipped
  * amount. See docs/plans/F13-amount-field-clipping.md §2 for the whole budget.
  *
- * F18 ADDS AN OPT-IN ✕ (`clearLabel`) AND DOES NOT PUT IT ON `/new`. The same budget decides
+ * F19 ADDS AN OPT-IN ✕ (`clearLabel`) AND DOES NOT PUT IT ON `/new`. The same budget decides
  * it: that row affords this input 100px, and `4.500.000` measures 81 while `45.000.000` and
  * `999.999.999` measure 91 and 100 (Chromium 150, 414x896 DPR 2). A 44px button either
  * reserves its gutter and shrinks the input to 62 — issue #3, re-shipped — or floats over the
  * value, which is R-34's badge again under a new name. It ships on the sheet's `Jumlah` (274px)
  * and in the gallery, and `/new`'s `ItemRow` passes no label, on purpose and under test. See
- * docs/plans/F18-amount-field-clear-button.md.
+ * docs/plans/F19-amount-field-clear-button.md.
  *
  * `inputMode="numeric"`, never `type="number"`: a number input rejects a pasted `45k` or
  * `1,5jt` outright, shows spinners nobody wants on a phone, and drops leading formatting.
@@ -108,7 +108,7 @@ export function MoneyInput({
 }: MoneyInputProps) {
   const field = useFieldContext()
   /*
-   * F18. Clearing has to refocus (see the button), and the node was previously only ever
+   * F19. Clearing has to refocus (see the button), and the node was previously only ever
    * spread through. No caller passes a `ref` to this component today — `rest` carries one if
    * one ever arrives, and React 19 hands it to the `<input>` through the spread — so this ref
    * is additive rather than a forwarding chain.
@@ -162,7 +162,7 @@ export function MoneyInput({
         // eats into. Matching it to `pl-3.5` would spend 8 real pixels of the field's 102 to
         // pad empty space, and drop the input under the `min-w-[6rem]` floor below.
         //
-        // F18 buys the ✕'s gutter out of exactly that whitespace, and the TERNARY is the fix
+        // F19 buys the ✕'s gutter out of exactly that whitespace, and the TERNARY is the fix
         // rather than the tidy-up: held as one string, a clearable well's class list would
         // carry `pr-1.5` AND `pr-touch`, `lib/cn.ts` is a plain join with no tailwind-merge,
         // and the GENERATED STYLESHEET's order would pick the winner — "neither the call
@@ -222,7 +222,7 @@ export function MoneyInput({
       />
 
       {/*
-        F18's clear button, written from `Input`'s (Field.tsx) — same `w-touch` box, same
+        F19's clear button, written from `Input`'s (Field.tsx) — same `w-touch` box, same
         `justify-end pr-3.5`, same `xs` glyph.
 
         It lands ONE PIXEL further in than `Input`'s, measured: 15px from the well's outer
@@ -241,7 +241,7 @@ export function MoneyInput({
         chosen failure mode — instead of the input quietly shrinking under its content,
         which is issue #3. `/new`'s review row is that container: 100px of input, and
         `4.500.000` needs 81. It passes no `clearLabel`, on measurement, and
-        docs/plans/F18-amount-field-clear-button.md §2 has the arithmetic.
+        docs/plans/F19-amount-field-clear-button.md §2 has the arithmetic.
 
         ── NOT `touch-target`, and here it is barred on two axes ──────────────────────────
         That utility centres a 44px `::after` on the button "without changing its painted

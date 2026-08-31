@@ -232,7 +232,7 @@ export function KitchenSink() {
           </p>
 
           {/*
-            F18's clearable Jumlah. The plain one above stays, and that is not duplication:
+            F19's clearable Jumlah. The plain one above stays, and that is not duplication:
             IT is the shape `/new`'s review row ships, which passes no `clearLabel` because
             100px of input cannot afford a 44px gutter — see MoneyInput's docblock.
 
