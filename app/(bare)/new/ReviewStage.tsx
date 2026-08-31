@@ -206,6 +206,23 @@ export function ReviewStage(props: ReviewStageProps) {
             disabled={saving}
             value={draft.title}
             onChange={(event) => props.onTitleChange(event.target.value)}
+            /*
+             * F18. The same affordance F17 shipped on the item `Nama` fields, for the same
+             * reason: F04 writes this title from the pasted receipt, so the common act here is
+             * replacing a guess rather than extending it — and replacing meant holding
+             * backspace over the whole string.
+             *
+             * It goes through `onTitleChange`, the one path typing already uses, so the draft
+             * reducer, the localStorage draft and `validate.ts` see the clear exactly as they
+             * see a deletion. `Input` gates the button on `disabled` itself, so `saving` above
+             * already covers it.
+             *
+             * `Kosongkan`, not `Hapus`: `ItemRow` reserves `Hapus` for the destructive
+             * neighbour, and the verb should mean one thing across the app even where — as
+             * here — there is no destructive neighbour to be confused with.
+             */
+            onClear={() => props.onTitleChange('')}
+            clearLabel="Kosongkan judul"
           />
         </Field>
 
