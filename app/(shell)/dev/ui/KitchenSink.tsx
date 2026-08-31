@@ -196,7 +196,7 @@ export function KitchenSink() {
           </Field>
 
           {/*
-            F16's clearable input, exactly as /new's item rows ship it. The mark appears only
+            F17's clearable input, exactly as /new's item rows ship it. The mark appears only
             once there is text, and the field goes back to its normal 14px right inset when
             emptied — measured at 414x896: a 44x50 button whose right edge lands ON the field's,
             a 14px glyph 14px in. What this gallery CANNOT show is the pair that made it

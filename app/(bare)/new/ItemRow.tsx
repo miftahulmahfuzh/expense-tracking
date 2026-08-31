@@ -72,7 +72,7 @@ export function ItemRow({
               disabled={disabled}
               onChange={(event) => onNameChange(event.target.value)}
               /*
-               * F16. THIS is the field the clear button exists for: F04 writes the name here
+               * F17. THIS is the field the clear button exists for: F04 writes the name here
                * from the pasted receipt, so the common act on this screen is replacing a name
                * the parse guessed — and replacing meant holding backspace over the whole
                * string. `Input` renders the mark 14px inside the well; the ✕ below is 22px and

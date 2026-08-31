@@ -119,7 +119,7 @@ const CONTROL_BASE =
   'text-input text-ink placeholder:text-ink-3 aria-[invalid=true]:border-red-ink'
 
 /**
- * The right padding is SPLIT OFF rather than left in a `px-3.5`, because F16 needs a wider
+ * The right padding is SPLIT OFF rather than left in a `px-3.5`, because F17 needs a wider
  * gutter on the right only — 44px, for the clear button that sits in it. Held as `px-3.5`,
  * a clearable input's class list would carry `px-3.5` AND `pr-touch` and `lib/cn.ts` is a
  * plain join with no tailwind-merge: both ship, and the GENERATED STYLESHEET's order decides
@@ -143,7 +143,7 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 } & ClearProps
 
 /**
- * F16 — opt-in clear button, and the LABEL IS PART OF THE OPT-IN.
+ * F17 — opt-in clear button, and the LABEL IS PART OF THE OPT-IN.
  *
  * `Icon.tsx` marks every glyph `aria-hidden`, so an icon button's only accessible name is the
  * one its call site passes. A single optional `clearLabel` would make "clearable but unnamed"

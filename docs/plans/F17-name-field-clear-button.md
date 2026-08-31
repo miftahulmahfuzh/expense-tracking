@@ -1,7 +1,12 @@
-# F16 — a ✕ inside the item Nama field, so a wrong name is one tap instead of twenty backspaces
+# F17 — a ✕ inside the item Nama field, so a wrong name is one tap instead of twenty backspaces
 
 **Card:** [#11](https://github.com/miftahulmahfuzh/expense-tracking/issues/11) · **Round 1** · 2026-08-31
 **Branch:** `task/11-tombol-clear-text-di-field-nama-saat` off `fa8e441`
+
+> **F17, not F16.** This was written and built as F16. Card #10's toast-dismiss work landed on
+> `main` under that same label while this branch was in the gate — parallel sessions, one
+> counter, no lock. `F16-toast-dismiss.md` merged first, so it keeps the number and this one
+> moved. Nothing in either plan changed but the label.
 
 ## 1. The ask, and where it actually lands
 
@@ -222,4 +227,4 @@ name is what should have caught the row bug cuts both ways.
 | `app/(bare)/new/ItemRow.tsx` | `onClear` + `clearLabel` on the name input |
 | `app/(shell)/dev/ui/KitchenSink.tsx` | one clearable demo field |
 | `tests/input.clear.contract.test.ts` | new — the five invariants |
-| `docs/plans/F16-name-field-clear-button.md` | this file |
+| `docs/plans/F17-name-field-clear-button.md` | this file |
