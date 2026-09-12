@@ -8,6 +8,7 @@ import {
   Images,
   Maximize,
   Minimize,
+  Pencil,
   Share,
   Trash2,
   X,
@@ -138,6 +139,9 @@ export const TrashIcon = (p: GlyphProps) => <Icon as={Trash2} {...p} />
 
 /** Dismiss. Replaces the `✕` / `×` characters — a typed glyph is whatever the font decides. */
 export const CloseIcon = (p: GlyphProps) => <Icon as={X} {...p} />
+
+/** #18 — the note's always-there entry into edit mode, on `/e/[id]`'s read-only Catatan view. */
+export const EditIcon = (p: GlyphProps) => <Icon as={Pencil} {...p} />
 
 /** Fullscreen on / off. Was `ExpandGlyph` / `CollapseGlyph`, four hand-drawn brackets each. */
 export const ExpandIcon = (p: GlyphProps) => <Icon as={Maximize} {...p} />

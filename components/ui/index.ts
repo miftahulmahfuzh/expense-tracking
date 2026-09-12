@@ -49,6 +49,7 @@ export {
   CloseIcon,
   CollapseIcon,
   DownloadIcon,
+  EditIcon,
   ExpandIcon,
   PhotoStackIcon,
   ShareIcon,
