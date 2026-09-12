@@ -10,6 +10,7 @@ import {
   CategoryDisc,
   ChevronLeftIcon,
   CloseIcon,
+  EditIcon,
   Field,
   Input,
   Money,
@@ -19,6 +20,7 @@ import {
   useToast,
 } from '@/components/ui'
 import { isValidDateISO, monthKey } from '@/lib/format'
+import { linkify } from '@/lib/linkify'
 
 import {
   ADD_ITEM_CTA,
@@ -30,6 +32,7 @@ import {
   DETAIL_LABEL,
   ITEM_DELETED_TOAST,
   ITEM_HEADING,
+  NOTE_EDIT_LABEL,
   NOTE_LABEL,
   SAVE_FAILED,
   TITLE_LABEL,
@@ -554,57 +557,55 @@ function TitleField({ value, onCommit }: { value: string; onCommit: (next: strin
  * have, and a 2-row textarea sitting there empty was the page asking a question nobody had
  * asked it — the biggest blank rectangle on the screen, reserved for the least-used field.
  *
- * So the field is EARNED, in three states and no more:
+ * So the field is EARNED, in four states and no more:
  *
  *   value empty, untouched   → one mono row, `+ Tambah catatan`. No box, no label.
  *   value empty, tapped      → the real field, focused, keyboard up.
- *   value present            → the real field, exactly as before.
+ *   value present, viewing   → #18: a read-only block, full text, URLs tappable.
+ *   editing (either origin)  → the real field, exactly as before.
  *
- * `expanded` IS THE `autoFocus` GUARD, which is why it is one boolean doing two jobs. It is
- * true only on the mount that FOLLOWS the user tapping the CTA, so the textarea focuses then
- * and only then. A group that arrives from the server with a note already on it mounts with
- * `expanded === false`, so the field is visible but does NOT grab focus and shove the
- * keyboard up over the page on every visit — the bug a bare `autoFocus` would ship.
+ * `editing` IS THE `autoFocus` GUARD, which is why it is one boolean doing two jobs. It is
+ * true only on the mount that FOLLOWS a tap — the CTA, the read-only block, or its pencil —
+ * so the textarea focuses then and only then. A group that arrives from the server with a
+ * note already on it mounts with `editing === false`, so it renders the read-only block
+ * rather than grabbing focus and shoving the keyboard up over the page on every visit — the
+ * bug a bare `autoFocus` would ship.
  *
- * COLLAPSING BACK. Opening the field and typing nothing puts it away again on blur, and
- * costs no round trip: the draft is empty, the value is empty, so there is nothing to commit
- * and `onCommit` is never called. Tapping the CTA is therefore free and undoable, which is
- * the point of making it a tap in the first place.
- *
- * Everything past that is the `key` contract at the call site: a commit remounts this with a
- * fresh `value`, `expanded` resets to false, and the state table above picks the right
- * rendering — the field for a saved note, the CTA again for one cleared back to empty. That
- * is also why `expanded` is not `useOptimistic`; it is this component's own scratch state and
- * nothing about it needs to survive a rollback (R-92).
+ * COLLAPSING BACK, #18's addition to the original contract: a blur that changes nothing —
+ * empty typed into empty, or a value re-blurred untouched — puts the box away rather than
+ * leaving the user looking at a textarea that is not actually being edited. `onCommit` still
+ * fires, and still only fires, when the trimmed draft differs from `value`; that commit
+ * remounts this component via the call site's `key`, which resets `editing` to false on its
+ * own. `editing` is therefore not `useOptimistic`; it is scratch state with nothing to survive
+ * a rollback (R-92).
  */
 function NoteField({ value, onCommit }: { value: string; onCommit: (next: string) => void }) {
   const [draft, setDraft] = useState(value)
-  const [expanded, setExpanded] = useState(false)
+  const [editing, setEditing] = useState(false)
 
-  if (!value && !expanded) {
+  /*
+   * The field is taller than the row it replaces, and this row is the LAST block on the page
+   * — so at the foot of a long expense the box it turns into lands partly below the fold.
+   * Scrolling to the document's new bottom always reveals it, which is only true because of
+   * that "last block" invariant; move the note back up the page and this needs rethinking.
+   *
+   * One frame late, because the box does not exist until React has committed. NOT an effect:
+   * this is a consequence of a tap, and it belongs in the tap handler.
+   *
+   * iOS ALSO scrolls a focused input clear of the keyboard on its own, ~250ms later, and that
+   * adjustment lands after this one and wins. This is for the platforms that do not — desktop
+   * Safari, an iPad with a hardware keyboard.
+   */
+  const startEditing = () => {
+    setEditing(true)
+    requestAnimationFrame(() => window.scrollTo({ top: document.documentElement.scrollHeight }))
+  }
+
+  if (!value && !editing) {
     return (
       <button
         type="button"
-        onClick={() => {
-          setExpanded(true)
-          /*
-           * The field is taller than the row it replaces, and this row is the LAST block on
-           * the page — so at the foot of a long expense the box it turns into lands partly
-           * below the fold. Scrolling to the document's new bottom always reveals it, which
-           * is only true because of that "last block" invariant; move the note back up the
-           * page and this needs rethinking.
-           *
-           * One frame late, because the box does not exist until React has committed. NOT an
-           * effect: this is a consequence of a tap, and it belongs in the tap handler.
-           *
-           * iOS ALSO scrolls a focused input clear of the keyboard on its own, ~250ms later,
-           * and that adjustment lands after this one and wins. This is for the platforms that
-           * do not — desktop Safari, an iPad with a hardware keyboard.
-           */
-          requestAnimationFrame(() =>
-            window.scrollTo({ top: document.documentElement.scrollHeight }),
-          )
-        }}
+        onClick={startEditing}
         /* The `+ Tambah item` row, verbatim, minus the `mt-1` its own list wanted. Same
            height, same 12px/800 Title Case, same ink — because it is the same kind of thing, and
            two different-looking "add a thing" rows on one screen is how a design starts
@@ -616,13 +617,77 @@ function NoteField({ value, onCommit }: { value: string; onCommit: (next: string
     )
   }
 
+  if (value && !editing) {
+    return (
+      <div
+        onClick={startEditing}
+        /*
+         * No `role="button"` here on purpose: this block contains real interactive children —
+         * the pencil button below and any link `linkify` produced — and ARIA's button role
+         * forbids focusable descendants. Keyboard and screen-reader access to edit mode goes
+         * through the pencil button, which is a real `<button>`; this `onClick` is a mouse/
+         * touch convenience layered on top of it, not a replacement for it.
+         *
+         * Same shell as the textarea below — `glass rounded-card`, same leading/weight — so
+         * switching between view and edit is not a visible jump. Padding is spelled out one
+         * side at a time (`pt-4 pr-11 pb-4 pl-4`) rather than `p-4 pr-11`: `lib/cn.ts` has no
+         * tailwind-merge, so two declarations for the same side would ship both and let the
+         * generated stylesheet's order pick the winner — the hazard `Field.tsx` and
+         * `MoneyInput.tsx` both document. `pr-11` reserves the pencil's `size-touch` corner so
+         * wrapped text never runs under it.
+         */
+        className="glass relative w-full cursor-text rounded-card border border-transparent pt-4 pr-11 pb-4 pl-4"
+      >
+        <p className="text-input leading-[1.6] font-medium whitespace-pre-wrap text-ink">
+          {linkify(value).map((segment, index) =>
+            segment.type === 'link' ? (
+              <a
+                key={index}
+                href={segment.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                // Stops the tap from also bubbling to the block's own onClick above, which
+                // would flip into edit mode at the same moment the link opens a new tab.
+                onClick={(event) => event.stopPropagation()}
+                className="underline decoration-1 underline-offset-2"
+              >
+                {segment.text}
+              </a>
+            ) : (
+              <span key={index}>{segment.value}</span>
+            ),
+          )}
+        </p>
+
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation()
+            startEditing()
+          }}
+          aria-label={NOTE_EDIT_LABEL}
+          /*
+           * Verbatim the item-delete button's shell a few lines up this file — same
+           * `size-touch` floor, same `text-ink-3` — because it is the same kind of thing: a
+           * small chrome affordance parked in the corner of a bigger block. This is the ONE
+           * reliable way into edit mode when the whole note is a bare URL and there is no
+           * plain text left to tap.
+           */
+          className="absolute top-1 right-1 grid size-touch shrink-0 press place-items-center rounded-field text-ink-3"
+        >
+          <EditIcon size="xs" />
+        </button>
+      </div>
+    )
+  }
+
   return (
     <Field label={NOTE_LABEL}>
       <TextArea
         rows={2}
         value={draft}
         maxLength={2_000}
-        autoFocus={expanded}
+        autoFocus={editing}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => {
           const trimmed = draft.trim()
@@ -630,9 +695,10 @@ function NoteField({ value, onCommit }: { value: string; onCommit: (next: string
             onCommit(trimmed)
             return
           }
-          // Nothing typed, nothing saved — put the box away rather than leaving the user
-          // looking at the empty rectangle they just asked to see.
-          if (!trimmed) setExpanded(false)
+          // Nothing changed — put the box away rather than leaving the user looking at a
+          // textarea that isn't actually being edited. Covers both the empty-CTA path (F12's
+          // original contract) and #18's new one: a value re-opened and blurred untouched.
+          setEditing(false)
         }}
       />
     </Field>

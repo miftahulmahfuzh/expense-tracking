@@ -34,6 +34,9 @@ export const ADD_ITEM_CTA = '+ Tambah Item'
  * ask for cannot be mistaken for one you were supposed to fill in.
  */
 export const ADD_NOTE_CTA = '+ Tambah Catatan'
+/** #18. The pencil on the read-only note view — the entry into edit mode a note that is a
+ *  single bare URL would otherwise have no way to reach. */
+export const NOTE_EDIT_LABEL = 'Edit catatan'
 export const SAVE_CTA = 'Simpan'
 export const CANCEL_CTA = 'Batal'
 export const DELETE_CTA = 'Hapus'

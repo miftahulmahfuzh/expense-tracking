@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { CATEGORY_LIST, type Category } from '@/lib/categories'
+import { linkify } from '@/lib/linkify'
 import {
   Button,
   ButtonLink,
@@ -19,6 +20,7 @@ import {
   useToast,
   ChevronRightIcon,
   CloseIcon,
+  EditIcon,
 } from '@/components/ui'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -274,6 +276,57 @@ export function KitchenSink() {
           <code>abc</code> and the border goes red without losing your text. On the clearable one,
           check the ✕ never sits on a digit: 999.999.999 measures 100px and the button reserves 44
           of its own, which is the arithmetic that kept it off <code>/new</code>.
+        </p>
+      </Section>
+
+      {/* ---------------------------------------------------------------- note view */}
+      <Section title="Catatan — read-only view (#18)">
+        <p className="mb-3 text-body text-ink-2">
+          `/e/[id]` sits behind real sign-in, so this is the only place to check the read-only
+          note&apos;s rendering without a session. Static markup — the pencil is not wired here,
+          only the shell, the wrapping and the linkified text are.
+        </p>
+        <div className="flex flex-col gap-4">
+          {[
+            'Alamat Kos\nhttps://maps.google.com/maps?q=-6.123151%2C106.789494',
+            'https://example.com/receipt/very-long-id-that-should-wrap-onto-a-second-line-123456',
+            'titip beli galon, bayar cash ya',
+          ].map((note) => (
+            <div
+              key={note}
+              className="glass relative w-full rounded-card border border-transparent pt-4 pr-11 pb-4 pl-4"
+            >
+              <p className="text-input leading-[1.6] font-medium whitespace-pre-wrap text-ink">
+                {linkify(note).map((segment, index) =>
+                  segment.type === 'link' ? (
+                    <a
+                      key={index}
+                      href={segment.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline decoration-1 underline-offset-2"
+                    >
+                      {segment.text}
+                    </a>
+                  ) : (
+                    <span key={index}>{segment.value}</span>
+                  ),
+                )}
+              </p>
+              <button
+                type="button"
+                aria-label="Edit catatan"
+                className="absolute top-1 right-1 grid size-touch shrink-0 press place-items-center rounded-field text-ink-3"
+              >
+                <EditIcon size="xs" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-body text-ink-2">
+          First is the real note off the newest prod expense group — two lines, a link mid-text.
+          Second checks a long URL wraps instead of overflowing the card. Third has no link at all:
+          the pencil is still there and still the way in, even with plain text to tap.
         </p>
       </Section>
 
