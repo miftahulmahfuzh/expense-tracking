@@ -24,6 +24,12 @@ import type { ParseInput } from './types'
  *
  * All money parsing delegates to `parseIdrLoose` (F03 owns it, reconciliation R-8);
  * `lib/llm/__tests__/parseIdrLoose.contract.test.ts` is the gate on that dependency.
+ *
+ * One thing layered on top of `parseIdrLoose`, here and not in `lib/format.ts`: a bare
+ * number under 1000 with no suffix (`19`, `26`) is colloquial shorthand for thousands —
+ * "harganya berapa?" / "19" means Rp 19.000. That heuristic belongs to *conversational*
+ * text, not to `parseIdrLoose`'s contract, which a dedicated Amount field (`MoneyInput`)
+ * also relies on to take a typed `"500"` literally. See `applyBareShorthand` below.
  */
 
 const MAX_ITEMS = 50
@@ -155,19 +161,35 @@ interface Extracted {
   amount: number
 }
 
+/** A plain run of digits — no `k`/`rb`/`jt` suffix, no `.`/`,` separator. */
+const BARE_DIGITS_RE = /^\d+$/
+
+/**
+ * "harganya berapa?" answered with just "19" means Rp 19.000, not Rp 19 — nobody buys
+ * anything for 19 rupiah. Only a bare number (no suffix, no separator already giving it
+ * an unambiguous scale) under 1000 gets this treatment; `2000` and `38500` stay literal.
+ */
+function applyBareShorthand(raw: string, amount: number): number {
+  if (amount > 0 && amount < 1000 && BARE_DIGITS_RE.test(raw.trim())) return amount * 1000
+  return amount
+}
+
 function extractLine(line: string): Extracted | null {
   // Price-first form takes priority — it is unambiguous because of the Rp prefix.
   const lead = LEAD_AMOUNT_RE.exec(line)
   if (lead) {
-    const amount = parseIdrLoose(lead[1]!)
+    const parsed = parseIdrLoose(lead[1]!)
     const rest = trimEdges(lead[2] ?? '')
-    if (amount !== null && rest !== '') return { name: rest, amount }
+    if (parsed !== null && rest !== '') {
+      return { name: rest, amount: applyBareShorthand(lead[1]!, parsed) }
+    }
   }
 
   const tail = TAIL_AMOUNT_RE.exec(line)
   if (!tail) return null
-  const amount = parseIdrLoose(tail[1]!)
-  if (amount === null) return null
+  const parsed = parseIdrLoose(tail[1]!)
+  if (parsed === null) return null
+  const amount = applyBareShorthand(tail[1]!, parsed)
 
   const name = trimEdges(line.slice(0, tail.index))
   return { name: name === '' ? 'lainnya' : name, amount }

@@ -135,6 +135,9 @@ Conversion table — memorise it:
 | \`1.5jt\` | user typed a dot as the decimal — still 1,5 juta | 1500000 |
 | \`4,5jt\` | | 4500000 |
 | \`38.500,00\` | comma with two digits = cents | 38500 |
+| \`19\` | bare, under 1000 ⇒ colloquial shorthand for 19 ribu | 19000 |
+| \`26\` | bare, under 1000 ⇒ colloquial shorthand for 26 ribu | 26000 |
+| \`2000\` | bare, already ≥ 1000 ⇒ taken literally | 2000 |
 
 How to decide, in order:
 1. Strip \`Rp\`, \`rp\`, \`IDR\`, and all whitespace.
@@ -142,9 +145,9 @@ How to decide, in order:
 3. If a \`jt\` / \`juta\` suffix is present → multiply by 1000000. If that number contains \`,\` or \`.\`, treat that mark as a decimal point (\`1,5jt\` and \`1.5jt\` are both 1500000).
 4. If there is NO suffix: every \`.\` is a thousands separator. Delete all the dots and read the remaining digits. \`38.500\` → 38500. Never divide.
 5. If there is no suffix and a \`,\` is followed by exactly two digits, that is cents — drop the comma and the two digits.
-6. A bare number with no separators is already in rupiah: \`38500\` → 38500, \`2000\` → 2000.
+6. A bare number with no separators and no suffix, that is UNDER 1000, is colloquial shorthand for thousands — multiply it by 1000: \`19\` → 19000, \`26\` → 26000, \`150\` → 150000. This is how Indonesians actually answer a price question: "harganya berapa?" → "19" means Rp 19.000, not Rp 19 — nobody buys anything for 19 rupiah. A bare number that is already 1000 or more is taken literally: \`2000\` → 2000, \`38500\` → 38500.
 
-SANITY CHECK every amount before you emit it. A normal Indonesian personal expense line is between Rp 1.000 and Rp 5.000.000. If you are about to emit 38.5, 45, 1.5, or 58.85, you divided when you should not have. Redo that amount.
+SANITY CHECK every amount before you emit it. A normal Indonesian personal expense line is between Rp 1.000 and Rp 5.000.000. If you are about to emit 38.5, 45, 1.5, or 58.85, you divided when you should not have. If you are about to emit a bare number under 1000 as itself (e.g. 19 instead of 19000), you forgot rule 6 above — redo that amount.
 
 ## DATE
 
@@ -295,7 +298,7 @@ TODAY, in Asia/Jakarta, is {{TODAY}}. Use this whenever the text contains no usa
 
 Read your own output back and confirm:
 1. Every \`amount_idr\` is a JSON integer with no quotes, no dots, no commas, no decimal point.
-2. No amount is under 500 unless the text literally shows such a small number.
+2. No amount is under 500 unless the text literally shows such a small number after rule 6's bare-number-under-1000 conversion has already been applied.
 3. No amount looks like it was divided by 1000 (38.5 instead of 38500).
 4. \`occurred_on\` matches YYYY-MM-DD, and the day and month are not swapped.
 5. No total / subtotal / jumlah line became an item.

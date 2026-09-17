@@ -54,6 +54,36 @@ describe('fallbackParse — amounts', () => {
   })
 })
 
+describe('fallbackParse — bare small numbers as thousands shorthand', () => {
+  it('reads a bare number under 1000 as thousands, like "harganya berapa?" -> "19"', () => {
+    expect(run('19')!.items[0]!.amount_idr).toBe(19000)
+    expect(run('kopi 26')!.items[0]!.amount_idr).toBe(26000)
+  })
+
+  it('applies at the boundary: 999 becomes 999000, 1000 stays 1000', () => {
+    expect(run('parkir 999')!.items[0]!.amount_idr).toBe(999000)
+    expect(run('parkir 1000')!.items[0]!.amount_idr).toBe(1000)
+  })
+
+  it('does not touch a number that already carries a suffix', () => {
+    expect(run('kopi 19k')!.items[0]!.amount_idr).toBe(19000)
+    expect(run('kopi 19rb')!.items[0]!.amount_idr).toBe(19000)
+  })
+
+  it('does not touch a number with a separator, even if small once resolved', () => {
+    expect(run('kopi 1,5')!.items[0]!.amount_idr).toBe(2) // decimal reading, not bare
+  })
+
+  it('works price-first too', () => {
+    expect(run('Rp 19 bensin')!.items[0]!.amount_idr).toBe(19000)
+  })
+
+  it('leaves an already-large bare number literal', () => {
+    expect(run('kopi 2000')!.items[0]!.amount_idr).toBe(2000)
+    expect(run('laptop 38500')!.items[0]!.amount_idr).toBe(38500)
+  })
+})
+
 describe('fallbackParse — skipping', () => {
   it('drops total / subtotal / jumlah lines', () => {
     for (const line of [
