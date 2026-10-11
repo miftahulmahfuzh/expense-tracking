@@ -115,7 +115,7 @@ export function Field({
  * revert is `border-transparent` → `border-rule-strong` here and in `TextArea`.
  */
 const CONTROL_BASE =
-  'w-full h-control rounded-field border border-transparent glass pl-3.5 ' +
+  'w-full h-control rounded-field border border-transparent glass ' +
   'text-input text-ink placeholder:text-ink-3 aria-[invalid=true]:border-red-ink'
 
 /**
@@ -128,7 +128,7 @@ const CONTROL_BASE =
  *
  * `CONTROL_CLASS` is unchanged in effect and stays exported for the read-only display above.
  */
-export const CONTROL_CLASS = CONTROL_BASE + ' pr-3.5'
+export const CONTROL_CLASS = CONTROL_BASE + ' pl-3.5 pr-3.5'
 
 /**
  * `ref` is typed explicitly (F05 contract delta 8). React 19 passes `ref` to a function
@@ -151,7 +151,13 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
  * `Icon.tsx` made when it turned the stroke contract into props.
  */
 type ClearProps =
-  { onClear: () => void; clearLabel: string } | { onClear?: undefined; clearLabel?: undefined }
+  | {
+      onClear: () => void
+      clearLabel: string
+      /** Which edge of the well the ✕ sits on. Right by default; Detail's Nama asks for left. */
+      clearSide?: 'left' | 'right'
+    }
+  | { onClear?: undefined; clearLabel?: undefined; clearSide?: undefined }
 
 /**
  * The clear affordance, for a field whose value arrives PRE-FILLED by something other than
@@ -180,7 +186,15 @@ type ClearProps =
  * unmounts the input and mounts a fresh one — the field loses focus and the keyboard closes as
  * the user types the first character. The wrapper is therefore always there when clearable.
  */
-export function Input({ className, id, ref, onClear, clearLabel, ...rest }: InputProps) {
+export function Input({
+  className,
+  id,
+  ref,
+  onClear,
+  clearLabel,
+  clearSide = 'right',
+  ...rest
+}: InputProps) {
   const field = useFieldContext()
 
   /*
@@ -208,7 +222,14 @@ export function Input({ className, id, ref, onClear, clearLabel, ...rest }: Inpu
       ref={attach}
       aria-describedby={rest['aria-describedby'] ?? field?.describedBy}
       aria-invalid={rest['aria-invalid'] ?? (field?.invalid || undefined)}
-      className={cn(CONTROL_BASE, showClear ? 'pr-touch' : 'pr-3.5', className)}
+      // Both sides spelled out per declaration (see `CONTROL_CLASS`): the ✕'s side gets the
+      // 44px gutter, the other keeps the text inset.
+      className={cn(
+        CONTROL_BASE,
+        showClear && clearSide === 'left' ? 'pl-touch' : 'pl-3.5',
+        showClear && clearSide === 'right' ? 'pr-touch' : 'pr-3.5',
+        className,
+      )}
       {...rest}
     />
   )
@@ -241,7 +262,11 @@ export function Input({ className, id, ref, onClear, clearLabel, ...rest }: Inpu
           }}
           // `justify-end pr-3.5` lands the glyph on the field's own text inset, so it lines up
           // with everything else on the screen while the 44px box behind it starts further in.
-          className="absolute inset-y-0 right-0 flex w-touch press items-center justify-end pr-3.5 text-ink-3"
+          // The left variant mirrors it.
+          className={cn(
+            'absolute inset-y-0 flex w-touch press items-center text-ink-3',
+            clearSide === 'left' ? 'left-0 justify-start pl-3.5' : 'right-0 justify-end pr-3.5',
+          )}
           aria-label={clearLabel}
         >
           <CloseIcon size="xs" />

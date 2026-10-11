@@ -10,6 +10,7 @@ import {
   ITEM_AMOUNT_CLEAR,
   ITEM_AMOUNT_INVALID,
   ITEM_AMOUNT_LABEL,
+  ITEM_NAME_CLEAR,
   ITEM_NAME_LABEL,
   ITEM_NAME_PLACEHOLDER,
   ITEM_SHEET_ADD,
@@ -107,6 +108,9 @@ export function ItemSheet({
             autoCapitalize="none"
             autoCorrect="off"
             placeholder={ITEM_NAME_PLACEHOLDER}
+            onClear={() => setName('')}
+            clearLabel={ITEM_NAME_CLEAR}
+            clearSide="left"
             className="bg-paper"
           />
         </Field>
@@ -124,10 +128,7 @@ export function ItemSheet({
               full-width in a sheet — 274px of input, 236 once the button's gutter is
               reserved — against the 100px that row affords. The component clears both the
               value and its own unparseable escape hatch, so `onValueChange(null)` arrives
-              through the handler below and `unparsed` goes with it.
-
-              The Nama field above stays non-clearable: that is F17's call on card #11 (it
-              starts empty when this sheet is an add), not this card's to reverse. */}
+              through the handler below and `unparsed` goes with it. */}
           <MoneyInput
             value={amountIdr}
             onValueChange={(value) => {

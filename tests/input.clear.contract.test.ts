@@ -101,8 +101,8 @@ describe('the button', () => {
 
   it('makes an unlabelled clearable input fail to compile', () => {
     // Hazard 3, the half that catches it before this test ever runs.
-    expect(source).toContain('{ onClear: () => void; clearLabel: string }')
-    expect(source).toContain('{ onClear?: undefined; clearLabel?: undefined }')
+    expect(source).toMatch(/\{\s*onClear: \(\) => void\s*clearLabel: string\b/)
+    expect(source).toContain('{ onClear?: undefined; clearLabel?: undefined')
   })
 
   it('is painted at `xs` — 14px, against the row delete’s 22px', () => {
@@ -113,10 +113,13 @@ describe('the button', () => {
 
   it('gets its 44px from a real `w-touch` box, never from `touch-target`', () => {
     // Hazard 2. The utility's ::after would reach past the field, into the delete's hit area.
-    const button = classNames(source).find((value) => value.includes('absolute'))
+    const button = literals(source).find((value) => value.includes('absolute'))
     expect(button).toBeDefined()
     expect(button).toContain('w-touch')
-    expect(button).toContain('right-0')
+    // Either edge, per `clearSide`; right is the default.
+    expect(source).toContain("'right-0 justify-end pr-3.5'")
+    expect(source).toContain("'left-0 justify-start pl-3.5'")
+    expect(source).toContain("clearSide = 'right'")
     expect(source).not.toContain('touch-target')
   })
 
@@ -138,14 +141,16 @@ describe('the button', () => {
 describe('padding, which no stylesheet order gets to decide', () => {
   const source = read(FIELD)
 
-  it('splits the right side off `CONTROL_BASE`', () => {
-    // Hazard 4.
+  it('splits both sides off `CONTROL_BASE`', () => {
+    // Hazard 4, now on both edges since the ✕ can sit on either.
     expect(source).toContain('const CONTROL_BASE =')
-    expect(source).toContain("export const CONTROL_CLASS = CONTROL_BASE + ' pr-3.5'")
+    expect(source).toContain("export const CONTROL_CLASS = CONTROL_BASE + ' pl-3.5 pr-3.5'")
   })
 
-  it('gives a clearable input exactly one right padding', () => {
-    expect(code(FIELD)).toContain("cn(CONTROL_BASE, showClear ? 'pr-touch' : 'pr-3.5', className)")
+  it('gives a clearable input exactly one padding per side', () => {
+    const src = code(FIELD)
+    expect(src).toContain("showClear && clearSide === 'left' ? 'pl-touch' : 'pl-3.5'")
+    expect(src).toContain("showClear && clearSide === 'right' ? 'pr-touch' : 'pr-3.5'")
   })
 
   it('leaves no literal in the file carrying both `px-` and `pr-`', () => {

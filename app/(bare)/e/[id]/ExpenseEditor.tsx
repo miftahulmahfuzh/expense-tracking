@@ -110,6 +110,9 @@ export function ExpenseEditor({
 
   const [editing, setEditing] = useState<EditableItem | null>(null)
   const [adding, setAdding] = useState(false)
+  // Bumped on every "+ Tambah item" so each add mounts a fresh sheet. A constant 'add' key
+  // let the previous add's draft survive into the next one.
+  const [addCount, setAddCount] = useState(0)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const total = totalOf(optimisticItems)
@@ -398,7 +401,10 @@ export function ExpenseEditor({
 
         <button
           type="button"
-          onClick={() => setAdding(true)}
+          onClick={() => {
+            setAddCount((n) => n + 1)
+            setAdding(true)
+          }}
           className="mt-1 flex min-h-12 w-full press items-center text-left text-action text-ink-2"
         >
           {ADD_ITEM_CTA}
@@ -451,7 +457,7 @@ export function ExpenseEditor({
        * target changes. `open` is a prop rather than sheet state, per Sheet's own contract.
        */}
       <ItemSheet
-        key={editing ? `edit:${editing.id}` : 'add'}
+        key={editing ? `edit:${editing.id}` : `add:${addCount}`}
         open={Boolean(editing) || adding}
         initial={
           editing

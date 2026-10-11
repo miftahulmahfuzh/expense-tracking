@@ -45,6 +45,7 @@ export const ITEM_SHEET_EDIT = 'Ubah item'
 export const ITEM_SHEET_ADD = 'Item baru'
 export const ITEM_NAME_LABEL = 'Nama'
 export const ITEM_NAME_PLACEHOLDER = 'roti buaya'
+export const ITEM_NAME_CLEAR = 'Kosongkan nama'
 export const ITEM_AMOUNT_LABEL = 'Jumlah'
 export const ITEM_AMOUNT_INVALID = 'Jumlah tidak dikenali'
 /**
